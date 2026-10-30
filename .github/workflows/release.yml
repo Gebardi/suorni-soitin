@@ -2,7 +2,7 @@ name: Julkaise lisäosa
 on:
   push:
     branches: [main]
-    paths: ['suorni-soitin/**']
+    paths: ['suorni-soitin/**', '.github/workflows/release.yml']
   workflow_dispatch:
 permissions:
   contents: write
@@ -16,16 +16,22 @@ jobs:
         run: |
           VER=$(grep -m1 "SUORNI_VER'" suorni-soitin/suorni-soitin.php | sed -E "s/.*'SUORNI_VER', *'([^']+)'.*/\1/")
           echo "ver=$VER" >> "$GITHUB_OUTPUT"
-      - name: Onko julkaisu jo olemassa
-        id: ex
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh release view "v${{ steps.v.outputs.ver }}" >/dev/null 2>&1; then echo "yes=1" >> "$GITHUB_OUTPUT"; fi
       - name: Rakenna zip ja julkaise
-        if: steps.ex.outputs.yes != '1'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          VER="${{ steps.v.outputs.ver }}"
+          TAG="v$VER"
           zip -qr suorni-soitin.zip suorni-soitin
-          gh release create "v${{ steps.v.outputs.ver }}" suorni-soitin.zip --title "${{ steps.v.outputs.ver }}" --generate-notes
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            N=$(gh release view "$TAG" --json assets --jq '.assets | length')
+            DR=$(gh release view "$TAG" --json isDraft --jq '.isDraft')
+            if [ "$N" -gt 0 ] && [ "$DR" = "false" ]; then echo "Julkaisu $TAG on jo valmis"; exit 0; fi
+            echo "Julkaisu $TAG on keskeneräinen, poistetaan ja tehdään uudelleen"
+            gh release delete "$TAG" --yes --cleanup-tag || true
+          fi
+          for i in 1 2 3; do
+            if gh release create "$TAG" suorni-soitin.zip --target "${GITHUB_SHA}" --title "$VER" --generate-notes; then exit 0; fi
+            echo "Yritys $i epäonnistui"; gh release delete "$TAG" --yes --cleanup-tag || true; sleep 10
+          done
+          exit 1
