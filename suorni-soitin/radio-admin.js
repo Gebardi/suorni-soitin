@@ -328,6 +328,31 @@
 			});
 			tb.appendChild(cbtn);
 		}
+		var rowMap = {};
+		var kbtn = el('button', { type: 'button', style: 'margin:0 6px 6px 0' }, '🔍 Tarkista, aukeavatko kappaleiden tiedostot');
+		kbtn.addEventListener('click', function () {
+			var list = (D.tracks || []).filter(function (t) { return t.url && !t.hidden; }), i = 0, bad = 0;
+			kbtn.disabled = true;
+			function mark(t, ok) {
+				var r = rowMap[t.id]; if (!r) { return; }
+				var h = r.querySelector('[data-chk]'); if (!h) { h = el('span', { 'data-chk': '1', style: 'margin-left:6px;font-size:13px' }); r.firstChild.appendChild(h); }
+				h.innerHTML = ok ? '<span style="color:#5eead4">✓ tiedosto aukeaa</span>' : '<b style="color:#ff9a9a">⚠️ tiedosto ei aukea – vaihda tiedostoon</b>';
+				if (!ok) { r.style.borderColor = '#e5484d'; }
+			}
+			(function next() {
+				if (i >= list.length) { kbtn.disabled = false; smsg.textContent = bad ? ('Valmis. ' + bad + ' kappaleen tiedosto ei aukea (merkitty ⚠️ punaisella).') : 'Valmis. Kaikki tiedostot aukeavat.'; return; }
+				var t = list[i++]; smsg.textContent = 'Tarkistetaan ' + i + '/' + list.length + '…';
+				var a = new Audio(), done = false;
+				try { a.referrerPolicy = 'no-referrer'; } catch (e) {}
+				a.preload = 'metadata';
+				function fin(ok) { if (done) { return; } done = true; clearTimeout(to); a.removeAttribute('src'); a.load(); if (!ok) { bad++; } mark(t, ok); next(); }
+				var to = setTimeout(function () { fin(false); }, 9000);
+				a.addEventListener('loadedmetadata', function () { fin(true); });
+				a.addEventListener('error', function () { fin(false); });
+				a.src = t.url;
+			})();
+		});
+		tb.appendChild(kbtn);
 		sbtn.addEventListener('click', function () {
 			var todo = D.tracks.filter(function (t) { return !t.hidden && !(t.progs && t.progs.length) && !t.sugg; });
 			if (!todo.length) { smsg.textContent = 'Kaikilla kappaleilla on jo ehdotus tai ohjelmarajaus.'; return; }
@@ -357,8 +382,10 @@
 			var vis = D.tracks.filter(function (t) { return !t.hidden; }), hid = D.tracks.filter(function (t) { return t.hidden; });
 			D.usable = vis.length;
 			tw.querySelector('h3').textContent = 'Radion soittolista (' + vis.length + ' kappaletta)';
+			rowMap = {};
 			function mkRow(t) {
 				var r = el('div', { style: 'margin:8px 0;padding:8px;border:1px solid #2b4a85;border-radius:10px' });
+				rowMap[t.id] = r;
 				r.innerHTML = '<div><b>' + esc(t.title) + '</b> <span style="opacity:.7;font-size:13px">👍 ' + ((t.votes && t.votes.u) || 0) + ' 👎 ' + ((t.votes && t.votes.d) || 0) + '</span> <a href="' + esc(t.url || '#') + '" target="_blank" rel="noopener noreferrer" style="font-size:13px;margin-left:6px">▶ avaa tiedosto</a></div>';
 				var inp = el('input', { style: st, maxlength: '300', placeholder: 'Esittely (valinnainen)' });
 				inp.value = t.info || '';
