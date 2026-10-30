@@ -1063,14 +1063,17 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 .sr.rplay .hub{animation-play-state:running}
 @media(prefers-reduced-motion:reduce){.sr.rplay .hub{animation-duration:4s}}
 .sr .rbot{position:absolute;left:14%;right:14%;bottom:-1px;height:24%;background:radial-gradient(circle at 20% 45%,#000 0 5%,transparent 5.6%),radial-gradient(circle at 80% 45%,#000 0 5%,transparent 5.6%),radial-gradient(circle at 38% 70%,#000 0 2.2%,transparent 2.8%),radial-gradient(circle at 62% 70%,#000 0 2.2%,transparent 2.8%),linear-gradient(#4a4a4a,#1a1a1a);clip-path:polygon(9% 0,91% 0,100% 100%,0 100%)}
-.sr .rhx{margin-top:12px}.sr.shop .rhx{display:none}
+@media(min-width:1000px){.sr:not(.shop){max-width:none;width:min(1180px,96vw);margin:20px 0;left:50%;transform:translateX(-50%)}.sr:not(.shop) .rgrid{display:grid;grid-template-columns:250px minmax(0,1fr) 330px;gap:18px;align-items:start}.sr:not(.shop) .rcol1{order:0}.sr:not(.shop) .rcol2{order:1}.sr:not(.shop) .rcol3{order:2}.sr:not(.shop) .rcol3 .rcl{max-height:340px;overflow:auto}.sr:not(.shop) .rin{padding:0 26px}.sr:not(.shop) .rcv{height:240px;object-fit:cover}}
+@media(max-width:999px){.sr .rgrid{display:flex;flex-direction:column}.sr .rcol2{order:1}.sr .rcol3{order:2}.sr .rcol1{order:3}}
+.sr .rcol1 .ri,.sr .rcol3 .rch{margin-top:12px}.sr .rcol1 .ri:first-child{margin-top:0}.sr .rhx{margin:0}.sr .rcol1 .rhr{padding:6px 0;font-size:13px}.sr .rcol1 .rhr .tm{min-width:40px}
+.sr.shop .rhx{display:none}
 .sr .rhxt{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.sr .rhxt button.rg{margin:0;padding:8px 10px;font-size:13px}.sr .rhxt button.on{border-color:#ffb347;color:#ffb347}
 .sr .rhr{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid rgba(255,255,255,.1);font-size:14px}.sr .rhr:first-child{border-top:0}
 .sr .rhr .tm{flex:none;min-width:44px;font:12px ui-monospace,Menlo,Consolas,monospace;color:#c98a2d}.sr .rhr .tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sr .rhr .sh{flex:none;background:none;border:0;color:#cfd6e4;font-size:16px;cursor:pointer;padding:4px}
 .sr .rhq input[type=text],.sr .rhq input.rt{width:100%;box-sizing:border-box;margin:4px 0}.sr .rhl{max-height:200px;overflow:auto;border:1px solid rgba(255,255,255,.15);border-radius:8px;margin:4px 0}.sr .rhl button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid rgba(255,255,255,.08);color:inherit;font:inherit;font-size:14px;padding:8px;cursor:pointer}.sr .rhl button.sel{background:rgba(255,179,71,.2);color:#ffb347}
 .sr .rbn{margin:0 0 10px;padding:10px 12px;border-radius:10px;background:rgba(255,179,71,.15);border:1px solid #ffb347;color:#ffd9a0;font-size:14px}
 .sr .rout{animation:srout .6s ease-in forwards;z-index:2;pointer-events:none}
-.sr .rin{animation:srin .65s cubic-bezier(.2,.8,.3,1)}
+.sr .rcas.rin{animation:srin .65s cubic-bezier(.2,.8,.3,1)}
 @keyframes srout{to{transform:translateX(-120%) rotate(-4deg);opacity:.4}}
 @keyframes srin{from{transform:translateX(120%) rotate(3deg)}to{transform:none}}
 .sr .rteject{flex:none;width:44px;height:44px;border-radius:8px;border:1px solid #0e0f12;background:linear-gradient(180deg,#5a5e68,#32353c 55%,#25272c);color:#f2ead7;font-size:20px;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 2px 4px rgba(0,0,0,.5)}
@@ -1108,6 +1111,15 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 	<h2><?php echo esc_html( $cfg['name'] ); ?></h2>
 	<p class="rs" data-prog>Suora lähetys</p>
 	<?php if ( $cfg['wx_show'] ) : ?><div class="rwx" data-wxbox hidden></div><?php endif; ?>
+	<div class="rgrid">
+	<aside class="rcol1">
+	<?php $rq = suorni_reqcfg(); ?>
+	<div class="rhx" data-hx hidden data-hist="<?php echo suorni_ep( 'radio/hist' ); ?>" data-reqlist="<?php echo suorni_ep( 'radio/reqlist' ); ?>" data-req="<?php echo suorni_ep( 'radio/req' ); ?>" data-reqon="<?php echo $rq['on'] ? '1' : '0'; ?>">
+		<div class="ri"><b>🕘 Soinut äsken</b><div data-hxr></div></div>
+		<div class="ri"><div class="rhxt"><button type="button" class="rg" data-hxt="top">🏆 Top 10</button><?php if ( $rq['on'] ) : ?><button type="button" class="rg" data-hxt="req">🎁 Toivo kappale</button><?php endif; ?></div><div class="rhxb" data-hxb></div></div>
+	</div>
+	</aside>
+	<div class="rcol2">
 	<div class="rb">
 		<button class="rp" data-play aria-label="Kuuntele">▶</button>
 		<div class="rn"><b data-title>Paina play ja kuuntele</b><span data-artist></span><span data-next></span></div>
@@ -1129,11 +1141,8 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 	<?php if ( $cfg['comm'] ) : ?>
 	<div class="ri" data-cq hidden><b>🆕 Tulossa uusilta artisteilta</b><div data-cqlist></div></div>
 	<?php endif; ?>
-	<?php $rq = suorni_reqcfg(); ?>
-	<div class="ri rhx" data-hx hidden data-hist="<?php echo suorni_ep( 'radio/hist' ); ?>" data-reqlist="<?php echo suorni_ep( 'radio/reqlist' ); ?>" data-req="<?php echo suorni_ep( 'radio/req' ); ?>" data-reqon="<?php echo $rq['on'] ? '1' : '0'; ?>">
-		<div class="rhxt"><button type="button" class="rg" data-hxt="recent">🕘 Soinut äsken</button><button type="button" class="rg" data-hxt="top">🏆 Top 10</button><?php if ( $rq['on'] ) : ?><button type="button" class="rg" data-hxt="req">🎁 Toivo kappale</button><?php endif; ?></div>
-		<div class="rhxb" data-hxb></div>
 	</div>
+	<aside class="rcol3">
 	<?php if ( $cfg['chat'] ) : ?>
 	<div class="rch" data-chat data-chaturl="<?php echo suorni_ep( 'radio/chat' ); ?>">
 		<b>💬 Kuuntelijoiden chat</b>
@@ -1147,6 +1156,8 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 		<div class="rs rgn" data-gnote hidden>🤖 = tekoälyvieras</div>
 	</div>
 	<?php endif; ?>
+	</aside>
+	</div>
 	<p class="rs" data-count></p>
 	<?php if ( $cfg['comm'] ) : ?>
 	<details>

@@ -476,8 +476,8 @@
 	var root = document.querySelector('.sr');
 	var hx = root && root.querySelector('[data-hx]');
 	if (!hx) { return; }
-	var body = hx.querySelector('[data-hxb]'), tabs = hx.querySelectorAll('[data-hxt]');
-	var H = null, tab = 'recent', reqL = null, selId = 0, reqMsg = '';
+	var body = hx.querySelector('[data-hxb]'), rec = hx.querySelector('[data-hxr]'), tabs = hx.querySelectorAll('[data-hxt]');
+	var H = null, tab = 'top', reqL = null, selId = 0, reqMsg = '';
 	function q(u, p) { return u + (u.indexOf('?') < 0 ? '?' : '&') + p; }
 	function mk(t, c, tx) { var e = document.createElement(t); if (c) { e.className = c; } if (tx != null) { e.textContent = tx; } return e; }
 	function hm(ts) { var d = new Date(ts * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
@@ -494,19 +494,23 @@
 		var b = mk('button', 'sh', '📤'); b.type = 'button'; b.setAttribute('aria-label', 'Jaa kappale'); b.addEventListener('click', function () { share(x, b); }); r.appendChild(b);
 		return r;
 	}
+	function drawRecent() {
+		if (!rec) { return; }
+		rec.innerHTML = '';
+		if (!H) { rec.appendChild(mk('div', 'rs', 'Ladataan…')); return; }
+		var L = H.recent.slice(1, 6);
+		if (!L.length) { rec.appendChild(mk('div', 'rs', 'Lista täyttyy, kun radio on soinut hetken.')); return; }
+		L.forEach(function (x) { rec.appendChild(row(x, hm(x.at))); });
+	}
 	function draw() {
+		drawRecent();
 		body.innerHTML = '';
 		[].forEach.call(tabs, function (b) { b.classList.toggle('on', b.getAttribute('data-hxt') === tab); });
 		if (tab === 'req') { drawReq(); return; }
 		if (!H) { body.appendChild(mk('div', 'rs', 'Ladataan…')); return; }
-		if (tab === 'recent') {
-			if (!H.recent.length) { body.appendChild(mk('div', 'rs', 'Historia täyttyy, kun radio on soinut hetken.')); return; }
-			H.recent.forEach(function (x, i) { body.appendChild(row(x, i === 0 ? '▶ nyt' : hm(x.at))); });
-		} else {
-			body.appendChild(mk('div', 'rs', H.toplabel + ' (peukkujen mukaan)'));
-			if (!H.top.length) { body.appendChild(mk('div', 'rs', 'Ei vielä äänestettyjä kappaleita. Anna peukku soivalle kappaleelle!')); return; }
-			H.top.forEach(function (x, i) { body.appendChild(row(x, '#' + (i + 1) + ' 👍' + x.n)); });
-		}
+		body.appendChild(mk('div', 'rs', H.toplabel + ' (peukkujen mukaan)'));
+		if (!H.top.length) { body.appendChild(mk('div', 'rs', 'Ei vielä äänestettyjä kappaleita. Anna peukku soivalle kappaleelle!')); return; }
+		H.top.forEach(function (x, i) { body.appendChild(row(x, '#' + (i + 1) + ' 👍' + x.n)); });
 	}
 	function drawReq() {
 		var w = mk('div', 'rhq');
@@ -544,7 +548,7 @@
 		if (first && m) { one = '&id=' + m[1]; }
 		fetch(q(hx.getAttribute('data-hist'), 'r=' + Math.floor(Date.now() / 60000) + one), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
 			if (j.off) { return; }
-			H = j; hx.hidden = false; if (tab !== 'req') { draw(); }
+			H = j; hx.hidden = false; if (tab !== 'req') { draw(); } else { drawRecent(); }
 			if (j.one) { var n = mk('div', 'rbn', '🎧 Sinulle suositeltu: ' + (j.one.a ? j.one.a + ' – ' : '') + j.one.t + '. Paina play, niin kuulet radion tunnelman.'); root.insertBefore(n, root.firstChild); }
 		}).catch(function () {});
 	}
