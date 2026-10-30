@@ -568,10 +568,18 @@ function suorni_radio_feed( $url, $limit = 8, $label = '' ) {
 }
 /* NHL: edellisen illan ottelut ja suomalaisten pisteet */
 function suorni_radio_nhl( $finns_txt ) {
-	$tz   = new DateTimeZone( 'America/New_York' );
-	$d    = new DateTime( '@' . ( time() - 6 * HOUR_IN_SECONDS ) );
+	$tz = new DateTimeZone( 'America/New_York' );
+	$d  = new DateTime( '@' . ( time() - 8 * HOUR_IN_SECONDS ) );
 	$d->setTimezone( $tz );
-	$date = $d->format( 'Y-m-d' );
+	/* Ensin tämän päivän (itärannikon) pelit, ellei valmiita ole, edellinen päivä */
+	$t = suorni_radio_nhl_day( $finns_txt, $d->format( 'Y-m-d' ) );
+	if ( '' === $t ) {
+		$d->modify( '-1 day' );
+		$t = suorni_radio_nhl_day( $finns_txt, $d->format( 'Y-m-d' ) );
+	}
+	return $t;
+}
+function suorni_radio_nhl_day( $finns_txt, $date ) {
 	$key  = 'suorni_nhl_' . $date;
 	$c    = get_transient( $key );
 	if ( is_string( $c ) ) { return $c; }

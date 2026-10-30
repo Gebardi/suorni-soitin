@@ -2,11 +2,11 @@
 /**
  * Plugin Name: Suorni Soitin
  * Description: Soitin mediakirjaston äänitiedostoista. Lyhytkoodit: [suorni_soitin] (valinnaisesti lista="nimi") ja [suorni_kauko] (kauko-ohjain kirjautuneelle).
- * Version: 9.40
+ * Version: 9.41
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SUORNI_VER', '9.40' );
+define( 'SUORNI_VER', '9.41' );
 require_once plugin_dir_path( __FILE__ ) . 'radio.php';
 require_once plugin_dir_path( __FILE__ ) . 'update.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-cache.php';
