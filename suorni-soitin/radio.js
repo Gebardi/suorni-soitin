@@ -184,7 +184,7 @@
 		var pr = c ? Math.max(0, Math.min(1, c.pos / c.it.dur)) : 0;
 		ndl.style.left = (pr * 100) + '%';
 		var tps = root.querySelectorAll('.tp');
-		if (tps.length > 1) { var s1 = 14 + 14 * (1 - pr), s2 = 14 + 14 * pr; tps[0].style.width = tps[0].style.height = s1 + 'px'; tps[1].style.width = tps[1].style.height = s2 + 'px'; }
+		if (tps.length > 1) { var s1 = 22 + 16 * (1 - pr), s2 = 22 + 16 * pr; tps[0].style.width = tps[0].style.height = s1 + 'px'; tps[1].style.width = tps[1].style.height = s2 + 'px'; }
 		var key = c ? c.it.url + '@' + c.it.start : '';
 		var tt = c ? (c.it.type === 'dj' ? '🎙 Juontaja' : (c.it.artist ? c.it.artist + ' – ' : '') + c.it.title) : (root.getAttribute('data-name') || 'Suorni Radio');
 		if (key !== tapeKey && c) { swapTape(tt, c.it); tapeKey = key; }
