@@ -593,6 +593,8 @@ function suorni_radio_nhl_day( $finns_txt, $date ) {
 	$finns = array_values( array_filter( array_map( 'trim', preg_split( '/\r\n|\r|\n/', (string) $finns_txt ) ) ) );
 	$lines = array();
 	$fin   = array();
+	$fins  = array();
+	$sl    = array();
 	$t0    = microtime( true );
 	foreach ( $j['games'] as $g ) {
 		$st = isset( $g['gameState'] ) ? $g['gameState'] : '';
@@ -604,6 +606,11 @@ function suorni_radio_nhl_day( $finns_txt, $date ) {
 		$ot = '';
 		if ( isset( $g['periodDescriptor']['periodType'] ) ) { $pt = $g['periodDescriptor']['periodType']; $ot = 'OT' === $pt ? ' (jatkoaika)' : ( 'SO' === $pt ? ' (voittolaukaukset)' : '' ); }
 		$lines[] = $a . ' ' . $as . '–' . $hs . ' ' . $h . $ot;
+		$nw = array( 'nolla', 'yksi', 'kaksi', 'kolme', 'neljä', 'viisi', 'kuusi', 'seitsemän', 'kahdeksan', 'yhdeksän', 'kymmenen', 'yksitoista', 'kaksitoista' );
+		$wd = function ( $n ) use ( $nw ) { return isset( $nw[ $n ] ) ? $nw[ $n ] : (string) $n; };
+		$win = $hs > $as ? $h : $a; $los = $hs > $as ? $a : $h;
+		$ptp = ( isset( $g['periodDescriptor']['periodType'] ) ? $g['periodDescriptor']['periodType'] : '' );
+		$sl[] = $win . ' voitti joukkueen ' . $los . ' lukemin ' . $wd( max( $hs, $as ) ) . ' ' . $wd( min( $hs, $as ) ) . ( 'OT' === $ptp ? ' jatkoajalla' : ( 'SO' === $ptp ? ' voittolaukauskilpailussa' : '' ) );
 		if ( $finns && isset( $g['id'] ) && microtime( true ) - $t0 < 14 ) {
 			$bk = 'suorni_nhlbox_' . (int) $g['id'];
 			$bx = get_transient( $bk );
@@ -624,11 +631,23 @@ function suorni_radio_nhl_day( $finns_txt, $date ) {
 							if ( false === mb_stripos( $nm, $fn ) ) { continue; }
 							if ( 'goalies' === $grp ) {
 								$sv = isset( $p['saveShotsAgainst'] ) ? $p['saveShotsAgainst'] : '';
-								if ( '' !== $sv && '0/0' !== $sv ) { $fin[] = $nm . ' (maalivahti' . ( '' !== $sv ? ', torjunnat/laukaukset ' . $sv : '' ) . ( ! empty( $p['decision'] ) ? ', ' . ( 'W' === $p['decision'] ? 'voitto' : 'tappio' ) : '' ) . ')'; }
+								if ( '' !== $sv && '0/0' !== $sv ) {
+									$sp = array_map( 'intval', explode( '/', $sv ) );
+									$sn = trim( preg_replace( '#^\S+\s+#u', '', $nm ) );
+									$fins[] = $sn . ' torjui ' . $sp[0] . ' laukausta' . ( ! empty( $p['decision'] ) ? ( 'W' === $p['decision'] ? ' ja joukkue voitti' : ' mutta joukkue hävisi' ) : '' );
+									$fin[] = $nm . ' (maalivahti' . ( '' !== $sv ? ', torjunnat/laukaukset ' . $sv : '' ) . ( ! empty( $p['decision'] ) ? ', ' . ( 'W' === $p['decision'] ? 'voitto' : 'tappio' ) : '' ) . ')';
+								}
 							} else {
 								$gl = isset( $p['goals'] ) ? (int) $p['goals'] : 0;
 								$as2 = isset( $p['assists'] ) ? (int) $p['assists'] : 0;
-								if ( $gl + $as2 > 0 ) { $fin[] = $nm . ' ' . $gl . '+' . $as2 . ' (maalit+syötöt)'; }
+								if ( $gl + $as2 > 0 ) {
+										$fin[] = $nm . ' ' . $gl . '+' . $as2 . ' (maalit+syötöt)';
+										$sn2 = trim( preg_replace( '#^\S+\s+#u', '', $nm ) );
+										$bits = array();
+										if ( $gl > 0 ) { $bits[] = ( 1 === $gl ? 'yhden maalin' : $gl . ' maalia' ); }
+										if ( $as2 > 0 ) { $bits[] = ( 1 === $as2 ? 'yhden syötön' : $as2 . ' syöttöä' ); }
+										$fins[] = $sn2 . ' teki ' . implode( ' ja ', $bits );
+									}
 							}
 							break;
 						}
@@ -641,6 +660,9 @@ function suorni_radio_nhl_day( $finns_txt, $date ) {
 	suorni_feed_note( 'nhl', true, count( $lines ) );
 	$txt = 'NHL:n edellisen illan tulokset (vieras–koti): ' . implode( '; ', array_slice( $lines, 0, 16 ) ) . '.';
 	if ( $fin ) { $txt .= ' Suomalaisten suoritukset: ' . implode( '; ', array_slice( $fin, 0, 14 ) ) . '.'; }
+	$short = 'NHL:n eilisillan tuloksia: ' . implode( '. ', array_slice( $sl, 0, 2 ) ) . '.';
+	if ( $fins ) { $short .= ' Suomalaisista ' . implode( ', ', array_slice( $fins, 0, 3 ) ) . '.'; }
+	set_transient( 'suorni_nhlshort', $short, 3 * HOUR_IN_SECONDS );
 	set_transient( $key, $txt, 3 * HOUR_IN_SECONDS );
 	return $txt;
 }
@@ -693,7 +715,7 @@ function suorni_radio_extra( $cfg, $prog, $ts, &$st ) {
 		$t = suorni_radio_nhl( $cfg['finns'] );
 		if ( '' !== $t ) {
 			$st['nhl_at'] = $now;
-			$out[] = array( 'fact' => $t . ' PAKOLLINEN AIHE: kerro lyhyesti pari tulosta ja erityisesti suomalaisten suoritukset (vain annetut tiedot).', 'plain' => mb_substr( $t, 0, 360 ), 'key' => 'nhl', 'kw' => array( 'nhl', 'jääkiekko', 'maalivahti', 'saros', 'rantanen', 'barkov', 'heiskanen', 'hintz', 'granlund', 'armia', 'kakko', 'lundell' ) );
+			$out[] = array( 'fact' => $t . ' PAKOLLINEN AIHE: kerro lyhyesti pari tulosta ja erityisesti suomalaisten suoritukset (vain annetut tiedot).', 'plain' => ( is_string( get_transient( 'suorni_nhlshort' ) ) && '' !== get_transient( 'suorni_nhlshort' ) ) ? get_transient( 'suorni_nhlshort' ) : mb_substr( $t, 0, 220 ), 'key' => 'nhl', 'kw' => array( 'nhl', 'jääkiekko', 'maalivahti', 'saros', 'rantanen', 'barkov', 'heiskanen', 'hintz', 'granlund', 'armia', 'kakko', 'lundell' ) );
 		}
 	}
 	if ( function_exists( 'suorni_req_facts' ) ) { foreach ( suorni_req_facts() as $f ) { $out[] = $f; } }
