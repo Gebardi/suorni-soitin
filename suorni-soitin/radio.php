@@ -1016,8 +1016,11 @@ function suorni_radio_now( $req ) {
 	$log = suorni_radio_log();
 	$tail = $log['items'] ? $log['items'][ count( $log['items'] ) - 1 ] : null;
 	$need = ! $tail || ( $tail['start'] + $tail['dur'] < $now + 480 );
+	/* Jonoa (ja sen juontopuheita) rakennetaan vain kun joku oikeasti kuuntelee: l=1 tai muita kuuntelijoita on jo. Pelkkä sivun katselu ei kuluta tekoälyä. */
+	$listening = (bool) $req->get_param( 'l' ) || suorni_radio_live_count() > 0;
+	if ( ! $listening ) { $need = false; }
 	$liv  = false;
-	foreach ( suorni_greets() as $x ) { if ( 'ok' === $x['status'] && ! empty( $x['live'] ) ) { $liv = true; break; } }
+	if ( $listening ) { foreach ( suorni_greets() as $x ) { if ( 'ok' === $x['status'] && ! empty( $x['live'] ) ) { $liv = true; break; } } }
 	if ( ( $need || $liv ) && suorni_radio_lock() ) {
 		/* Luetaan jono uudelleen lukon sisällä: toinen kuuntelija on voinut ehtiä rakentaa sen jo */
 		wp_cache_delete( 'suorni_radio_log', 'options' );
@@ -1064,7 +1067,7 @@ function suorni_radio_now( $req ) {
 	if ( $cfg['comm'] ) { $out['comm'] = suorni_comm_public( $items ); }
 	$out['tv'] = suorni_tvotes_public( $items );
 	if ( $cfg['showcount'] ) { $out['listeners'] = suorni_radio_live_count(); }
-	if ( ! $items ) { $out['empty'] = true; }
+	if ( ! $items ) { if ( $listening ) { $out['empty'] = true; } else { $out['idle'] = true; } }
 	return suorni_json( $out );
 }
 function suorni_radio_admin_get() {

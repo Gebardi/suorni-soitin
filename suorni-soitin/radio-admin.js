@@ -665,21 +665,28 @@
 			if (a) { a.className = 'onair' + (on ? ' on' : ''); }
 			if (l && live != null) { l.textContent = live; }
 		}
-		function qload() {
+		function qload(build) {
 			if (qbusy || !qp.isConnected) { return; }
 			qbusy = true;
-			api('GET', D.urls.queue).then(function (j) {
+			api('GET', D.urls.queue + (build === true ? (D.urls.queue.indexOf('?') < 0 ? '?' : '&') + 'build=1' : '')).then(function (j) {
 				qbusy = false;
 				qb.innerHTML = '';
 				if (!j.on) { qb.textContent = 'Radio ei ole päällä.'; setAir(false, j.live); return; }
 				setAir(true, j.live);
 				if (j.cur) { qb.appendChild(qrow(j.cur, true, j.now)); } else { qb.appendChild(el('div', { style: 'opacity:.7;padding:6px 0' }, 'Ei soivaa kohdetta juuri nyt.')); }
-				if (!j.next.length) { qb.appendChild(el('div', { style: 'opacity:.7;padding:6px 0' }, 'Seuraavia ei ole vielä jonossa.')); }
+				if (!j.next.length) {
+					if (!j.live) {
+						var w0 = el('div', { style: 'opacity:.85;padding:6px 0' }, 'Radio odottaa kuuntelijaa: ohjelma ja juontopuheet rakennetaan vasta, kun joku avaa radion.');
+						var bb = el('button', { type: 'button', style: 'margin-left:8px' }, 'Rakenna esikatselu (kuluttaa tekoälyä)');
+						bb.addEventListener('click', function () { bb.disabled = true; qload(true); });
+						w0.appendChild(bb); qb.appendChild(w0);
+					} else { qb.appendChild(el('div', { style: 'opacity:.7;padding:6px 0' }, 'Seuraavia ei ole vielä jonossa.')); }
+				}
 				j.next.forEach(function (it) { qb.appendChild(qrow(it, false, j.now)); });
 				qs.textContent = 'päivitetty ' + hm(j.now);
 			}).catch(function (e) { qbusy = false; qs.textContent = e.message; });
 		}
-		qp.querySelector('[data-qr]').addEventListener('click', qload);
+		qp.querySelector('[data-qr]').addEventListener('click', function () { qload(); });
 		if (window.__suorniQT) { clearInterval(window.__suorniQT); }
 		window.__suorniQT = setInterval(function () { if (!qp.isConnected) { clearInterval(window.__suorniQT); return; } if (!document.hidden) { qload(); } }, 10000);
 

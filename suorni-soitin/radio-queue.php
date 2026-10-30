@@ -25,7 +25,9 @@ function suorni_radio_queue_get( $req ) {
 	$ahead = 0;
 	foreach ( $log['items'] as $it ) { if ( $it['start'] > $now ) { $ahead++; } }
 	/* Jono rakennetaan normaalisti vain ~8 min eteenpäin: laajennetaan, jotta 5 seuraavaa näkyy */
-	if ( $ahead < 5 && suorni_radio_lock() ) {
+	/* Ilman kuuntelijoita jonoa ei rakenneta itsestään (säästää tekoäly- ja puhesynteesikuluja); ohjaamosta voi rakentaa esikatselun painikkeella */
+	$build = ( $out['live'] > 0 ) || (bool) $req->get_param( 'build' );
+	if ( $build && $ahead < 5 && suorni_radio_lock() ) {
 		wp_cache_delete( 'suorni_radio_log', 'options' );
 		$log = suorni_radio_log();
 		$now = microtime( true );

@@ -34,6 +34,7 @@
 				if (j.chat) { drawChat(j.chat); setTyping(j.typing || ''); if (j.typing) { fastPoll(); } var gn = chatEl && chatEl.querySelector('[data-gnote]'); if (gn) { gn.hidden = !j.guests; } }
 				if (j.name) { var h = root.querySelector('h2'); if (h) { h.textContent = j.name; } }
 				if (typeof j.listeners === 'number') { elCount.textContent = j.listeners > 0 ? '👥 ' + j.listeners + (j.listeners === 1 ? ' kuuntelija nyt' : ' kuuntelijaa nyt') : ''; }
+				if (j.idle) { elTitle.textContent = 'Paina play, niin radio käynnistyy'; elArtist.textContent = ''; }
 				if (j.empty) { elTitle.textContent = 'Lähetys alkaa pian'; elArtist.textContent = 'Radiolla ei ole vielä soitettavia kappaleita'; }
 				render();
 				if (isApp && !autoTried && items.length) { autoTried = true; if (!playing) { elPlay.click(); } }
