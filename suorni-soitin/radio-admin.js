@@ -23,7 +23,7 @@
 	function vopt(vals, cur, names) { return vals.map(function (v, i) { return '<option value="' + v + '"' + ((cur || '') === v ? ' selected' : '') + '>' + names[i] + '</option>'; }).join(''); }
 	function el(t, a, h) { var e = document.createElement(t); if (a) { for (var k in a) { e.setAttribute(k, a[k]); } } if (h !== undefined) { e.innerHTML = h; } return e; }
 	function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-	var st = 'width:100%;margin:4px 0;padding:8px;border-radius:8px;border:1px solid #2b4a85;background:#14284f;color:#eef4ff;font:inherit;font-size:16px';
+	var st = 'width:100%;margin:4px 0;padding:8px;border-radius:8px;border:1px solid #363d4a;background:#1b1f27;color:#eef0f4;font:inherit;font-size:16px';
 
 	function load() {
 		box.innerHTML = '<p>Ladataan…</p>';
@@ -42,8 +42,10 @@
 		/* Tilastot */
 		var s = D.stats, sd = el('div');
 		var rows = s.days.slice(0, 7).map(function (d) { return '<tr><td>' + d.day + '</td><td>' + d.unique + '</td><td>' + d.minutes + ' min</td><td>' + d.avg + ' min</td></tr>'; }).join('');
-		sd.innerHTML = '<h3 style="margin:14px 0 6px">Kuuntelijat</h3><p>Nyt kuuntelemassa: <b>' + s.live + '</b> · Viikon kuuntelijat yhteensä: <b>' + s.week_sum + '</b>' + (s.peak_hour >= 0 ? ' · Vilkkain tunti tänään: <b>' + s.peak_hour + ':00</b>' : '') + '</p>' +
-			'<table style="width:100%;font-size:14px;border-collapse:collapse"><tr style="text-align:left"><th>Päivä</th><th>Kuuntelijoita</th><th>Kuunteluaika</th><th>Keskim.</th></tr>' + rows + '</table>' +
+		var pendS = (D.subs || []).filter(function (x) { return x.status === 'pending'; }).length, pendG = (D.greets || []).filter(function (g) { return ['ok', 'no', 'played'].indexOf(g.status) < 0; }).length, pendR = (D.reqs || []).filter(function (x) { return x.st === 'pending'; }).length;
+		function tile(v, l) { return '<div class="st-tile"><b>' + v + '</b><span>' + l + '</span></div>'; }
+		sd.innerHTML = '<h3>Yleiskatsaus</h3><div class="st-tiles">' + tile(s.live, 'Kuuntelijaa nyt') + tile(s.week_sum, 'Kuuntelijaa viikolla') + tile(s.peak_hour >= 0 ? s.peak_hour + ':00' : '–', 'Vilkkain tunti tänään') + tile(D.usable, 'Soitettavaa kappaletta') + tile(pendS + pendG + pendR, 'Odottaa käsittelyä') + '</div>' +
+			'<h3>Kuuntelijat viikolla</h3>' + '<table style="width:100%;font-size:14px;border-collapse:collapse"><tr style="text-align:left"><th>Päivä</th><th>Kuuntelijoita</th><th>Kuunteluaika</th><th>Keskim.</th></tr>' + rows + '</table>' +
 			'<p style="font-size:13px;opacity:.7">Tilastot ovat anonyymejä (ei evästeitä, ei tunnistetietoja). Sama kuuntelija lasketaan kerran päivässä.</p>';
 		box.appendChild(sd);
 
@@ -143,7 +145,7 @@
 			all.addEventListener('click', function () { api('POST', U.chatdel, { id: 'all' }).then(function (r) { D.chat = r.chat; drawC(); }); });
 			cl.appendChild(all);
 			D.chat.forEach(function (m) {
-				var r = el('div', { style: 'border:1px solid #2b4a85;border-radius:10px;padding:6px 8px;margin:4px 0;display:flex;gap:8px;align-items:center' });
+				var r = el('div', { style: 'border:1px solid #363d4a;border-radius:10px;padding:6px 8px;margin:4px 0;display:flex;gap:8px;align-items:center' });
 				r.innerHTML = '<span style="flex:1"><b>' + (m.dj ? '🎙️ ' : '') + (m.b ? '🤖 ' : '') + esc(m.n) + ':</b> ' + esc(m.m) + '</span>';
 				if (!m.dj) { var ar = el('button', { type: 'button' }, 'Lue radiossa'); ar.addEventListener('click', function () { ar.disabled = true; api('POST', U.chatair, { id: m.id }).then(function () { ar.textContent = 'Jonossa ✓'; }).catch(function (e) { ar.disabled = false; alert(e.message); }); }); r.appendChild(ar); }
 				var d = el('button', { type: 'button' }, 'Poista');
@@ -163,7 +165,7 @@
 		function drawProgs() {
 			plist.innerHTML = '';
 			progs.forEach(function (p, i) {
-				var w = el('div', { style: 'border:1px solid #2b4a85;border-radius:10px;padding:10px;margin:8px 0' });
+				var w = el('div', { style: 'border:1px solid #363d4a;border-radius:10px;padding:10px;margin:8px 0' });
 				var days = DAYS.map(function (d, k) { return '<label style="margin-right:6px"><input type="checkbox" data-d="' + (k + 1) + '"' + (p.days.indexOf(k + 1) >= 0 ? ' checked' : '') + '>' + d + '</label>'; }).join('');
 				var lists = '<option value="">Kaikki kappaleet</option>' + D.lists.map(function (l) { return '<option value="' + esc(l.id || l.slug || l.name) + '"' + ((l.id || l.slug || l.name) === p.list ? ' selected' : '') + '>' + esc(l.name) + '</option>'; }).join('');
 				var ev = Object.keys(EV).map(function (k) { return '<option value="' + k + '"' + (p.every === k ? ' selected' : '') + '>' + EV[k] + '</option>'; }).join('');
@@ -222,7 +224,7 @@
 		});
 		var add = el('button', { type: 'button', style: 'flex:none;margin:6px 8px 6px 0' }, '+ Lisää ohjelma');
 		add.addEventListener('click', function () { progs.push({ id: '', name: 'Uusi ohjelma', days: [1, 2, 3, 4, 5, 6, 7], from: '00:00', to: '24:00', list: '', every: 'hour', min: 3, max: 5, ids: [], vfi: '', ven: '', rate: 0, ai: true, news: false, sports: false, nhl: false, host: '', persona: '', weather: true, tip: true, intro: true, greet: true, ann: true }); drawProgs(); });
-		var save = el('button', { type: 'button', style: 'flex:none' }, '💾 Tallenna asetukset ja ohjelmat');
+		var save = el('button', { type: 'button', 'class': 'pri', style: 'flex:none' }, '💾 Tallenna asetukset ja ohjelmat');
 		var msg = el('p');
 		save.addEventListener('click', function () {
 			progs.forEach(function (p) { if (p.to === '00:00') { p.to = '24:00'; } });
@@ -242,7 +244,7 @@
 			var list = D.greets.filter(function (g) { return g.status !== 'played'; }).slice(-30).reverse();
 			if (!list.length) { gl.innerHTML = '<p style="opacity:.7">Ei uusia terveisiä.</p>'; return; }
 			list.forEach(function (g) {
-				var r = el('div', { style: 'border:1px solid #2b4a85;border-radius:10px;padding:8px;margin:6px 0' });
+				var r = el('div', { style: 'border:1px solid #363d4a;border-radius:10px;padding:8px;margin:6px 0' });
 				r.innerHTML = '<b>' + esc(g.name) + '</b> <span style="opacity:.6;font-size:13px">' + (g.status === 'ok' ? '✅ hyväksytty' : g.status === 'no' ? '🚫 hylätty' : '⏳ odottaa') + '</span><br>' + esc(g.msg) + (g.voice && g.voice !== 'oletus' && D.gvoices ? '<br><span style="opacity:.7;font-size:13px">Ääni: ' + esc(D.gvoices[g.voice] || g.voice) + '</span>' : '') +
 					'<div style="display:flex;gap:6px;margin-top:6px"><button type="button" data-a="now">Lue heti</button><button type="button" data-a="ok">Hyväksy</button><button type="button" data-a="no">Hylkää</button><button type="button" data-a="del">Poista</button></div>';
 				r.querySelectorAll('[data-a]').forEach(function (b) {
@@ -268,7 +270,7 @@
 			scw.querySelector('h3').textContent = '🎵 Yhteisön kappaleet' + (np ? ' (' + np + ' odottaa hyväksyntää)' : '');
 			if (!list.length) { scl.innerHTML = '<p style="opacity:.7">Ei lähetettyjä kappaleita.</p>'; return; }
 			list.forEach(function (s) {
-				var r = el('div', { style: 'border:1px solid #2b4a85;border-radius:10px;padding:8px;margin:6px 0' });
+				var r = el('div', { style: 'border:1px solid #363d4a;border-radius:10px;padding:8px;margin:6px 0' });
 				var stt = s.status === 'pending' ? '⏳ odottaa' : s.status === 'ok' ? '✅ soi' : '📉 pudotettu';
 				r.innerHTML = '<b>' + esc(s.artist) + ' – ' + esc(s.title) + '</b> <span style="opacity:.6;font-size:13px">' + stt + ' · ' + Math.floor(s.dur / 60) + ':' + ('0' + (s.dur % 60)).slice(-2) + ' · 👍 ' + s.up + ' 👎 ' + s.down + ' · soitettu ' + s.plays + '×</span><br><span style="font-size:13px;opacity:.7">' + esc(s.email) + '</span><br><audio controls preload="none" style="width:100%;margin:6px 0" src="' + esc(s.url) + '"></audio>';
 				var row = el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap' });
@@ -394,7 +396,7 @@
 			tw.querySelector('h3').textContent = 'Radion soittolista (' + vis.length + ' kappaletta)';
 			rowMap = {};
 			function mkRow(t) {
-				var r = el('div', { style: 'margin:8px 0;padding:8px;border:1px solid #2b4a85;border-radius:10px' });
+				var r = el('div', { style: 'margin:8px 0;padding:8px;border:1px solid #363d4a;border-radius:10px' });
 				rowMap[t.id] = r;
 				r.innerHTML = '<div><b>' + esc(t.title) + '</b> <span style="opacity:.7;font-size:13px">👍 ' + ((t.votes && t.votes.u) || 0) + ' 👎 ' + ((t.votes && t.votes.d) || 0) + '</span> <a href="' + esc(t.url || '#') + '" target="_blank" rel="noopener noreferrer" style="font-size:13px;margin-left:6px">▶ avaa tiedosto</a></div>';
 				var inp = el('input', { style: st, maxlength: '300', placeholder: 'Esittely (valinnainen)' });
@@ -459,13 +461,17 @@
 		box.appendChild(tw);
 
 		/* Välilehdet: koko ohjaamo jaetaan selkeisiin osiin */
+		var sn = document.querySelector('[data-sb-name]'); if (sn && D.cfg) { sn.textContent = '📻 ' + (D.cfg.name || 'Radion ohjaamo'); }
+		var sl = document.querySelector('[data-sb-live]'); if (sl && D.stats) { sl.textContent = D.stats.live; }
+		var sc = document.querySelector('[data-sb-clock]');
+		if (sc) { if (window.__suorniClk) { clearInterval(window.__suorniClk); } var tickc = function () { var d = new Date(); sc.textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }; tickc(); window.__suorniClk = setInterval(tickc, 1000); }
 		var loose = [].slice.call(box.children);
 		var TABS = [['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista']];
 
 		/* Massalisäys + päivittäinen tarkistus */
-		var upw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #2b4a85;border-radius:12px;background:#0f2347' });
+		var upw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922' });
 		upw.innerHTML = '<h3 style="margin:0 0 6px">📥 Lisää kappaleita tiedostoina</h3><p style="font-size:13px;opacity:.75;margin:0 0 8px">Valitse tai vedä tähän mp3-, m4a-, wav-, ogg-, aac- tai flac-tiedostoja. Nimi ja esittäjä luetaan tiedoston tiedoista tai nimestä muodossa <b>Esittäjä - Kappale.mp3</b>. Suurin sallittu tiedosto: ' + Math.round((D.maxup || 0) / 1048576) + ' Mt.</p>';
-		var dz = el('div', { style: 'border:2px dashed #3b66b3;border-radius:10px;padding:16px;text-align:center;cursor:pointer' }, '⬆️ Valitse tiedostot tai vedä ne tähän');
+		var dz = el('div', { style: 'border:2px dashed #5a6577;border-radius:10px;padding:16px;text-align:center;cursor:pointer' }, '⬆️ Valitse tiedostot tai vedä ne tähän');
 		var fi = el('input', { type: 'file', multiple: 'multiple', accept: '.mp3,.m4a,.wav,.ogg,.aac,.flac,audio/*', style: 'display:none' });
 		var ulog = el('div', { style: 'font-size:13px;margin-top:8px;max-height:200px;overflow:auto' });
 		function upFiles(files) {
@@ -485,7 +491,7 @@
 		}
 		dz.addEventListener('click', function () { fi.click(); });
 		fi.addEventListener('change', function () { upFiles(fi.files); fi.value = ''; });
-		['dragover', 'dragenter'].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.style.background = '#1d3b73'; }); });
+		['dragover', 'dragenter'].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.style.background = '#2b2318'; }); });
 		['dragleave', 'drop'].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.style.background = ''; }); });
 		dz.addEventListener('drop', function (e) { upFiles(e.dataTransfer.files); });
 		var hl2 = el('div', { style: 'margin-top:10px;font-size:13px' });
@@ -520,7 +526,7 @@
 			if (!L.length) { lst.appendChild(el('div', { style: 'opacity:.7' }, 'Ei toiveita vielä.')); }
 			var STN = { pending: '⏳ odottaa hyväksyntää', ok: '✅ jonossa', no: '🚫 hylätty', played: '▶ soitettu' };
 			L.forEach(function (x) {
-				var r = el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px solid #1f3a6e' }, '<div style="flex:1;min-width:150px"><b>' + esc(x.song) + '</b><div style="font-size:12px;opacity:.75">' + esc(x.name) + ' · ' + new Date(x.at * 1000).toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit' }) + ' · ' + STN[x.st] + '</div></div>');
+				var r = el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px solid #2a303b' }, '<div style="flex:1;min-width:150px"><b>' + esc(x.song) + '</b><div style="font-size:12px;opacity:.75">' + esc(x.name) + ' · ' + new Date(x.at * 1000).toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit' }) + ' · ' + STN[x.st] + '</div></div>');
 				function act(a, label) { var b = el('button', { type: 'button' }, label); b.addEventListener('click', function () { b.disabled = true; api('POST', D.urls.reqact, { n: x.n, act: a }).then(function (j) { D.reqs = j.list; drawReq(); }).catch(function (e) { alert(e.message); }); }); r.appendChild(b); }
 				if (x.st === 'pending') { act('ok', 'Hyväksy'); }
 				if (x.st === 'pending' || x.st === 'ok') { act('no', 'Hylkää'); }
@@ -534,13 +540,13 @@
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });
 		box.innerHTML = '';
-		var nav = el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;position:sticky;top:0;z-index:5;background:#0b1a3a;padding:6px 0 10px;border-bottom:1px solid #1f3a6e;margin-bottom:8px' });
+		var nav = el('div', { 'class': 'st-nav' });
 		var panes = {}, tbtn = {};
 		var npend = (D.subs || []).filter(function (x) { return x.status === 'pending'; }).length;
 		var gpend = (D.greets || []).filter(function (g) { return ['ok', 'no', 'played'].indexOf(g.status) < 0; }).length;
 		var badge = { yhteiso: npend, yleiso: gpend };
 		TABS.forEach(function (t) {
-			var b = el('button', { type: 'button', style: 'flex:1 1 auto;padding:10px 12px' }, t[1] + (badge[t[0]] ? ' <b style="background:#e5484d;color:#fff;border-radius:999px;padding:0 7px;font-size:12px">' + badge[t[0]] + '</b>' : ''));
+			var b = el('button', { type: 'button' }, t[1] + (badge[t[0]] ? ' <b class="bdg">' + badge[t[0]] + '</b>' : ''));
 			b.addEventListener('click', function () { show(t[0]); });
 			nav.appendChild(b); tbtn[t[0]] = b;
 			var p = el('div'); p.hidden = true; panes[t[0]] = p;
@@ -548,17 +554,22 @@
 		});
 
 		/* Lähetyspaneeli: aina ylhäällä, erillään välilehdistä */
-		var qp = el('div', { style: 'background:#0f2347;border:1px solid #2b4a85;border-radius:12px;padding:10px 12px;margin:0 0 10px' });
-		qp.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b style="font-size:16px">🎛️ Lähetys</b><span data-qs style="font-size:12px;opacity:.7"></span><button type="button" data-qr style="margin-left:auto">↻ Päivitä</button></div><div data-qb style="margin-top:6px">Ladataan…</div>';
+		var qp = el('div', { 'class': 'st-air st-top' });
+		qp.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b style="font-size:16px;letter-spacing:.04em">🎛️ LÄHETYS</b><span data-qs style="font-size:12px;opacity:.6"></span><button type="button" data-qr style="margin-left:auto">↻ Päivitä</button></div><div data-qb style="margin-top:6px">Ladataan…</div>';
 		var qb = qp.querySelector('[data-qb]'), qs = qp.querySelector('[data-qs]'), qbusy = false;
 		function hm(t) { var d = new Date(t * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }
 		function qrow(it, isCur, srvNow) {
 			var dj = it.type === 'dj';
-			var r = el('div', { style: 'display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-top:1px solid #1f3a6e' });
-			var left = el('div', { style: 'min-width:62px;font-size:12px;opacity:.75;padding-top:2px' }, isCur ? '▶ nyt' : hm(it.start));
-			var tx = dj ? '<b>🎙️ Juonto</b>' + (it.shout ? ' <span style="font-size:11px;opacity:.7">(tervehdys)</span>' : '') + '<div style="font-size:13px;opacity:.85;white-space:pre-wrap;margin-top:2px">' + esc(it.text || '(ei tekstiä)') + '</div>'
-				: '<b>🎵 ' + esc(it.title) + '</b>' + (it.artist ? ' – ' + esc(it.artist) : '') + (it.sub ? ' <span style="font-size:11px;opacity:.7">(yhteisö)</span>' : '');
-			var mid = el('div', { style: 'flex:1;min-width:0' }, tx + '<div style="font-size:11px;opacity:.6">' + Math.round(it.dur) + ' s' + (isCur ? ' · jäljellä ' + Math.max(0, Math.round(it.start + it.dur - srvNow)) + ' s' : '') + '</div>');
+			var r = el('div', { style: 'display:flex;gap:10px;align-items:flex-start;padding:' + (isCur ? '4px 0 10px' : '8px 0') + ';' + (isCur ? '' : 'border-top:1px solid #2a303b') });
+			var chip = '<span class="st-chip ' + (dj ? 'dj' : 'tr') + '">' + (dj ? 'Juonto' : 'Kappale') + '</span>';
+			var left = isCur ? el('div', { 'class': 'st-eq go' }, '<i></i><i></i><i></i><i></i><i></i>') : el('div', { style: 'min-width:64px;font:13px ui-monospace,Menlo,Consolas,monospace;color:#ffb347;padding-top:2px' }, hm(it.start));
+			var title = dj ? (it.shout ? 'Tervehdys' : 'Juonto') : esc(it.title) + (it.artist ? ' <span style="opacity:.7;font-weight:400">– ' + esc(it.artist) + '</span>' : '');
+			var tx = chip + '<b style="' + (isCur ? 'font-size:19px' : '') + '">' + title + '</b>' + (it.sub ? ' <span style="font-size:11px;opacity:.7">(yhteisö)</span>' : '');
+			if (dj) { tx += '<div style="font-size:13px;opacity:.85;white-space:pre-wrap;margin-top:3px">' + esc(it.text || '(ei tekstiä)') + '</div>'; }
+			var rem = Math.max(0, Math.round(it.start + it.dur - srvNow)), pct = isCur ? Math.min(100, Math.max(0, (srvNow - it.start) / it.dur * 100)) : 0;
+			tx += '<div style="font-size:11px;opacity:.6;margin-top:2px">' + Math.round(it.dur) + ' s' + (isCur ? ' · jäljellä ' + Math.floor(rem / 60) + ':' + ('0' + (rem % 60)).slice(-2) : '') + '</div>';
+			if (isCur) { tx += '<div class="st-prog"><i style="width:' + pct + '%"></i></div>'; }
+			var mid = el('div', { style: 'flex:1;min-width:0' }, tx);
 			var x = el('button', { type: 'button', style: 'flex:none' }, isCur ? '⏭ Ohita' : '✕ Ota pois');
 			x.addEventListener('click', function () {
 				if (isCur && !confirm('Ohitetaanko soiva? Kuuntelijoilla soitin siirtyy seuraavaan muutaman sekunnin kuluessa.')) { return; }
@@ -568,13 +579,19 @@
 			r.appendChild(left); r.appendChild(mid); r.appendChild(x);
 			return r;
 		}
+		function setAir(on, live) {
+			var a = document.querySelector('[data-sb-air]'), l = document.querySelector('[data-sb-live]');
+			if (a) { a.className = 'onair' + (on ? ' on' : ''); }
+			if (l && live != null) { l.textContent = live; }
+		}
 		function qload() {
 			if (qbusy || !qp.isConnected) { return; }
 			qbusy = true;
 			api('GET', D.urls.queue).then(function (j) {
 				qbusy = false;
 				qb.innerHTML = '';
-				if (!j.on) { qb.textContent = 'Radio ei ole päällä.'; return; }
+				if (!j.on) { qb.textContent = 'Radio ei ole päällä.'; setAir(false, j.live); return; }
+				setAir(true, j.live);
 				if (j.cur) { qb.appendChild(qrow(j.cur, true, j.now)); } else { qb.appendChild(el('div', { style: 'opacity:.7;padding:6px 0' }, 'Ei soivaa kohdetta juuri nyt.')); }
 				if (!j.next.length) { qb.appendChild(el('div', { style: 'opacity:.7;padding:6px 0' }, 'Seuraavia ei ole vielä jonossa.')); }
 				j.next.forEach(function (it) { qb.appendChild(qrow(it, false, j.now)); });
@@ -589,13 +606,13 @@
 		box.appendChild(nav);
 		TABS.forEach(function (t) { box.appendChild(panes[t[0]]); });
 		function show(k) {
-			TABS.forEach(function (t) { panes[t[0]].hidden = t[0] !== k; tbtn[t[0]].style.borderColor = t[0] === k ? '#5eead4' : ''; tbtn[t[0]].style.background = t[0] === k ? '#1d3b73' : ''; });
+			TABS.forEach(function (t) { panes[t[0]].hidden = t[0] !== k; tbtn[t[0]].className = t[0] === k ? 'on' : ''; });
 			try { sessionStorage.setItem('suorni_tab', k); } catch (e) {}
 		}
 		var cur = 'yleinen';
 		try { cur = sessionStorage.getItem('suorni_tab') || cur; } catch (e) {}
 		show(panes[cur] ? cur : 'yleinen');
-		var bar = el('div', { style: 'position:sticky;bottom:0;z-index:5;background:#0b1a3a;padding:10px 0;border-top:1px solid #1f3a6e;margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap' });
+		var bar = el('div', { 'class': 'st-main-bar', style: 'display:flex;gap:10px;align-items:center;flex-wrap:wrap' });
 		bar.appendChild(save); bar.appendChild(msg);
 		box.appendChild(bar);
 	}

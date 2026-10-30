@@ -18,7 +18,7 @@ function suorni_radio_queue_item( $it ) {
 }
 function suorni_radio_queue_get( $req ) {
 	$cfg = suorni_radio_cfg();
-	$out = array( 'on' => (bool) $cfg['on'], 'now' => microtime( true ), 'cur' => null, 'next' => array() );
+	$out = array( 'on' => (bool) $cfg['on'], 'now' => microtime( true ), 'cur' => null, 'next' => array(), 'live' => function_exists( 'suorni_radio_live_count' ) ? suorni_radio_live_count() : 0 );
 	if ( ! $cfg['on'] ) { return suorni_json( $out ); }
 	$log = suorni_radio_log();
 	$now = microtime( true );
