@@ -1227,6 +1227,13 @@ add_shortcode( 'suorni_radio_admin', function () {
 .sra .st-prog{height:6px;background:#0b0d11;border-radius:3px;overflow:hidden;margin-top:6px}.sra .st-prog i{display:block;height:100%;background:linear-gradient(90deg,var(--am),#ff7a3a);width:0}
 .sra .st-run{margin-top:8px}
 .sra .st-chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:6px;margin-right:6px}.sra .st-chip.tr{background:#2b2318;color:var(--am)}.sra .st-chip.dj{background:#1a2a29;color:var(--ok)}
+.sra .st-fader{display:flex;align-items:center;gap:12px;margin:4px 0}.sra .st-fader input[type=number]{width:92px !important;flex:none;margin:0 !important;text-align:center}
+.sra .st-fader input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:34px;background:transparent;padding:0 !important;border:0 !important;margin:0;cursor:pointer;--v:50%}
+.sra .st-fader input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--am) var(--v),#0b0d11 var(--v));box-shadow:inset 0 1px 3px #000,0 1px 0 rgba(255,255,255,.1);border:1px solid #363d4a}
+.sra .st-fader input[type=range]::-moz-range-track{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--am) var(--v),#0b0d11 var(--v));box-shadow:inset 0 1px 3px #000;border:1px solid #363d4a}
+.sra .st-fader input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:32px;margin-top:-13px;border-radius:5px;border:1px solid #000;background:linear-gradient(90deg,#3a3f4a,#8b93a3 45%,#3a3f4a);box-shadow:0 2px 5px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.2);position:relative}
+.sra .st-fader input[type=range]::-moz-range-thumb{width:20px;height:30px;border-radius:5px;border:1px solid #000;background:linear-gradient(90deg,#3a3f4a,#8b93a3 45%,#3a3f4a);box-shadow:0 2px 5px rgba(0,0,0,.7)}
+.sra .st-fader input[type=range]:focus-visible{outline:2px solid var(--am);outline-offset:2px}
 @media(max-width:860px){.sra [data-radio-box]{grid-template-columns:1fr;padding:12px}.sra [data-radio-box]>*{grid-column:1}.sra [data-radio-box]>.st-nav{grid-row:auto;position:sticky;top:0;z-index:6;flex-direction:row;overflow-x:auto;background:var(--bg);padding:6px 0;margin-bottom:8px}.sra .st-nav button{width:auto;white-space:nowrap;flex:none}.sra .stchips{margin-left:0}}
 </style>
 <div class="sra">

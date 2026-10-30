@@ -31,6 +31,24 @@
 	}
 	if (det) { det.addEventListener('toggle', function () { if (det.open && !loaded) { load(); } }); } else { load(); }
 
+
+	/* Studio-säätimet: numerokentille liukusäädin (fader), arvo pysyy samassa kentässä */
+	function faders(root) {
+		[].forEach.call(root.querySelectorAll('input[type=number][min][max]'), function (n) {
+			if (n.getAttribute('data-fd')) { return; }
+			var mn = parseFloat(n.getAttribute('min')), mx = parseFloat(n.getAttribute('max')), stp = n.getAttribute('step') || '1';
+			if (!(mx > mn) || mx - mn > 1000 || n.type === 'hidden') { return; }
+			n.setAttribute('data-fd', '1');
+			var w = document.createElement('div'); w.className = 'st-fader';
+			var r = document.createElement('input'); r.type = 'range'; r.min = mn; r.max = mx; r.step = stp; r.value = n.value === '' ? mn : n.value;
+			r.setAttribute('aria-label', 'Säädin');
+			n.parentNode.insertBefore(w, n); w.appendChild(r); w.appendChild(n);
+			var pc = function () { r.style.setProperty('--v', ((parseFloat(r.value) - mn) / (mx - mn) * 100) + '%'); };
+			r.addEventListener('input', function () { n.value = r.value; pc(); n.dispatchEvent(new Event('input', { bubbles: true })); n.dispatchEvent(new Event('change', { bubbles: true })); });
+			n.addEventListener('input', function () { if (n.value !== '') { r.value = n.value; pc(); } });
+			pc();
+		});
+	}
 	function draw() {
 		var c = D.cfg;
 		box.innerHTML = '';
@@ -560,7 +578,7 @@
 		function hm(t) { var d = new Date(t * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }
 		function qrow(it, isCur, srvNow) {
 			var dj = it.type === 'dj';
-			var r = el('div', { style: 'display:flex;gap:10px;align-items:flex-start;padding:' + (isCur ? '4px 0 10px' : '8px 0') + ';' + (isCur ? '' : 'border-top:1px solid #2a303b') });
+			var r = el('div', { style: 'display:flex;gap:10px;align-items:flex-start;padding:' + (isCur ? '4px 0 10px' : '8px 0') + ';' + (isCur ? '' : 'border-top:1px solid #2a303b;') + 'border-left:3px solid ' + (dj ? '#5eead4' : '#ffb347') + ';padding-left:10px' });
 			var chip = '<span class="st-chip ' + (dj ? 'dj' : 'tr') + '">' + (dj ? 'Juonto' : 'Kappale') + '</span>';
 			var left = isCur ? el('div', { 'class': 'st-eq go' }, '<i></i><i></i><i></i><i></i><i></i>') : el('div', { style: 'min-width:64px;font:13px ui-monospace,Menlo,Consolas,monospace;color:#ffb347;padding-top:2px' }, hm(it.start));
 			var title = dj ? (it.shout ? 'Tervehdys' : 'Juonto') : esc(it.title) + (it.artist ? ' <span style="opacity:.7;font-weight:400">– ' + esc(it.artist) + '</span>' : '');
@@ -615,5 +633,9 @@
 		var bar = el('div', { 'class': 'st-main-bar', style: 'display:flex;gap:10px;align-items:center;flex-wrap:wrap' });
 		bar.appendChild(save); bar.appendChild(msg);
 		box.appendChild(bar);
+		faders(box);
+		if (window.__suorniFO) { window.__suorniFO.disconnect(); }
+		window.__suorniFO = new MutationObserver(function () { faders(box); });
+		window.__suorniFO.observe(box, { childList: true, subtree: true });
 	}
 })();
