@@ -621,11 +621,11 @@ function suorni_radio_nhl_day( $finns_txt, $date ) {
 							if ( false === mb_stripos( $nm, $fn ) ) { continue; }
 							if ( 'goalies' === $grp ) {
 								$sv = isset( $p['saveShotsAgainst'] ) ? $p['saveShotsAgainst'] : '';
-								if ( '' !== $sv || ! empty( $p['toi'] ) && '00:00' !== $p['toi'] ) { $fin[] = $nm . ' (maalivahti' . ( '' !== $sv ? ', torjunnat/laukaukset ' . $sv : '' ) . ( ! empty( $p['decision'] ) ? ', ' . ( 'W' === $p['decision'] ? 'voitto' : 'tappio' ) : '' ) . ')'; }
+								if ( '' !== $sv && '0/0' !== $sv ) { $fin[] = $nm . ' (maalivahti' . ( '' !== $sv ? ', torjunnat/laukaukset ' . $sv : '' ) . ( ! empty( $p['decision'] ) ? ', ' . ( 'W' === $p['decision'] ? 'voitto' : 'tappio' ) : '' ) . ')'; }
 							} else {
 								$gl = isset( $p['goals'] ) ? (int) $p['goals'] : 0;
 								$as2 = isset( $p['assists'] ) ? (int) $p['assists'] : 0;
-								$fin[] = $nm . ' ' . $gl . '+' . $as2 . ' (maalit+syötöt)';
+								if ( $gl + $as2 > 0 ) { $fin[] = $nm . ' ' . $gl . '+' . $as2 . ' (maalit+syötöt)'; }
 							}
 							break;
 						}
