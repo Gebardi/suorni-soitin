@@ -130,7 +130,9 @@ function suorni_tvote( $req, $id, $v ) {
 	if ( ! is_array( $m ) ) { $m = array(); }
 	$x  = ( isset( $m[ $id ] ) && is_array( $m[ $id ] ) ) ? $m[ $id ] : array( 'u' => 0, 'd' => 0, 'v' => array() );
 	$vv = ( isset( $x['v'] ) && is_array( $x['v'] ) ) ? $x['v'] : array();
+	$old = isset( $vv[ $h ] ) ? (int) $vv[ $h ] : 0;
 	if ( isset( $vv[ $h ] ) && (int) $vv[ $h ] === $v ) { unset( $vv[ $h ] ); } else { $vv[ $h ] = $v; }
+	if ( function_exists( 'suorni_wk_add' ) ) { suorni_wk_add( 't' . $id, ( isset( $vv[ $h ] ) ? (int) $vv[ $h ] : 0 ) - $old ); }
 	$up = 0; $dn = 0;
 	foreach ( $vv as $z ) { if ( $z > 0 ) { $up++; } else { $dn++; } }
 	$m[ $id ] = array( 'u' => $up, 'd' => $dn, 'v' => $vv );
@@ -157,7 +159,9 @@ function suorni_comm_vote( $req ) {
 		if ( (int) $x['id'] !== $id ) { continue; }
 		if ( ! in_array( $x['status'], array( 'ok', 'dropped' ), true ) ) { break; }
 		$vv = ( isset( $x['v'] ) && is_array( $x['v'] ) ) ? $x['v'] : array();
+		$old = isset( $vv[ $h ] ) ? (int) $vv[ $h ] : 0;
 		if ( isset( $vv[ $h ] ) && (int) $vv[ $h ] === $v ) { unset( $vv[ $h ] ); } else { $vv[ $h ] = $v; }
+		if ( function_exists( 'suorni_wk_add' ) ) { suorni_wk_add( 's' . $id, ( isset( $vv[ $h ] ) ? (int) $vv[ $h ] : 0 ) - $old ); }
 		$up = 0; $dn = 0;
 		foreach ( $vv as $z ) { if ( $z > 0 ) { $up++; } else { $dn++; } }
 		$s[ $i ]['v'] = $vv; $s[ $i ]['up'] = $up; $s[ $i ]['down'] = $dn;

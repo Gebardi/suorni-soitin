@@ -10,6 +10,9 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-monitor.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-shop.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-sugg.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-queue.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-lib.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-hist.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-req.php';
 
 /* ---------- Asetukset ---------- */
 function suorni_radio_time( $v, $def ) {
@@ -451,6 +454,7 @@ function suorni_radio_pick_track( &$st, $pool ) {
 		$id = array_shift( $st['queue'] );
 		if ( isset( $by[ $id ] ) ) { $pick = $by[ $id ]; break; }
 	}
+	if ( ! $pick && function_exists( 'suorni_req_pick' ) ) { $pick = suorni_req_pick( $by ); }
 	if ( ! $pick ) { $pick = suorni_comm_pick( $st ); }
 	if ( ! $pick ) { $pick = suorni_boost_pick( $st, $pool ); }
 	if ( ! $pick ) {
@@ -461,6 +465,7 @@ function suorni_radio_pick_track( &$st, $pool ) {
 		if ( ! $cand ) { $cand = $pool; }
 		$pick = $cand[ wp_rand( 0, count( $cand ) - 1 ) ];
 	}
+	if ( empty( $st['sim'] ) && function_exists( 'suorni_req_mark_played' ) && ! isset( $pick['sub'] ) ) { suorni_req_mark_played( $pick['id'] ); }
 	$st['recent'][] = $pick['id'];
 	$st['recent']   = array_slice( $st['recent'], -12 );
 	$st['since']++;
@@ -469,6 +474,7 @@ function suorni_radio_pick_track( &$st, $pool ) {
 /* Seuraavat kappaleet juontajan puheeseen: valitaan etukäteen ja jonotetaan */
 function suorni_radio_queue_next( &$st, $pool, $n ) {
 	$tmp = $st;
+	$tmp['sim'] = 1;
 	$ids = array();
 	for ( $i = 0; $i < $n; $i++ ) {
 		$t = suorni_radio_pick_track( $tmp, $pool );
@@ -608,6 +614,7 @@ function suorni_radio_extra( $cfg, $prog, $ts, &$st ) {
 			$out[] = array( 'fact' => $t . ' Kerro lyhyesti pari tulosta ja erityisesti suomalaisten suoritukset (vain annetut tiedot).', 'plain' => mb_substr( $t, 0, 360 ) );
 		}
 	}
+	if ( function_exists( 'suorni_req_facts' ) ) { foreach ( suorni_req_facts() as $f ) { $out[] = $f; } }
 	return $out;
 }
 function suorni_radio_feedtest( $req ) {
@@ -935,6 +942,7 @@ function suorni_radio_now( $req ) {
 			);
 		}
 	}
+	if ( function_exists( 'suorni_hist_note' ) ) { suorni_hist_note( $log['items'], $now ); }
 	$out = array( 'now' => $now, 'items' => $items, 'name' => $cfg['name'] );
 	if ( $cfg['chat'] ) { $out['chat'] = suorni_chat_out(); $out['typing'] = suorni_chat_typing(); $out['guests'] = $cfg['guests']; if ( $req->get_param( 'l' ) ) { suorni_guest_tick( $cfg ); } }
 	if ( $cfg['comm'] ) { $out['comm'] = suorni_comm_public( $items ); }
@@ -968,8 +976,9 @@ function suorni_radio_admin_get() {
 		'tts'    => suorni_tts_public(),
 		'subs'   => suorni_comm_admin_list(),
 		'mon'    => suorni_mon_admin(),
+		'health' => suorni_health_get(), 'maxup' => (int) wp_max_upload_size(), 'reqs' => suorni_req_admin_list(), 'reqcfg' => suorni_reqcfg(),
 		'sunoleft' => function_exists( 'suorni_suno_left' ) ? suorni_suno_left() : 0,
-		'urls'   => array( 'sunocache' => suorni_ep( 'radio/sunocache' ), 'queue' => suorni_ep( 'radio/queue' ), 'queuecut' => suorni_ep( 'radio/queuecut' ), 'commact' => suorni_ep( 'radio/commact' ), 'trackprogs' => suorni_ep( 'radio/trackprogs' ), 'trackboost' => suorni_ep( 'radio/trackboost' ), 'monrenew' => suorni_ep( 'radio/monrenew' ), 'suggest' => suorni_ep( 'radio/suggest' ), 'suggact' => suorni_ep( 'radio/suggact' ), 'trackstyle' => suorni_ep( 'radio/trackstyle' ) ),
+		'urls'   => array( 'upload' => suorni_ep( 'radio/upload' ), 'health' => suorni_ep( 'radio/health' ), 'reqact' => suorni_ep( 'radio/reqact' ), 'reqcfg' => suorni_ep( 'radio/reqcfg' ), 'sunocache' => suorni_ep( 'radio/sunocache' ), 'queue' => suorni_ep( 'radio/queue' ), 'queuecut' => suorni_ep( 'radio/queuecut' ), 'commact' => suorni_ep( 'radio/commact' ), 'trackprogs' => suorni_ep( 'radio/trackprogs' ), 'trackboost' => suorni_ep( 'radio/trackboost' ), 'monrenew' => suorni_ep( 'radio/monrenew' ), 'suggest' => suorni_ep( 'radio/suggest' ), 'suggact' => suorni_ep( 'radio/suggact' ), 'trackstyle' => suorni_ep( 'radio/trackstyle' ) ),
 	) );
 }
 
@@ -1043,6 +1052,12 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 .sr.rplay .hub{animation-play-state:running}
 @media(prefers-reduced-motion:reduce){.sr.rplay .hub{animation-duration:4s}}
 .sr .rbot{position:absolute;left:14%;right:14%;bottom:-1px;height:24%;background:radial-gradient(circle at 20% 45%,#000 0 5%,transparent 5.6%),radial-gradient(circle at 80% 45%,#000 0 5%,transparent 5.6%),radial-gradient(circle at 38% 70%,#000 0 2.2%,transparent 2.8%),radial-gradient(circle at 62% 70%,#000 0 2.2%,transparent 2.8%),linear-gradient(#4a4a4a,#1a1a1a);clip-path:polygon(9% 0,91% 0,100% 100%,0 100%)}
+.sr .rhx{margin-top:12px}.sr.shop .rhx{display:none}
+.sr .rhxt{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.sr .rhxt button.rg{margin:0;padding:8px 10px;font-size:13px}.sr .rhxt button.on{border-color:#ffb347;color:#ffb347}
+.sr .rhr{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid rgba(255,255,255,.1);font-size:14px}.sr .rhr:first-child{border-top:0}
+.sr .rhr .tm{flex:none;min-width:44px;font:12px ui-monospace,Menlo,Consolas,monospace;color:#c98a2d}.sr .rhr .tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sr .rhr .sh{flex:none;background:none;border:0;color:#cfd6e4;font-size:16px;cursor:pointer;padding:4px}
+.sr .rhq input[type=text],.sr .rhq input.rt{width:100%;box-sizing:border-box;margin:4px 0}.sr .rhl{max-height:200px;overflow:auto;border:1px solid rgba(255,255,255,.15);border-radius:8px;margin:4px 0}.sr .rhl button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid rgba(255,255,255,.08);color:inherit;font:inherit;font-size:14px;padding:8px;cursor:pointer}.sr .rhl button.sel{background:rgba(255,179,71,.2);color:#ffb347}
+.sr .rbn{margin:0 0 10px;padding:10px 12px;border-radius:10px;background:rgba(255,179,71,.15);border:1px solid #ffb347;color:#ffd9a0;font-size:14px}
 .sr .rout{animation:srout .6s ease-in forwards;z-index:2;pointer-events:none}
 .sr .rin{animation:srin .65s cubic-bezier(.2,.8,.3,1)}
 @keyframes srout{to{transform:translateX(-120%) rotate(-4deg);opacity:.4}}
@@ -1103,6 +1118,11 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 	<?php if ( $cfg['comm'] ) : ?>
 	<div class="ri" data-cq hidden><b>🆕 Tulossa uusilta artisteilta</b><div data-cqlist></div></div>
 	<?php endif; ?>
+	<?php $rq = suorni_reqcfg(); ?>
+	<div class="ri rhx" data-hx hidden data-hist="<?php echo suorni_ep( 'radio/hist' ); ?>" data-reqlist="<?php echo suorni_ep( 'radio/reqlist' ); ?>" data-req="<?php echo suorni_ep( 'radio/req' ); ?>" data-reqon="<?php echo $rq['on'] ? '1' : '0'; ?>">
+		<div class="rhxt"><button type="button" class="rg" data-hxt="recent">🕘 Soinut äsken</button><button type="button" class="rg" data-hxt="top">🏆 Top 10</button><?php if ( $rq['on'] ) : ?><button type="button" class="rg" data-hxt="req">🎁 Toivo kappale</button><?php endif; ?></div>
+		<div class="rhxb" data-hxb></div>
+	</div>
 	<?php if ( $cfg['chat'] ) : ?>
 	<div class="rch" data-chat data-chaturl="<?php echo suorni_ep( 'radio/chat' ); ?>">
 		<b>💬 Kuuntelijoiden chat</b>

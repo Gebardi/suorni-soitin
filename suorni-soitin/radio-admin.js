@@ -461,7 +461,75 @@
 		/* Välilehdet: koko ohjaamo jaetaan selkeisiin osiin */
 		var loose = [].slice.call(box.children);
 		var TABS = [['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista']];
-		var bucket = { yleinen: [info, sd, mw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw], juontaja: [hC, aw, fw], yhteiso: [hD, scw], lista: [bw, tw] };
+
+		/* Massalisäys + päivittäinen tarkistus */
+		var upw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #2b4a85;border-radius:12px;background:#0f2347' });
+		upw.innerHTML = '<h3 style="margin:0 0 6px">📥 Lisää kappaleita tiedostoina</h3><p style="font-size:13px;opacity:.75;margin:0 0 8px">Valitse tai vedä tähän mp3-, m4a-, wav-, ogg-, aac- tai flac-tiedostoja. Nimi ja esittäjä luetaan tiedoston tiedoista tai nimestä muodossa <b>Esittäjä - Kappale.mp3</b>. Suurin sallittu tiedosto: ' + Math.round((D.maxup || 0) / 1048576) + ' Mt.</p>';
+		var dz = el('div', { style: 'border:2px dashed #3b66b3;border-radius:10px;padding:16px;text-align:center;cursor:pointer' }, '⬆️ Valitse tiedostot tai vedä ne tähän');
+		var fi = el('input', { type: 'file', multiple: 'multiple', accept: '.mp3,.m4a,.wav,.ogg,.aac,.flac,audio/*', style: 'display:none' });
+		var ulog = el('div', { style: 'font-size:13px;margin-top:8px;max-height:200px;overflow:auto' });
+		function upFiles(files) {
+			files = [].slice.call(files); if (!files.length) { return; }
+			ulog.innerHTML = ''; var i = 0, ok = 0;
+			(function nx() {
+				if (i >= files.length) {
+					var done = el('div', { style: 'margin-top:6px' }, '<b>Valmis: ' + ok + '/' + files.length + ' lisätty.</b> ');
+					var rb = el('button', { type: 'button' }, 'Päivitä lista'); rb.addEventListener('click', load); done.appendChild(rb); ulog.appendChild(done); return;
+				}
+				var f = files[i++]; var row = el('div', null, '⏳ ' + esc(f.name)); ulog.appendChild(row);
+				var fd = new FormData(); fd.append('file', f);
+				fetch(D.urls.upload, { method: 'POST', credentials: 'same-origin', headers: { 'X-WP-Nonce': nonce }, body: fd }).then(function (r) { return r.json().then(function (j) { if (!r.ok) { throw new Error(j.message || 'Virhe'); } return j; }); }).then(function (j) {
+					ok++; row.innerHTML = '✅ ' + esc(j.artist) + ' – ' + esc(j.title) + (j.dur ? ' (' + Math.floor(j.dur / 60) + ':' + ('0' + (j.dur % 60)).slice(-2) + ')' : '') + (j.warn ? ' <span style="color:#ffb347">⚠️ ' + esc(j.warn) + '</span>' : ''); nx();
+				}).catch(function (e) { row.innerHTML = '❌ ' + esc(f.name) + ': ' + esc(e.message); nx(); });
+			})();
+		}
+		dz.addEventListener('click', function () { fi.click(); });
+		fi.addEventListener('change', function () { upFiles(fi.files); fi.value = ''; });
+		['dragover', 'dragenter'].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.style.background = '#1d3b73'; }); });
+		['dragleave', 'drop'].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.style.background = ''; }); });
+		dz.addEventListener('drop', function (e) { upFiles(e.dataTransfer.files); });
+		var hl2 = el('div', { style: 'margin-top:10px;font-size:13px' });
+		function drawHealth(h) {
+			var t = h.at ? new Date(h.at * 1000).toLocaleString('fi-FI') : 'ei vielä';
+			var html = '<b>🩺 Tiedostojen tarkistus</b> – viimeksi: ' + t + (h.n ? ' · ' + h.n + ' kappaletta tarkistettu' : '');
+			var any = (h.bad && h.bad.length) || (h.ext && h.ext.length);
+			if (h.bad && h.bad.length) { html += '<div style="color:#ff9a9a;margin-top:4px">Piilotettu radiosta (tiedosto puuttuu): ' + h.bad.map(function (x) { return esc(x.t); }).join(', ') + '</div>'; }
+			if (h.ext && h.ext.length) { html += '<div style="color:#ffb347;margin-top:4px">Ulkoinen linkki ei vastaa: ' + h.ext.map(function (x) { return esc(x.t) + ' (' + esc(x.why) + ')'; }).join(', ') + '</div>'; }
+			if (h.nodur) { html += '<div style="opacity:.8;margin-top:4px">' + h.nodur + ' kappaleelta puuttuu kesto, eivätkä ne soi radiossa.</div>'; }
+			if (!any && h.at) { html += '<div style="color:#5eead4;margin-top:4px">✓ Ongelmia ei löytynyt.</div>'; }
+			hl2.innerHTML = html + ' ';
+			var hb2 = el('button', { type: 'button', style: 'margin-top:6px' }, 'Tarkista nyt');
+			hb2.addEventListener('click', function () { hb2.disabled = true; hb2.textContent = 'Tarkistetaan…'; api('POST', D.urls.health, {}).then(function (r) { D.health = r; drawHealth(r); }).catch(function (e) { hb2.disabled = false; hb2.textContent = e.message; }); });
+			hl2.appendChild(hb2);
+		}
+		drawHealth(D.health || { at: 0 });
+		upw.appendChild(dz); upw.appendChild(fi); upw.appendChild(ulog); upw.appendChild(hl2);
+
+		/* Toiveet */
+		var rqw = el('div', { style: 'margin:6px 0 14px' });
+		function drawReq() {
+			var rc = D.reqcfg || { on: true, auto: true };
+			rqw.innerHTML = '<h3 style="margin:14px 0 6px">🎁 Toivekappaleet</h3><p style="font-size:13px;opacity:.75">Kuuntelija voi toivoa kappaleen kirjastostasi. Hyväksytty toive soi seuraavien joukossa, kun kappale sopii käynnissä olevaan ohjelmaan, ja juontaja mainitsee toiveen. Yksi toive kymmenessä minuutissa per kuuntelija.</p>';
+			var o1 = el('label', { style: 'display:block;margin:4px 0' }, '<input type="checkbox"' + (rc.on ? ' checked' : '') + '> Toiveet käytössä');
+			var o2 = el('label', { style: 'display:block;margin:4px 0' }, '<input type="checkbox"' + (rc.auto ? ' checked' : '') + '> Hyväksy toiveet automaattisesti (jos pois, hyväksyt ne itse tästä)');
+			function sv() { rc = { on: o1.firstChild.checked, auto: o2.firstChild.checked }; D.reqcfg = rc; api('POST', D.urls.reqcfg, rc).catch(function (e) { alert(e.message); }); }
+			o1.firstChild.addEventListener('change', sv); o2.firstChild.addEventListener('change', sv);
+			rqw.appendChild(o1); rqw.appendChild(o2);
+			var lst = el('div', { style: 'margin-top:6px' });
+			var L = D.reqs || [];
+			if (!L.length) { lst.appendChild(el('div', { style: 'opacity:.7' }, 'Ei toiveita vielä.')); }
+			var STN = { pending: '⏳ odottaa hyväksyntää', ok: '✅ jonossa', no: '🚫 hylätty', played: '▶ soitettu' };
+			L.forEach(function (x) {
+				var r = el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px solid #1f3a6e' }, '<div style="flex:1;min-width:150px"><b>' + esc(x.song) + '</b><div style="font-size:12px;opacity:.75">' + esc(x.name) + ' · ' + new Date(x.at * 1000).toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit' }) + ' · ' + STN[x.st] + '</div></div>');
+				function act(a, label) { var b = el('button', { type: 'button' }, label); b.addEventListener('click', function () { b.disabled = true; api('POST', D.urls.reqact, { n: x.n, act: a }).then(function (j) { D.reqs = j.list; drawReq(); }).catch(function (e) { alert(e.message); }); }); r.appendChild(b); }
+				if (x.st === 'pending') { act('ok', 'Hyväksy'); }
+				if (x.st === 'pending' || x.st === 'ok') { act('no', 'Hylkää'); }
+				lst.appendChild(r);
+			});
+			rqw.appendChild(lst);
+		}
+		drawReq();
+		var bucket = { yleinen: [info, sd, mw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, aw, fw], yhteiso: [hD, scw], lista: [upw, bw, tw] };
 		var used = [];
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });
