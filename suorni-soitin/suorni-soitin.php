@@ -2,11 +2,11 @@
 /**
  * Plugin Name: Suorni Soitin
  * Description: Soitin mediakirjaston äänitiedostoista. Lyhytkoodit: [suorni_soitin] (valinnaisesti lista="nimi") ja [suorni_kauko] (kauko-ohjain kirjautuneelle).
- * Version: 9.36
+ * Version: 9.37
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SUORNI_VER', '9.36' );
+define( 'SUORNI_VER', '9.37' );
 require_once plugin_dir_path( __FILE__ ) . 'radio.php';
 require_once plugin_dir_path( __FILE__ ) . 'update.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-cache.php';
@@ -15,9 +15,11 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-cache.php';
 /* Suno-nimeä ei näytetä sivuilla: poistetaan se kappaleen nimestä, esittäjästä ja esittelystä. */
 function suorni_nosuno( $s ) {
 	$s = (string) $s;
-	if ( false === stripos( $s, 'suno' ) ) { return $s; }
+	if ( false === stripos( $s, 'suno' ) && false === stripos( $s, 'losgebardos' ) ) { return $s; }
 	$s = preg_replace( '#\s*[|\-–—(\[]\s*(made with |created with |by )?suno(\.com|\.ai)?\s*[)\]]?\s*$#iu', '', $s );
 	$s = preg_replace( '#\b(made with |created with |generated (with|by) |by )?suno\w*(\.com|\.ai)?\b[\s,:;-]*#iu', '', $s );
+	$s = preg_replace( '#\b(by\s+)?losgebardos\b#iu', '', $s );
+	$s = preg_replace( '#^[\s\-–—|:,;]+|[\s\-–—|:,;]+$#u', '', $s );
 	return trim( preg_replace( '#\s{2,}#', ' ', $s ) );
 }
 /* Suno sulki julkisen mp3-latauksen (cdn1.suno.ai/<id>.mp3 antaa 403), mutta saman kappaleen mp4 on avoin: korvataan vanhat osoitteet lennossa. */
