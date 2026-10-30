@@ -951,7 +951,7 @@ function suorni_radio_admin_get() {
 	$skip  = 0;
 	foreach ( $all as $t ) {
 		if ( ! ( $t['dur'] > 0 ) ) { $skip++; continue; }
-		$tracks[] = array( 'id' => $t['id'], 'title' => $t['title'], 'artist' => $t['artist'], 'info' => isset( $t['info'] ) ? $t['info'] : '', 'progs' => isset( $t['progs'] ) ? $t['progs'] : array(), 'boost' => isset( $t['boost'] ) ? $t['boost'] : '', 'votes' => suorni_tvote_get( $t['id'] ), 'style' => isset( $t['style'] ) ? $t['style'] : '', 'genre' => isset( $t['genre'] ) ? $t['genre'] : '', 'sugg' => isset( $t['sugg'] ) ? $t['sugg'] : null, 'at' => isset( $t['at'] ) ? (int) $t['at'] : 0, 'hidden' => in_array( (int) $t['id'], $excl, true ) );
+		$tracks[] = array( 'id' => $t['id'], 'title' => $t['title'], 'url' => $t['url'], 'artist' => $t['artist'], 'info' => isset( $t['info'] ) ? $t['info'] : '', 'progs' => isset( $t['progs'] ) ? $t['progs'] : array(), 'boost' => isset( $t['boost'] ) ? $t['boost'] : '', 'votes' => suorni_tvote_get( $t['id'] ), 'style' => isset( $t['style'] ) ? $t['style'] : '', 'genre' => isset( $t['genre'] ) ? $t['genre'] : '', 'sugg' => isset( $t['sugg'] ) ? $t['sugg'] : null, 'at' => isset( $t['at'] ) ? (int) $t['at'] : 0, 'hidden' => in_array( (int) $t['id'], $excl, true ) );
 	}
 	return suorni_json( array(
 		'cfg'    => suorni_radio_cfg(),

@@ -359,7 +359,7 @@
 			tw.querySelector('h3').textContent = 'Radion soittolista (' + vis.length + ' kappaletta)';
 			function mkRow(t) {
 				var r = el('div', { style: 'margin:8px 0;padding:8px;border:1px solid #2b4a85;border-radius:10px' });
-				r.innerHTML = '<div><b>' + esc(t.title) + '</b> <span style="opacity:.7;font-size:13px">👍 ' + ((t.votes && t.votes.u) || 0) + ' 👎 ' + ((t.votes && t.votes.d) || 0) + '</span></div>';
+				r.innerHTML = '<div><b>' + esc(t.title) + '</b> <span style="opacity:.7;font-size:13px">👍 ' + ((t.votes && t.votes.u) || 0) + ' 👎 ' + ((t.votes && t.votes.d) || 0) + '</span> <a href="' + esc(t.url || '#') + '" target="_blank" rel="noopener noreferrer" style="font-size:13px;margin-left:6px">▶ avaa tiedosto</a></div>';
 				var inp = el('input', { style: st, maxlength: '300', placeholder: 'Esittely (valinnainen)' });
 				inp.value = t.info || '';
 				inp.addEventListener('change', function () { t.info = inp.value; api('POST', U.info, { id: t.id, text: inp.value }).catch(function (e) { alert(e.message); }); });
