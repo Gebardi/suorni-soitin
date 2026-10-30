@@ -1021,7 +1021,7 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 .sr .rcl{margin:8px 0;display:flex;flex-direction:column;gap:6px}
 .sr .rcm{font-size:14px;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.08);word-break:break-word}
 .sr .rcm b{color:#fff}.sr .rgn{font-size:11px;opacity:.65;margin:2px 0 0;text-align:right}
-.sr .rcty{font-size:13px;color:#ffb347;margin-top:6px}
+.sr .rcty{font-size:14px;font-weight:600;color:#ffb347;text-align:right;min-height:22px;line-height:22px;margin:2px 0 6px}.sr .rcty[hidden]{display:block;visibility:hidden}.sr .rcty:not([hidden]){animation:srpulse 1.4s ease-in-out infinite}@keyframes srpulse{50%{opacity:.55}}
 .sr .rcm.dj{background:rgba(255,179,71,.14);border:1px solid rgba(255,179,71,.4)}
 .sr .rdial{flex:1 1 100%;position:relative;height:34px;border-radius:6px;background:linear-gradient(180deg,#0e0b05,#241705);border:2px solid #0a0a0a;box-shadow:inset 0 3px 8px rgba(0,0,0,.9);overflow:hidden}
 .sr .rscale{position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,179,71,.75) 0 1px,transparent 1px 24px),repeating-linear-gradient(90deg,rgba(255,179,71,.4) 0 1px,transparent 1px 6px);background-size:100% 14px,100% 8px;background-repeat:repeat-x;background-position:0 0,0 0}
@@ -1106,8 +1106,8 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 	<?php if ( $cfg['chat'] ) : ?>
 	<div class="rch" data-chat data-chaturl="<?php echo suorni_ep( 'radio/chat' ); ?>">
 		<b>💬 Kuuntelijoiden chat</b>
-		<div class="rcty" data-typing hidden></div>
 		<div class="rcl" data-chatlist aria-live="polite"><span class="rs">Ei viestejä vielä. Kirjoita ensimmäinen!</span></div>
+		<div class="rcty" data-typing hidden></div>
 		<input class="rt" data-cname maxlength="20" placeholder="Nimimerkki">
 		<input class="rt" data-cmsg maxlength="140" placeholder="Kirjoita viesti juontajalle tai muille (enintään 140 merkkiä)">
 		<input class="rh" data-chp tabindex="-1" autocomplete="off" aria-hidden="true">
