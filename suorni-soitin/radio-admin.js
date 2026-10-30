@@ -4,10 +4,10 @@
 	if (!box) { return; }
 	var det = box.closest('details');
 	var U = { admin: box.getAttribute('data-admin'), cfg: box.getAttribute('data-cfg'), greets: box.getAttribute('data-greets'), info: box.getAttribute('data-info'), ai: box.getAttribute('data-ai'), tracks: box.getAttribute('data-tracks'), aitest: box.getAttribute('data-aitest'), feedtest: box.getAttribute('data-feedtest'), chatdel: box.getAttribute('data-chatdel'), chatair: box.getAttribute('data-chatair'), chatlist: box.getAttribute('data-chatlist') };
-	var redraw = { c: null, g: null };
+	var redraw = { c: null, g: null, ib: null };
 	setInterval(function () {
 		if (!loaded || document.hidden || !U.chatlist) { return; }
-		api('GET', q(U.chatlist)).then(function (r) { if (r.chat) { D.chat = r.chat; } if (r.greets) { D.greets = r.greets; } if (redraw.c) { redraw.c(); } if (redraw.g) { redraw.g(); } }).catch(function () {});
+		api('GET', q(U.chatlist)).then(function (r) { if (r.chat) { D.chat = r.chat; } if (r.greets) { D.greets = r.greets; } if (r.reqs) { D.reqs = r.reqs; } if (r.subs_pending != null) { D.subs_pending = r.subs_pending; } if (redraw.c) { redraw.c(); } if (redraw.g) { redraw.g(); } if (redraw.ib) { redraw.ib(); } }).catch(function () {});
 	}, 6000);
 	function q(u) { return u + (u.indexOf('?') < 0 ? '?' : '&') + 'r=' + Date.now(); }
 	var nonce = box.getAttribute('data-nonce');
@@ -545,7 +545,7 @@
 			var STN = { pending: '⏳ odottaa hyväksyntää', ok: '✅ jonossa', no: '🚫 hylätty', played: '▶ soitettu' };
 			L.forEach(function (x) {
 				var r = el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px solid #2a303b' }, '<div style="flex:1;min-width:150px"><b>' + esc(x.song) + '</b><div style="font-size:12px;opacity:.75">' + esc(x.name) + ' · ' + new Date(x.at * 1000).toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit' }) + ' · ' + STN[x.st] + '</div></div>');
-				function act(a, label) { var b = el('button', { type: 'button' }, label); b.addEventListener('click', function () { b.disabled = true; api('POST', D.urls.reqact, { n: x.n, act: a }).then(function (j) { D.reqs = j.list; drawReq(); }).catch(function (e) { alert(e.message); }); }); r.appendChild(b); }
+				function act(a, label) { var b = el('button', { type: 'button' }, label); b.addEventListener('click', function () { b.disabled = true; api('POST', D.urls.reqact, { n: x.n, act: a }).then(function (j) { D.reqs = j.list; drawReq(); if (redraw.ib) { redraw.ib(); } }).catch(function (e) { alert(e.message); }); }); r.appendChild(b); }
 				if (x.st === 'pending') { act('ok', 'Hyväksy'); }
 				if (x.st === 'pending' || x.st === 'ok') { act('no', 'Hylkää'); }
 				lst.appendChild(r);
@@ -619,7 +619,88 @@
 		qp.querySelector('[data-qr]').addEventListener('click', qload);
 		if (window.__suorniQT) { clearInterval(window.__suorniQT); }
 		window.__suorniQT = setInterval(function () { if (!qp.isConnected) { clearInterval(window.__suorniQT); return; } if (!document.hidden) { qload(); } }, 10000);
-		box.appendChild(qp);
+
+		/* Studion postilaatikko: chat, terveiset, toiveet ja uudet artistit aina näkyvillä */
+		var ib = el('div', { 'class': 'st-air st-ib' });
+		var ibTab = 'chat', ibSeen = 0, ibBody = null, ibHead = null;
+		function ibCounts() {
+			var chatN = 0;
+			if (ibTab !== 'chat' && ibSeen) { var idx = -1; (D.chat || []).forEach(function (m, i) { if (m.id === ibSeen && idx < 0) { idx = i; } }); var lim = idx < 0 ? (D.chat || []).length : idx; for (var i = 0; i < lim; i++) { if (!D.chat[i].dj) { chatN++; } } }
+			var gN = (D.greets || []).filter(function (g) { return ['ok', 'no', 'played'].indexOf(g.status) < 0; }).length;
+			var rN = (D.reqs || []).filter(function (x) { return x.st === 'pending'; }).length;
+			var sN = D.subs_pending != null ? D.subs_pending : (D.subs || []).filter(function (x) { return x.status === 'pending'; }).length;
+			return { chat: chatN, greets: gN, reqs: rN, subs: sN };
+		}
+		function ibTabBtn(k, label, n) {
+			var b = el('button', { type: 'button', 'class': ibTab === k ? 'on' : '' }, label + (n ? ' <b class="bdg">' + n + '</b>' : ''));
+			b.addEventListener('click', function () { ibTab = k; if (k === 'chat' && D.chat && D.chat.length) { ibSeen = D.chat[0].id; } drawInbox(); });
+			return b;
+		}
+		function ibRow(html, btns) {
+			var r = el('div', { 'class': 'ib-row' });
+			r.appendChild(el('div', { style: 'flex:1;min-width:0;word-break:break-word' }, html));
+			btns.forEach(function (b) { r.appendChild(b); });
+			return r;
+		}
+		function ibBtn(label, fn) { var b = el('button', { type: 'button' }, label); b.addEventListener('click', function () { b.disabled = true; fn(b); }); return b; }
+		function drawInbox() {
+			if (ibTab === 'chat' && D.chat && D.chat.length) { ibSeen = D.chat[0].id; }
+			var c = ibCounts();
+			ib.innerHTML = '';
+			ibHead = el('div', { 'class': 'ib-tabs' });
+			ibHead.appendChild(ibTabBtn('chat', '💬 Chat', c.chat));
+			ibHead.appendChild(ibTabBtn('greets', '✉️ Terveiset', c.greets));
+			ibHead.appendChild(ibTabBtn('reqs', '🎁 Toiveet', c.reqs));
+			ibHead.appendChild(ibTabBtn('subs', '🎵 Artistit', c.subs));
+			ib.appendChild(ibHead);
+			ibBody = el('div', { 'class': 'ib-body' });
+			if (ibTab === 'chat') {
+				var L = (D.chat || []).slice(0, 14);
+				if (!L.length) { ibBody.appendChild(el('div', { style: 'opacity:.7;padding:8px 0' }, 'Ei viestejä vielä.')); }
+				L.forEach(function (m) {
+					var t = (m.at || m.t) ? new Date((m.at || m.t) * 1000).toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit' }) : '';
+					var btns = [];
+					if (!m.dj) {
+						btns.push(ibBtn('📢', function (b) { api('POST', U.chatair, { id: m.id }).then(function () { b.textContent = '✓'; }).catch(function (e) { b.disabled = false; alert(e.message); }); }));
+						btns[0].title = 'Lue radiossa';
+					}
+					var d = ibBtn('✕', function () { api('POST', U.chatdel, { id: m.id }).then(function (r2) { D.chat = r2.chat; drawInbox(); if (redraw.c) { redraw.c(); } }).catch(function (e) { alert(e.message); }); }); d.title = 'Poista'; btns.push(d);
+					ibBody.appendChild(ibRow('<span style="opacity:.55;font-size:12px">' + t + '</span> <b style="color:' + (m.dj ? '#5eead4' : (m.b ? '#8a93a3' : '#ffb347')) + '">' + (m.dj ? '🎙️ ' : '') + (m.b ? '🤖 ' : '') + esc(m.n) + '</b> ' + esc(m.m), btns));
+				});
+			} else if (ibTab === 'greets') {
+				var G = (D.greets || []).filter(function (g) { return ['ok', 'no', 'played'].indexOf(g.status) < 0; }).slice(-10).reverse();
+				if (!G.length) { ibBody.appendChild(el('div', { style: 'opacity:.7;padding:8px 0' }, 'Ei uusia terveisiä.')); }
+				G.forEach(function (g) {
+					function ga(a) { return function () { api('POST', U.greets, { id: g.id, act: a }).then(function (j) { D.greets = j.greets; drawInbox(); if (redraw.g) { redraw.g(); } }).catch(function (e) { alert(e.message); }); }; }
+					ibBody.appendChild(ibRow('<b>' + esc(g.name) + '</b> ' + esc(g.msg), [ibBtn('Lue heti', ga('now')), ibBtn('✓', ga('ok')), ibBtn('✕', ga('no'))]));
+				});
+			} else if (ibTab === 'reqs') {
+				var R = (D.reqs || []).filter(function (x) { return x.st === 'pending' || x.st === 'ok'; }).slice(0, 10);
+				if (!R.length) { ibBody.appendChild(el('div', { style: 'opacity:.7;padding:8px 0' }, 'Ei toiveita jonossa.')); }
+				R.forEach(function (x) {
+					function ra(a) { return function () { api('POST', D.urls.reqact, { n: x.n, act: a }).then(function (j) { D.reqs = j.list; drawInbox(); if (window.__suorniRq) { window.__suorniRq(); } }).catch(function (e) { alert(e.message); }); }; }
+					var btns = x.st === 'pending' ? [ibBtn('✓', ra('ok')), ibBtn('✕', ra('no'))] : [ibBtn('✕', ra('no'))];
+					ibBody.appendChild(ibRow('<b>' + esc(x.song) + '</b> <span style="opacity:.7;font-size:12px">' + esc(x.name) + ' · ' + (x.st === 'ok' ? '✅ jonossa' : '⏳ odottaa') + '</span>', btns));
+				});
+			} else {
+				if (!c.subs) { ibBody.appendChild(el('div', { style: 'opacity:.7;padding:8px 0' }, 'Ei uusia kappaleita odottamassa.')); }
+				else {
+					ibBody.appendChild(el('div', { style: 'padding:6px 0' }, '<b>' + c.subs + '</b> uutta kappaletta odottaa hyväksyntääsi.'));
+					var go = el('button', { type: 'button', 'class': 'pri' }, 'Avaa Uudet artistit'); go.addEventListener('click', function () { show('yhteiso'); window.scrollTo({ top: 0, behavior: 'smooth' }); }); ibBody.appendChild(go);
+				}
+			}
+			ib.appendChild(ibBody);
+			var parts = []; if (c.chat) { parts.push('💬 ' + c.chat); } if (c.greets) { parts.push('✉️ ' + c.greets); } if (c.reqs) { parts.push('🎁 ' + c.reqs); } if (c.subs) { parts.push('🎵 ' + c.subs); }
+			var lamp = document.querySelector('[data-sb-inbox]');
+			if (lamp) {
+				lamp.hidden = !parts.length; lamp.textContent = parts.length ? '📬 ' + parts.join('  ') : '';
+				lamp.onclick = function () { ibTab = c.chat ? 'chat' : (c.greets ? 'greets' : (c.reqs ? 'reqs' : 'subs')); drawInbox(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+			}
+		}
+		redraw.ib = drawInbox;
+		drawInbox();
+		var tg = el('div', { 'class': 'st-top st-topgrid' }); tg.appendChild(qp); tg.appendChild(ib);
+		box.appendChild(tg);
 		qload();
 		box.appendChild(nav);
 		TABS.forEach(function (t) { box.appendChild(panes[t[0]]); });
