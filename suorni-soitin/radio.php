@@ -14,6 +14,7 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-lib.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-hist.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-req.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-watch.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-welcome.php';
 
 /* ---------- Asetukset ---------- */
 function suorni_radio_time( $v, $def ) {
@@ -66,6 +67,7 @@ function suorni_radio_cfg() {
 		'on'        => ! empty( $c['on'] ),
 		'name'      => ( isset( $c['name'] ) && '' !== trim( $c['name'] ) ) ? (string) $c['name'] : 'Suorni Radio',
 		'showcount' => ! isset( $c['showcount'] ) || ! empty( $c['showcount'] ),
+		'welcome'   => ! isset( $c['welcome'] ) || ! empty( $c['welcome'] ),
 		'greet_voices' => ! isset( $c['greet_voices'] ) || ! empty( $c['greet_voices'] ),
 		'chat'       => ! isset( $c['chat'] ) || ! empty( $c['chat'] ),
 		'chat_ai'    => ! isset( $c['chat_ai'] ) || ! empty( $c['chat_ai'] ),
@@ -153,6 +155,7 @@ function suorni_radio_cfg_post( $req ) {
 		'on'        => (bool) $req->get_param( 'on' ),
 		'name'      => mb_substr( sanitize_text_field( (string) $req->get_param( 'name' ) ), 0, 60 ),
 		'showcount' => (bool) $req->get_param( 'showcount' ),
+		'welcome'   => (bool) $req->get_param( 'welcome' ),
 		'greet_voices' => (bool) $req->get_param( 'greet_voices' ),
 		'chat'       => (bool) $req->get_param( 'chat' ),
 		'chat_ai'    => (bool) $req->get_param( 'chat_ai' ),
@@ -1187,7 +1190,7 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 @media(prefers-reduced-motion:no-preference){.sr .au{animation:sra 9s ease-in-out infinite alternate}.sr .au2{animation:sra 13s ease-in-out infinite alternate-reverse}}
 @keyframes sra{from{transform:translateX(-14px);opacity:.55}to{transform:translateX(14px);opacity:1}}
 </style>
-<div class="sr<?php echo $shop ? ' shop' : ''; ?>"<?php if ( $shop ) : ?> data-shop="<?php echo suorni_ep( 'radio/shop' ); ?><?php echo isset( $_GET['t'] ) ? esc_attr( '&t=' . sanitize_key( wp_unslash( $_GET['t'] ) ) ) : ''; ?>"<?php endif; ?> data-sw="<?php echo esc_url( home_url( '/?suorni_sw=1' ) ); ?>" data-now="<?php echo suorni_ep( 'radio/now' ); ?>" data-greet="<?php echo suorni_ep( 'radio/greet' ); ?>" data-vote="<?php echo suorni_ep( 'radio/vote' ); ?>" data-name="<?php echo esc_attr( $cfg['name'] ); ?>" data-icon="<?php echo esc_url( plugins_url( 'pwa/icon-512.png', __FILE__ ) ); ?>"<?php if ( $cfg['wx_show'] ) : ?> data-wx="<?php echo suorni_ep( 'radio/wx' ); ?>"<?php endif; ?><?php if ( $cfg['comm'] ) : ?> data-submit="<?php echo suorni_ep( 'radio/submit' ); ?>"<?php endif; ?>>
+<div class="sr<?php echo $shop ? ' shop' : ''; ?>"<?php if ( $shop ) : ?> data-shop="<?php echo suorni_ep( 'radio/shop' ); ?><?php echo isset( $_GET['t'] ) ? esc_attr( '&t=' . sanitize_key( wp_unslash( $_GET['t'] ) ) ) : ''; ?>"<?php endif; ?> data-sw="<?php echo esc_url( home_url( '/?suorni_sw=1' ) ); ?>" data-now="<?php echo suorni_ep( 'radio/now' ); ?>" data-greet="<?php echo suorni_ep( 'radio/greet' ); ?>" data-vote="<?php echo suorni_ep( 'radio/vote' ); ?>"<?php if ( $cfg['welcome'] && ! $shop ) : ?> data-welcome="<?php echo suorni_ep( 'radio/welcome' ); ?>"<?php endif; ?> data-name="<?php echo esc_attr( $cfg['name'] ); ?>" data-icon="<?php echo esc_url( plugins_url( 'pwa/icon-512.png', __FILE__ ) ); ?>"<?php if ( $cfg['wx_show'] ) : ?> data-wx="<?php echo suorni_ep( 'radio/wx' ); ?>"<?php endif; ?><?php if ( $cfg['comm'] ) : ?> data-submit="<?php echo suorni_ep( 'radio/submit' ); ?>"<?php endif; ?>>
 <?php if ( '' !== $cfg['cover'] ) : ?>
 	<img class="rcv" src="<?php echo esc_url( $cfg['cover'] ); ?>" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none';var s=this.nextElementSibling;if(s){s.style.display='block';}">
 	<?php endif; ?>

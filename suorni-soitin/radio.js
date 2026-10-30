@@ -262,6 +262,15 @@
 		document.addEventListener('pointerdown', go, true);
 	}
 	function loadItem(it, pos, key) {
+		/* Ensimmäinen kappale kuunneltu loppuun -> tervetuloa-tervehdys seuraavan kappaleen päälle */
+		if (welArm && !welState && curKey && curKey !== key) {
+			var pv = null;
+			for (var wi = 0; wi < items.length; wi++) { if (items[wi].url + '@' + items[wi].start === curKey) { pv = items[wi]; break; } }
+			if (pv && pv.type === 'track' && it.start >= pv.start + pv.dur - 2) {
+				welState = 2;
+				if (it.type === 'track') { welPlay(); } else { welMark(); }
+			}
+		}
 		curKey = key;
 		if (shopUrl && it.type === 'track') { shopTrackStart(); }
 		fixes = 0;
@@ -282,6 +291,29 @@
 		au.addEventListener('loadedmetadata', go);
 		au.load();
 		render();
+	}
+	/* Tervetuloa-tervehdys: soi kun uuden kuuntelijan ensimmäinen kappale on kuunneltu loppuun */
+	var welUrl = shopUrl ? '' : (root.getAttribute('data-welcome') || '');
+	var welState = 0, welAudio = null, welArm = false, volEl = $('[data-vol]');
+	function welSeen() { try { return Date.now() - (+localStorage.getItem('suorni_wel') || 0) < 3 * 3600 * 1000; } catch (e) { return false; } }
+	function welMark() { try { localStorage.setItem('suorni_wel', String(Date.now())); } catch (e) {} }
+	function welPrepare() {
+		if (!welUrl || welState || welArm || welSeen()) { return; }
+		welArm = true;
+		fetch(welUrl + (welUrl.indexOf('?') < 0 ? '?' : '&') + 'r=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+			if (j && j.url) { welAudio = new Audio(); welAudio.preload = 'auto'; welAudio.referrerPolicy = 'no-referrer'; welAudio.src = j.url; }
+		}).catch(function () {});
+	}
+	function welPlay() {
+		var w = welAudio; welAudio = null;
+		if (!w) { return; }
+		var back = function () { try { au.volume = Math.max(0, Math.min(1, (volEl ? volEl.value : 100) / 100)); } catch (e) {} };
+		try { au.volume = Math.max(0, Math.min(1, (volEl ? volEl.value : 100) / 100)) * 0.25; } catch (e) {}
+		w.onended = back; w.onerror = back;
+		setTimeout(back, 20000);
+		var pr = w.play();
+		if (pr && pr.catch) { pr.catch(back); }
+		welMark();
 	}
 	/* Kun kappale päättyy, siirrytään heti seuraavaan ilman ajastinta (ajastimet hidastuvat, kun näyttö on sammutettu) */
 	function advance() {
@@ -324,6 +356,7 @@
 		if (shopUrl && !playing && shopOpen === false) { return; }
 		if (playing) { au.pause(); setUi(false); curKey = ''; if (shopUrl && !autoStop) { userStop = true; } return; }
 		setUi(true);
+		welPrepare();
 		curKey = '';
 		lastPing = 0;
 		if (!items.length || !current()) { fetchNow(true); setTimeout(sync, 800); } else { sync(); fetchNow(true); }
