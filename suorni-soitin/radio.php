@@ -1133,9 +1133,9 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 </style>
 <div class="sr<?php echo $shop ? ' shop' : ''; ?>"<?php if ( $shop ) : ?> data-shop="<?php echo suorni_ep( 'radio/shop' ); ?><?php echo isset( $_GET['t'] ) ? esc_attr( '&t=' . sanitize_key( wp_unslash( $_GET['t'] ) ) ) : ''; ?>"<?php endif; ?> data-sw="<?php echo esc_url( home_url( '/?suorni_sw=1' ) ); ?>" data-now="<?php echo suorni_ep( 'radio/now' ); ?>" data-greet="<?php echo suorni_ep( 'radio/greet' ); ?>" data-vote="<?php echo suorni_ep( 'radio/vote' ); ?>" data-name="<?php echo esc_attr( $cfg['name'] ); ?>" data-icon="<?php echo esc_url( plugins_url( 'pwa/icon-512.png', __FILE__ ) ); ?>"<?php if ( $cfg['wx_show'] ) : ?> data-wx="<?php echo suorni_ep( 'radio/wx' ); ?>"<?php endif; ?><?php if ( $cfg['comm'] ) : ?> data-submit="<?php echo suorni_ep( 'radio/submit' ); ?>"<?php endif; ?>>
 <?php if ( '' !== $cfg['cover'] ) : ?>
-	<img class="rcv" src="<?php echo esc_url( $cfg['cover'] ); ?>" alt="">
-	<?php else : ?>
-	<svg class="rcv" viewBox="0 0 800 350" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Suomalainen yömaisema revontulineen">
+	<img class="rcv" src="<?php echo esc_url( $cfg['cover'] ); ?>" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none';var s=this.nextElementSibling;if(s){s.style.display='block';}">
+	<?php endif; ?>
+	<svg class="rcv"<?php echo '' !== $cfg['cover'] ? ' style="display:none"' : ''; ?> viewBox="0 0 800 350" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Suomalainen yömaisema revontulineen">
 		<defs>
 			<linearGradient id="srsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050d24"/><stop offset=".7" stop-color="#0b2a5c"/><stop offset="1" stop-color="#1b4f8f"/></linearGradient>
 			<linearGradient id="srau" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5eead4" stop-opacity="0"/><stop offset=".5" stop-color="#5eead4" stop-opacity=".75"/><stop offset="1" stop-color="#7c5cff" stop-opacity="0"/></linearGradient>
@@ -1152,7 +1152,6 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 		<g transform="translate(400 255)"><g fill="#fff"><rect x="-150" y="-3" width="300" height="6" opacity="0"/></g></g>
 		<g transform="translate(86 36)" opacity=".95"><rect width="54" height="33" fill="#fff" rx="2"/><rect x="15" width="9" height="33" fill="#003580"/><rect y="12" width="54" height="9" fill="#003580"/></g>
 	</svg>
-	<?php endif; ?>
 	<div class="rin">
 	<h2><?php echo esc_html( $cfg['name'] ); ?></h2>
 	<p class="rs" data-prog>Suora lähetys</p>
