@@ -1,7 +1,9 @@
 name: Julkaise lisäosa
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    paths: ['suorni-soitin/**']
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -9,10 +11,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Rakenna zip
-        run: zip -qr suorni-soitin.zip suorni-soitin
-      - name: Luo julkaisu
-        uses: softprops/action-gh-release@v2
-        with:
-          files: suorni-soitin.zip
-          generate_release_notes: true
+      - name: Lue versio
+        id: v
+        run: |
+          VER=$(grep -m1 "SUORNI_VER'" suorni-soitin/suorni-soitin.php | sed -E "s/.*'SUORNI_VER', *'([^']+)'.*/\1/")
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+      - name: Onko julkaisu jo olemassa
+        id: ex
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${{ steps.v.outputs.ver }}" >/dev/null 2>&1; then echo "yes=1" >> "$GITHUB_OUTPUT"; fi
+      - name: Rakenna zip ja julkaise
+        if: steps.ex.outputs.yes != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          zip -qr suorni-soitin.zip suorni-soitin
+          gh release create "v${{ steps.v.outputs.ver }}" suorni-soitin.zip --title "${{ steps.v.outputs.ver }}" --generate-notes
