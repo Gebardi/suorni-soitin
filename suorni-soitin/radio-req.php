@@ -40,7 +40,6 @@ function suorni_req_post( $req ) {
 	$act = 0;
 	foreach ( $r as $x ) {
 		if ( in_array( $x['st'], array( 'pending', 'ok' ), true ) ) { $act++; if ( (int) $x['tid'] === $tid ) { return new WP_Error( 'suorni_dup', 'Tämä kappale on jo toivottu ja odottaa vuoroaan.', array( 'status' => 409 ) ); } }
-		if ( 'played' === $x['st'] && (int) $x['tid'] === $tid && time() - (int) $x['pat'] < 3600 ) { return new WP_Error( 'suorni_dup', 'Tämä kappale soi juuri äsken.', array( 'status' => 409 ) ); }
 	}
 	if ( $act >= 8 ) { return new WP_Error( 'suorni_full', 'Toivejono on täynnä, yritä hetken kuluttua.', array( 'status' => 429 ) ); }
 	$name = function_exists( 'suorni_comm_clean' ) ? suorni_comm_clean( (string) $req->get_param( 'name' ), 20 ) : '';
