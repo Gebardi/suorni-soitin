@@ -79,9 +79,10 @@ function suorni_watch_checks() {
 		$end = max( $end, $it['start'] + $it['dur'] );
 	}
 	$ahead = (int) max( 0, $end - $now );
-	if ( ! $cur ) { $add( 'line', 'bad', 'Radiosta ei kuulu mitään', 'Aikajanalla ei ole nyt soivaa kohtaa. Tarkista, että soittolistalla on kappaleita ja että kappaleet ovat sallittuja ohjelmalle.' ); }
-	elseif ( $ahead < 120 ) { $add( 'line', 'bad', 'Aikajana loppumassa', 'Ohjelmaa on suunniteltu vain ' . $ahead . ' s eteenpäin.' ); }
-	elseif ( $ahead < 600 ) { $add( 'line', 'warn', 'Aikajana lyhyt', 'Ohjelmaa on suunniteltu ' . round( $ahead / 60 ) . ' min eteenpäin.' ); }
+	if ( ! $cur && 0 === suorni_radio_live_count() ) { $add( 'line', 'ok', 'Radio odottaa kuuntelijaa', 'Ohjelma rakennetaan vasta, kun joku avaa radion. Silloin ei kulu tekoäly- eikä puhesynteesikuluja turhaan.' ); }
+	elseif ( ! $cur ) { $add( 'line', 'bad', 'Radiosta ei kuulu mitään', 'Aikajanalla ei ole nyt soivaa kohtaa. Tarkista, että soittolistalla on kappaleita ja että kappaleet ovat sallittuja ohjelmalle.' ); }
+	elseif ( $ahead < 120 && suorni_radio_live_count() > 0 ) { $add( 'line', 'bad', 'Aikajana loppumassa', 'Ohjelmaa on suunniteltu vain ' . $ahead . ' s eteenpäin.' ); }
+	elseif ( $ahead < 600 && suorni_radio_live_count() > 0 ) { $add( 'line', 'warn', 'Aikajana lyhyt', 'Ohjelmaa on suunniteltu ' . round( $ahead / 60 ) . ' min eteenpäin.' ); }
 	else { $add( 'line', 'ok', 'Aikajana kunnossa', 'Ohjelmaa suunniteltu ' . round( $ahead / 60 ) . ' min eteenpäin.' ); }
 	/* Tekoäly */
 	$ai = function_exists( 'suorni_radio_ai_cfg' ) ? suorni_radio_ai_cfg() : array( 'on' => false );
