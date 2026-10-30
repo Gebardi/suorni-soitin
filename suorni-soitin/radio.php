@@ -968,7 +968,8 @@ function suorni_radio_admin_get() {
 		'tts'    => suorni_tts_public(),
 		'subs'   => suorni_comm_admin_list(),
 		'mon'    => suorni_mon_admin(),
-		'urls'   => array( 'queue' => suorni_ep( 'radio/queue' ), 'queuecut' => suorni_ep( 'radio/queuecut' ), 'commact' => suorni_ep( 'radio/commact' ), 'trackprogs' => suorni_ep( 'radio/trackprogs' ), 'trackboost' => suorni_ep( 'radio/trackboost' ), 'monrenew' => suorni_ep( 'radio/monrenew' ), 'suggest' => suorni_ep( 'radio/suggest' ), 'suggact' => suorni_ep( 'radio/suggact' ), 'trackstyle' => suorni_ep( 'radio/trackstyle' ) ),
+		'sunoleft' => function_exists( 'suorni_suno_left' ) ? suorni_suno_left() : 0,
+		'urls'   => array( 'sunocache' => suorni_ep( 'radio/sunocache' ), 'queue' => suorni_ep( 'radio/queue' ), 'queuecut' => suorni_ep( 'radio/queuecut' ), 'commact' => suorni_ep( 'radio/commact' ), 'trackprogs' => suorni_ep( 'radio/trackprogs' ), 'trackboost' => suorni_ep( 'radio/trackboost' ), 'monrenew' => suorni_ep( 'radio/monrenew' ), 'suggest' => suorni_ep( 'radio/suggest' ), 'suggact' => suorni_ep( 'radio/suggact' ), 'trackstyle' => suorni_ep( 'radio/trackstyle' ) ),
 	) );
 }
 

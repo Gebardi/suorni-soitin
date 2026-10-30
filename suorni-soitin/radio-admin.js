@@ -314,6 +314,20 @@
 		var sbtn = el('button', { type: 'button', style: 'margin:0 6px 6px 0' }, '✨ Ehdota ohjelmat kappaleille');
 		var sall = el('button', { type: 'button', style: 'margin:0 6px 6px 0' }, 'Hyväksy kaikki ehdotukset');
 		var smsg = el('p', { style: 'font-size:13px;white-space:pre-wrap;margin:4px 0' });
+		if (D.sunoleft) {
+			var cbtn = el('button', { type: 'button', style: 'margin:0 6px 6px 0' }, '💾 Tallenna Suno-kappaleet omalle palvelimelle (' + D.sunoleft + ' jäljellä)');
+			cbtn.addEventListener('click', function () {
+				cbtn.disabled = true; smsg.textContent = 'Ladataan… (voi kestää hetken)';
+				(function loop() {
+					api('POST', D.urls.sunocache, {}).then(function (j) {
+						cbtn.textContent = '💾 Tallenna Suno-kappaleet omalle palvelimelle (' + j.left + ' jäljellä)';
+						if (j.left > 0 && j.done > 0) { smsg.textContent = 'Tallennettu, jatketaan… ' + j.left + ' jäljellä'; loop(); }
+						else { cbtn.disabled = false; smsg.textContent = j.left ? ('Kaikkia ei saatu ladattua. ' + (j.err || '')) : 'Kaikki Suno-kappaleet tallennettu. Lataa sivu uudelleen.'; }
+					}).catch(function (e) { cbtn.disabled = false; smsg.textContent = e.message; });
+				})();
+			});
+			tb.appendChild(cbtn);
+		}
 		sbtn.addEventListener('click', function () {
 			var todo = D.tracks.filter(function (t) { return !t.hidden && !(t.progs && t.progs.length) && !t.sugg; });
 			if (!todo.length) { smsg.textContent = 'Kaikilla kappaleilla on jo ehdotus tai ohjelmarajaus.'; return; }

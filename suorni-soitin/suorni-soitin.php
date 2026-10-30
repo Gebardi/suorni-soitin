@@ -2,13 +2,14 @@
 /**
  * Plugin Name: Suorni Soitin
  * Description: Soitin mediakirjaston äänitiedostoista. Lyhytkoodit: [suorni_soitin] (valinnaisesti lista="nimi") ja [suorni_kauko] (kauko-ohjain kirjautuneelle).
- * Version: 9.25
+ * Version: 9.26
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SUORNI_VER', '9.25' );
+define( 'SUORNI_VER', '9.26' );
 require_once plugin_dir_path( __FILE__ ) . 'radio.php';
 require_once plugin_dir_path( __FILE__ ) . 'update.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-cache.php';
 
 /* ---------- Kappaleet ---------- */
 /* Suno-nimeä ei näytetä sivuilla: poistetaan se kappaleen nimestä, esittäjästä ja esittelystä. */
@@ -21,7 +22,8 @@ function suorni_nosuno( $s ) {
 }
 /* Suno sulki julkisen mp3-latauksen (cdn1.suno.ai/<id>.mp3 antaa 403), mutta saman kappaleen mp4 on avoin: korvataan vanhat osoitteet lennossa. */
 function suorni_fix_url( $url ) {
-	return preg_replace( '#^(https://cdn1\.suno\.ai/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.mp3$#i', '$1.mp4', (string) $url );
+	$u = preg_replace( '#^(https://cdn1\.suno\.ai/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.mp3$#i', '$1.mp4', (string) $url );
+	return function_exists( 'suorni_suno_local_url' ) ? suorni_suno_local_url( $u ) : $u;
 }
 function suorni_build_tracks() {
 	$posts  = get_posts( array(
