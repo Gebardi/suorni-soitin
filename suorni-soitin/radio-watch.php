@@ -36,6 +36,31 @@ function suorni_usage_sum() {
 	);
 }
 
+/* ---------- Rikkinäisinä piilotetut kappaleet ---------- */
+function suorni_hidden_note( $id, $why ) {
+	$l = get_option( 'suorni_health_hidden', array() );
+	if ( ! is_array( $l ) ) { $l = array(); }
+	$l[ (int) $id ] = array( 'id' => (int) $id, 't' => (string) get_the_title( (int) $id ), 'why' => mb_substr( (string) $why, 0, 120 ), 'at' => time() );
+	if ( count( $l ) > 100 ) { $l = array_slice( $l, -100, null, true ); }
+	update_option( 'suorni_health_hidden', $l, false );
+}
+function suorni_hidden_list() {
+	$l  = get_option( 'suorni_health_hidden', array() );
+	$ex = array_map( 'intval', (array) suorni_radio_excl() );
+	$o  = array();
+	if ( is_array( $l ) ) { foreach ( $l as $x ) { if ( in_array( (int) $x['id'], $ex, true ) ) { $o[] = $x; } } }
+	return array_reverse( $o );
+}
+function suorni_unhide_post( $req ) {
+	$id = absint( $req->get_param( 'id' ) );
+	$ex = array_values( array_diff( array_map( 'intval', (array) suorni_radio_excl() ), array( $id ) ) );
+	update_option( 'suorni_radio_excl', $ex, false );
+	$l = get_option( 'suorni_health_hidden', array() );
+	if ( is_array( $l ) ) { unset( $l[ $id ] ); update_option( 'suorni_health_hidden', $l, false ); }
+	delete_option( 'suorni_health' );
+	return suorni_json( suorni_watch_data() );
+}
+
 /* ---------- Tarkistukset ---------- */
 function suorni_watch_checks() {
 	$out = array();
@@ -101,7 +126,7 @@ function suorni_watch_data() {
 	$c = suorni_watch_checks();
 	$lvl = 'ok';
 	foreach ( $c as $x ) { if ( 'bad' === $x['lvl'] ) { $lvl = 'bad'; break; } if ( 'warn' === $x['lvl'] ) { $lvl = 'warn'; } }
-	return array( 'lvl' => $lvl, 'checks' => $c, 'usage' => suorni_usage_sum(), 'mail' => (bool) get_option( 'suorni_watch_mail', 0 ), 'at' => wp_date( 'H.i' ) );
+	return array( 'lvl' => $lvl, 'hidden' => suorni_hidden_list(), 'djlog' => array_reverse( (array) get_option( 'suorni_dj_log', array() ) ), 'checks' => $c, 'usage' => suorni_usage_sum(), 'mail' => (bool) get_option( 'suorni_watch_mail', 0 ), 'at' => wp_date( 'H.i' ) );
 }
 function suorni_watch_get() { return suorni_json( suorni_watch_data() ); }
 function suorni_watch_mail_post( $req ) {
@@ -110,6 +135,7 @@ function suorni_watch_mail_post( $req ) {
 }
 add_action( 'rest_api_init', function () {
 	register_rest_route( 'suorni/v1', '/radio/watch', array( 'methods' => 'GET', 'callback' => 'suorni_watch_get', 'permission_callback' => 'suorni_can' ) );
+	register_rest_route( 'suorni/v1', '/radio/unhide', array( 'methods' => 'POST', 'callback' => 'suorni_unhide_post', 'permission_callback' => 'suorni_can' ) );
 	register_rest_route( 'suorni/v1', '/radio/watchmail', array( 'methods' => 'POST', 'callback' => 'suorni_watch_mail_post', 'permission_callback' => 'suorni_can' ) );
 } );
 

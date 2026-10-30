@@ -53,7 +53,7 @@ function suorni_health_run( $ext_max = 10 ) {
 		$n++;
 		if ( 0 === strpos( $t['url'], $bu ) ) {
 			$f = $bd . substr( $t['url'], strlen( $bu ) );
-			if ( ! file_exists( $f ) || filesize( $f ) < 1000 ) { $bad[] = array( 'id' => (int) $t['id'], 't' => $t['title'], 'why' => 'tiedosto puuttuu palvelimelta' ); $excl[] = (int) $t['id']; }
+			if ( ! file_exists( $f ) || filesize( $f ) < 1000 ) { $bad[] = array( 'id' => (int) $t['id'], 't' => $t['title'], 'why' => 'tiedosto puuttuu palvelimelta' ); $excl[] = (int) $t['id']; if ( function_exists( 'suorni_hidden_note' ) ) { suorni_hidden_note( (int) $t['id'], 'tiedosto puuttuu palvelimelta' ); } }
 		} else { $extl[] = $t; }
 	}
 	if ( count( $bad ) ) { update_option( 'suorni_radio_excl', array_values( array_unique( $excl ) ), false ); }
@@ -84,6 +84,7 @@ function suorni_health_run( $ext_max = 10 ) {
 		$ex2 = suorni_radio_excl();
 		update_option( 'suorni_radio_excl', array_values( array_unique( array_merge( $ex2, $auto ) ) ), false );
 		update_option( 'suorni_health_auto', (int) get_option( 'suorni_health_auto', 0 ) + count( $auto ), false );
+		foreach ( $auto as $aid ) { suorni_hidden_note( $aid, 'linkki ei aukea toistuvasti' ); }
 	}
 	$h = array( 'at' => time(), 'n' => $n, 'bad' => $bad, 'ext' => array_values( $keep ), 'nodur' => $nodur, 'auto' => count( $auto ) );
 	update_option( 'suorni_health', $h, false );
@@ -97,4 +98,21 @@ add_action( 'init', function () {
 add_action( 'rest_api_init', function () {
 	register_rest_route( 'suorni/v1', '/radio/upload', array( 'methods' => 'POST', 'callback' => 'suorni_up_post', 'permission_callback' => 'suorni_can' ) );
 	register_rest_route( 'suorni/v1', '/radio/health', array( 'methods' => 'POST', 'callback' => 'suorni_health_post', 'permission_callback' => 'suorni_can' ) );
+} );
+/* Kansikuvan lataus ohjaamosta */
+function suorni_cover_up_post( $req ) {
+	if ( empty( $_FILES['file'] ) || ! is_array( $_FILES['file'] ) ) { return new WP_Error( 'suorni_up', 'Tiedosto puuttuu.', array( 'status' => 400 ) ); }
+	$name = isset( $_FILES['file']['name'] ) ? sanitize_file_name( wp_unslash( $_FILES['file']['name'] ) ) : '';
+	if ( ! preg_match( '#\.(jpe?g|png|webp|gif)$#i', $name ) ) { return new WP_Error( 'suorni_up', 'Sallitut kuvat: jpg, png, webp, gif.', array( 'status' => 400 ) ); }
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	$id = media_handle_upload( 'file', 0 );
+	if ( is_wp_error( $id ) ) { return new WP_Error( 'suorni_up', $id->get_error_message(), array( 'status' => 400 ) ); }
+	$url = wp_get_attachment_url( $id );
+	if ( ! $url ) { return new WP_Error( 'suorni_up', 'Kuvan osoitetta ei saatu.', array( 'status' => 500 ) ); }
+	return suorni_json( array( 'ok' => true, 'url' => esc_url_raw( $url ) ) );
+}
+add_action( 'rest_api_init', function () {
+	register_rest_route( 'suorni/v1', '/radio/coverup', array( 'methods' => 'POST', 'callback' => 'suorni_cover_up_post', 'permission_callback' => 'suorni_can' ) );
 } );

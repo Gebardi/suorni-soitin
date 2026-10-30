@@ -75,6 +75,26 @@
 			'<input style="' + st + '" data-name maxlength="60" placeholder="Kanavan nimi" value="' + esc(c.name) + '">' +
 			'<input style="' + st + '" data-cover placeholder="Oma kansikuva (kuvan osoite, tyhjä = oletus Suomi-maisema)" value="' + esc(c.cover) + '">' +
 			'<label><input type="checkbox" data-sc' + (c.showcount ? ' checked' : '') + '> Näytä kuuntelijamäärä sivulla</label><br><label><input type="checkbox" data-wxs' + (c.wx_show ? ' checked' : '') + '> Näytä sää sivulla (paikka ja koordinaatit: Juontaja-välilehti)</label>';
+		(function () {
+			var ci = hA.querySelector('[data-cover]'); if (!ci) { return; }
+			var row = el('div', { style: 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:2px 0 8px' });
+			var fi2 = el('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp,image/gif', style: 'display:none' });
+			var bu = el('button', { type: 'button' }, '📷 Lataa kansikuva');
+			var bd = el('button', { type: 'button' }, 'Palauta oletusmaisema');
+			var mg = el('span', { style: 'font-size:13px;opacity:.85' });
+			bu.addEventListener('click', function () { fi2.click(); });
+			bd.addEventListener('click', function () { ci.value = ''; mg.textContent = 'Muista painaa Tallenna.'; });
+			fi2.addEventListener('change', function () {
+				var f = fi2.files && fi2.files[0]; if (!f) { return; }
+				mg.textContent = '⏳ Ladataan…'; bu.disabled = true;
+				var fd = new FormData(); fd.append('file', f);
+				fetch(D.urls.coverup, { method: 'POST', credentials: 'same-origin', headers: { 'X-WP-Nonce': nonce }, body: fd }).then(function (r) { return r.json().then(function (j) { if (!r.ok) { throw new Error(j.message || 'Virhe'); } return j; }); }).then(function (j) {
+					ci.value = j.url; mg.textContent = '✅ Kuva ladattu. Paina lopuksi Tallenna.'; bu.disabled = false; fi2.value = '';
+				}).catch(function (e) { mg.textContent = '❌ ' + e.message; bu.disabled = false; });
+			});
+			row.appendChild(bu); row.appendChild(bd); row.appendChild(fi2); row.appendChild(mg);
+			ci.parentNode.insertBefore(row, ci.nextSibling);
+		})();
 		var hB = el('div');
 		hB.innerHTML = '<h3 style="margin:14px 0 6px">💬 Terveiset ja chat</h3>' + '<p style="margin:10px 0 2px"><b>Kuuntelijoiden terveiset</b></p><select style="' + st + '" data-gm><option value="hold"' + (c.greet_mode !== 'live' ? ' selected' : '') + '>Tarkistan itse ennen kuin ne luetaan</option><option value="live"' + (c.greet_mode === 'live' ? ' selected' : '') + '>Lue suoraan heti kesken kappaleen (linkit ja numerot suodatetaan pois)</option></select>' +
 			'<p style="margin:6px 0 2px">Terveisiä / kuuntelija / tunti (0 = ei rajaa)</p><input style="' + st + '" type="number" min="0" max="100" data-gl value="' + (c.greet_limit || 0) + '">' +
@@ -564,6 +584,18 @@
 			var order = { bad: 0, warn: 1, ok: 2 };
 			var cs = W.checks.slice().sort(function (a, b) { return order[a.lvl] - order[b.lvl]; });
 			h += cs.map(function (c) { return '<div style="padding:5px 0;border-top:1px solid #272c36;font-size:14px"><b style="color:' + col[c.lvl] + '">' + ico[c.lvl] + ' ' + esc(c.title) + '</b><div style="opacity:.8;font-size:13px">' + esc(c.detail) + '</div></div>'; }).join('');
+			if (W.hidden && W.hidden.length) {
+				h += '<h4 style="margin:12px 0 4px">🚫 Piilotetut rikkinäiset kappaleet</h4><p style="font-size:12px;opacity:.7;margin:0 0 6px">Nämä eivät soi radiossa. Lataa niiden tilalle mp3-tiedosto (Soittolista-välilehti) tai palauta kappale, jos tiedosto toimii taas.</p>';
+				h += W.hidden.map(function (x, i) { return '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px solid #272c36;font-size:13px"><span style="flex:1;min-width:0"><b>' + esc(x.t || ('#' + x.id)) + '</b><span style="opacity:.65"> · ' + esc(x.why) + '</span></span><button type="button" data-unh="' + i + '">Palauta</button></div>'; }).join('');
+			}
+			if (W.djlog && W.djlog.length) {
+				var TN = { news: 'uutiset', sport: 'urheilu', nhl: 'NHL' };
+				h += '<h4 style="margin:12px 0 4px">🎙️ Viimeisimmät juontopuheet</h4>' + W.djlog.map(function (x) {
+					var tm = new Date(x.t * 1000).toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit' });
+					var tp = (x.topics || []).map(function (k) { return (x.miss || []).indexOf(k) >= 0 ? TN[k] + ' (lisätty valmiina)' : '✓ ' + TN[k]; }).join(', ');
+					return '<div style="padding:4px 0;border-top:1px solid #272c36;font-size:13px"><span style="opacity:.6">' + tm + (x.ai ? ' · tekoäly' : ' · valmis teksti') + (tp ? ' · ' + esc(tp) : '') + '</span><div style="opacity:.85">' + esc(x.text) + '</div></div>';
+				}).join('');
+			}
 			var u = W.usage || {}, t = u.today || {}, w = u.week || {}, m = u.month || {}, c$ = u.tts_usd || {};
 			h += '<h4 style="margin:12px 0 4px">📊 Käyttö ja kulut</h4><table style="width:100%;font-size:13px;border-collapse:collapse"><tr style="opacity:.7"><td></td><td>Tänään</td><td>7 pv</td><td>30 pv</td></tr>' +
 				'<tr><td>Tekoälypuheet</td><td>' + (t.ai || 0) + '</td><td>' + (w.ai || 0) + '</td><td>' + (m.ai || 0) + '</td></tr>' +
@@ -572,6 +604,7 @@
 				'<tr><td>Puhesynteesi, arvio</td><td>' + (c$.today || 0) + ' $</td><td>' + (c$.week || 0) + ' $</td><td>' + (c$.month || 0) + ' $</td></tr></table>' +
 				'<p style="font-size:12px;opacity:.65;margin:6px 0 8px">Puhesynteesin hinta on arvio (noin 16 $ miljoonaa merkkiä kohden); tarkka hinta näkyy Azuren laskussa. Tekoälyn kulu riippuu mallista, katso Anthropic-tilisi käyttö.</p>';
 			wtw.innerHTML = h;
+			[].forEach.call(wtw.querySelectorAll('[data-unh]'), function (b) { b.addEventListener('click', function () { var x = W.hidden[+b.getAttribute('data-unh')]; b.disabled = true; api('POST', D.urls.unhide, { id: x.id }).then(function (j) { D.watch = j; drawWatch(); }).catch(function (e) { b.disabled = false; alert(e.message); }); }); });
 			var lab = el('label', { style: 'display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer' });
 			var cb = el('input', { type: 'checkbox' }); cb.checked = !!W.mail;
 			lab.appendChild(cb); lab.appendChild(document.createTextNode('✉️ Lähetä vakavista ongelmista sähköposti sivuston ylläpitäjän osoitteeseen'));
@@ -673,7 +706,25 @@
 			return r;
 		}
 		function ibBtn(label, fn) { var b = el('button', { type: 'button' }, label); b.addEventListener('click', function () { b.disabled = true; fn(b); }); return b; }
+		/* Vastauspalkki: pysyy samana elementtinä, jotta kirjoitus ei katoa päivityksissä */
+		var ibRep = { id: '', name: '' };
+		var rbar = el('div', { 'class': 'ib-reply', style: 'margin-top:8px;padding:8px;border:1px solid #363d4a;border-radius:10px;background:#10141b' });
+		rbar.innerHTML = '<div data-rt style="font-size:12px;opacity:.75;margin-bottom:4px">Vastaa chattiin juontajana</div><div style="display:flex;gap:6px"><input data-ri maxlength="220" placeholder="Kirjoita vastaus…" style="flex:1;min-width:0;padding:8px;border-radius:8px;border:1px solid #363d4a;background:#1b1f27;color:#eef0f4;font:inherit;font-size:16px"><button type="button" data-rs>Lähetä</button></div><label style="display:flex;gap:6px;align-items:center;font-size:12px;margin-top:4px;cursor:pointer"><input type="checkbox" data-ra> Lue vastaus myös radiossa</label><div data-rm style="font-size:12px;margin-top:2px"></div>';
+		var rI = rbar.querySelector('[data-ri]'), rT = rbar.querySelector('[data-rt]'), rM = rbar.querySelector('[data-rm]'), rA = rbar.querySelector('[data-ra]'), rS = rbar.querySelector('[data-rs]');
+		function repTarget() { rT.textContent = ibRep.id ? '↩️ Vastaus käyttäjälle ' + ibRep.name + ' (peruuta: tyhjennä valinta)' : 'Vastaa chattiin juontajana'; }
+		rT.addEventListener('click', function () { if (ibRep.id) { ibRep = { id: '', name: '' }; repTarget(); } });
+		function sendRep() {
+			var t = rI.value.trim(); if (!t) { return; }
+			rS.disabled = true; rM.textContent = '';
+			api('POST', D.urls.chatreply, { id: ibRep.id, text: t, air: rA.checked }).then(function (r) {
+				D.chat = r.chat; rI.value = ''; ibRep = { id: '', name: '' }; repTarget(); rM.textContent = r.air ? '✓ Lähetetty ja menossa radioon' : '✓ Lähetetty chattiin'; rS.disabled = false;
+				drawInbox(); if (redraw.c) { redraw.c(); }
+			}).catch(function (e) { rS.disabled = false; rM.textContent = e.message; });
+		}
+		rS.addEventListener('click', sendRep);
+		rI.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); sendRep(); } });
 		function drawInbox() {
+			if (ibTab === 'chat' && ib.contains(rbar) && rbar.contains(document.activeElement)) { return; }
 			if (ibTab === 'chat' && D.chat && D.chat.length) { ibSeen = D.chat[0].id; }
 			var c = ibCounts();
 			ib.innerHTML = '';
@@ -693,10 +744,12 @@
 					if (!m.dj) {
 						btns.push(ibBtn('📢', function (b) { api('POST', U.chatair, { id: m.id }).then(function () { b.textContent = '✓'; }).catch(function (e) { b.disabled = false; alert(e.message); }); }));
 						btns[0].title = 'Lue radiossa';
+						var rp = ibBtn('↩️', function (b) { b.disabled = false; ibRep = { id: m.id, name: m.n }; repTarget(); rI.focus(); }); rp.title = 'Vastaa'; btns.push(rp);
 					}
 					var d = ibBtn('✕', function () { api('POST', U.chatdel, { id: m.id }).then(function (r2) { D.chat = r2.chat; drawInbox(); if (redraw.c) { redraw.c(); } }).catch(function (e) { alert(e.message); }); }); d.title = 'Poista'; btns.push(d);
 					ibBody.appendChild(ibRow('<span style="opacity:.55;font-size:12px">' + t + '</span> <b style="color:' + (m.dj ? '#5eead4' : (m.b ? '#8a93a3' : '#ffb347')) + '">' + (m.dj ? '🎙️ ' : '') + (m.b ? '🤖 ' : '') + esc(m.n) + '</b> ' + esc(m.m), btns));
 				});
+				ibBody.appendChild(rbar); repTarget();
 			} else if (ibTab === 'greets') {
 				var G = (D.greets || []).filter(function (g) { return ['ok', 'no', 'played'].indexOf(g.status) < 0; }).slice(-10).reverse();
 				if (!G.length) { ibBody.appendChild(el('div', { style: 'opacity:.7;padding:8px 0' }, 'Ei uusia terveisiä.')); }

@@ -2,11 +2,11 @@
 /**
  * Plugin Name: Suorni Soitin
  * Description: Soitin mediakirjaston äänitiedostoista. Lyhytkoodit: [suorni_soitin] (valinnaisesti lista="nimi") ja [suorni_kauko] (kauko-ohjain kirjautuneelle).
- * Version: 9.44
+ * Version: 9.45
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SUORNI_VER', '9.44' );
+define( 'SUORNI_VER', '9.45' );
 require_once plugin_dir_path( __FILE__ ) . 'radio.php';
 require_once plugin_dir_path( __FILE__ ) . 'update.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-cache.php';
@@ -951,6 +951,7 @@ function suorni_addlink_post( $req ) {
 		$e = is_array( $e ) ? $e : array();
 		$e[] = (int) $id;
 		update_option( 'suorni_radio_excl', array_values( array_unique( array_map( 'intval', $e ) ) ), false );
+		if ( function_exists( 'suorni_hidden_note' ) ) { suorni_hidden_note( (int) $id, 'linkki ei aukea' . ( $pc ? ' (HTTP ' . $pc . ')' : '' ) ); }
 		$warn = 'Kappale lisättiin, mutta sen tiedosto ei aukea' . ( $pc ? ' (HTTP ' . $pc . ')' : '' ) . ', joten se on piilotettu radiosta. Lataa kappale mp3-tiedostona mediakirjastoon.';
 	}
 	return suorni_json( array(

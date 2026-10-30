@@ -15,6 +15,7 @@
 	function q(u, p) { return u + (u.indexOf('?') < 0 ? '?' : '&') + p; }
 	function srv() { return Date.now() / 1000 + off; }
 
+	var shift = null;
 	function fetchNow(listen) {
 		if (busy) { return; }
 		busy = true;
@@ -29,6 +30,7 @@
 				items = j.items || [];
 				comm = j.comm || null;
 				tv = j.tv || {};
+				shift = j.shift || null;
 				if (j.chat) { drawChat(j.chat); setTyping(j.typing || ''); if (j.typing) { fastPoll(); } var gn = chatEl && chatEl.querySelector('[data-gnote]'); if (gn) { gn.hidden = !j.guests; } }
 				if (j.name) { var h = root.querySelector('h2'); if (h) { h.textContent = j.name; } }
 				if (typeof j.listeners === 'number') { elCount.textContent = j.listeners > 0 ? '👥 ' + j.listeners + (j.listeners === 1 ? ' kuuntelija nyt' : ' kuuntelijaa nyt') : ''; }
@@ -229,7 +231,10 @@
 		var c = current();
 		if (!c) { return; }
 		var it = c.it;
-		elProg.innerHTML = '<span class="rl">LIVE</span>' + (it.prog ? it.prog : 'Suora lähetys');
+		var pe = function (x) { var d = document.createElement('div'); d.textContent = x == null ? '' : x; return d.innerHTML; };
+		var ph = shift && shift.host && (!it.prog || it.prog === shift.name) ? ' · 🎙️ ' + pe(shift.host) : '';
+		var pn = shift && shift.next ? '<span class="rnx">Seuraavaksi ' + (shift.next.day ? pe(shift.next.day) + ' ' : '') + 'klo ' + pe(shift.next.clock) + ': ' + pe(shift.next.name) + (shift.next.host ? ' · 🎙️ ' + pe(shift.next.host) : '') + '</span>' : '';
+		elProg.innerHTML = '<span class="rl">LIVE</span>' + pe(it.prog ? it.prog : 'Suora lähetys') + ph + pn;
 		if (it.type === 'dj') {
 			elTitle.textContent = '🎙️ Juontaja';
 			elArtist.textContent = '';
