@@ -20,11 +20,20 @@ function suorni_suno_fetch( $url ) {
 	$dir = dirname( $p[0] );
 	if ( ! wp_mkdir_p( $dir ) ) { return 'Kansiota ei voi luoda'; }
 	if ( ! file_exists( $dir . '/index.html' ) ) { @file_put_contents( $dir . '/index.html', '' ); }
-	$tmp = $p[0] . '.part';
-	$r   = wp_safe_remote_get( 'https://cdn1.suno.ai/' . strtolower( $m[1] ) . '.mp4', array( 'timeout' => 120, 'stream' => true, 'filename' => $tmp, 'user-agent' => 'Mozilla/5.0 (compatible; Suorni/1.0)' ) );
-	if ( is_wp_error( $r ) ) { @unlink( $tmp ); return $r->get_error_message(); }
-	$code = (int) wp_remote_retrieve_response_code( $r );
-	if ( 200 !== $code || ! file_exists( $tmp ) || filesize( $tmp ) < 20000 ) { @unlink( $tmp ); return 'Lataus epäonnistui (HTTP ' . $code . ')'; }
+	$tmp  = $p[0] . '.part';
+	$err  = '';
+	$ok   = false;
+	$hdr  = array( 'Referer' => 'https://suno.com/', 'Origin' => 'https://suno.com', 'Accept' => 'audio/*,video/*;q=0.9,*/*;q=0.5', 'Accept-Language' => 'en-US,en;q=0.9' );
+	$ua   = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+	foreach ( array( 'mp4', 'mp3' ) as $ext ) {
+		$r = wp_safe_remote_get( 'https://cdn1.suno.ai/' . strtolower( $m[1] ) . '.' . $ext, array( 'timeout' => 120, 'stream' => true, 'filename' => $tmp, 'user-agent' => $ua, 'headers' => $hdr ) );
+		if ( is_wp_error( $r ) ) { $err = $r->get_error_message(); @unlink( $tmp ); continue; }
+		$code = (int) wp_remote_retrieve_response_code( $r );
+		if ( 200 === $code && file_exists( $tmp ) && filesize( $tmp ) >= 20000 ) { $ok = true; break; }
+		$err = 'Lataus epäonnistui (HTTP ' . $code . ')';
+		@unlink( $tmp );
+	}
+	if ( ! $ok ) { return $err; }
 	rename( $tmp, $p[0] );
 	return '';
 }
