@@ -9,6 +9,7 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-prog.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-monitor.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-shop.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-sugg.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-queue.php';
 
 /* ---------- Asetukset ---------- */
 function suorni_radio_time( $v, $def ) {
@@ -967,7 +968,7 @@ function suorni_radio_admin_get() {
 		'tts'    => suorni_tts_public(),
 		'subs'   => suorni_comm_admin_list(),
 		'mon'    => suorni_mon_admin(),
-		'urls'   => array( 'commact' => suorni_ep( 'radio/commact' ), 'trackprogs' => suorni_ep( 'radio/trackprogs' ), 'trackboost' => suorni_ep( 'radio/trackboost' ), 'monrenew' => suorni_ep( 'radio/monrenew' ), 'suggest' => suorni_ep( 'radio/suggest' ), 'suggact' => suorni_ep( 'radio/suggact' ), 'trackstyle' => suorni_ep( 'radio/trackstyle' ) ),
+		'urls'   => array( 'queue' => suorni_ep( 'radio/queue' ), 'queuecut' => suorni_ep( 'radio/queuecut' ), 'commact' => suorni_ep( 'radio/commact' ), 'trackprogs' => suorni_ep( 'radio/trackprogs' ), 'trackboost' => suorni_ep( 'radio/trackboost' ), 'monrenew' => suorni_ep( 'radio/monrenew' ), 'suggest' => suorni_ep( 'radio/suggest' ), 'suggact' => suorni_ep( 'radio/suggact' ), 'trackstyle' => suorni_ep( 'radio/trackstyle' ) ),
 	) );
 }
 

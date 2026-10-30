@@ -427,6 +427,46 @@
 			var p = el('div'); p.hidden = true; panes[t[0]] = p;
 			bucket[t[0]].forEach(function (n) { p.appendChild(n); });
 		});
+
+		/* Lähetyspaneeli: aina ylhäällä, erillään välilehdistä */
+		var qp = el('div', { style: 'background:#0f2347;border:1px solid #2b4a85;border-radius:12px;padding:10px 12px;margin:0 0 10px' });
+		qp.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b style="font-size:16px">🎛️ Lähetys</b><span data-qs style="font-size:12px;opacity:.7"></span><button type="button" data-qr style="margin-left:auto">↻ Päivitä</button></div><div data-qb style="margin-top:6px">Ladataan…</div>';
+		var qb = qp.querySelector('[data-qb]'), qs = qp.querySelector('[data-qs]'), qbusy = false;
+		function hm(t) { var d = new Date(t * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }
+		function qrow(it, isCur, srvNow) {
+			var dj = it.type === 'dj';
+			var r = el('div', { style: 'display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-top:1px solid #1f3a6e' });
+			var left = el('div', { style: 'min-width:62px;font-size:12px;opacity:.75;padding-top:2px' }, isCur ? '▶ nyt' : hm(it.start));
+			var tx = dj ? '<b>🎙️ Juonto</b>' + (it.shout ? ' <span style="font-size:11px;opacity:.7">(tervehdys)</span>' : '') + '<div style="font-size:13px;opacity:.85;white-space:pre-wrap;margin-top:2px">' + esc(it.text || '(ei tekstiä)') + '</div>'
+				: '<b>🎵 ' + esc(it.title) + '</b>' + (it.artist ? ' – ' + esc(it.artist) : '') + (it.sub ? ' <span style="font-size:11px;opacity:.7">(yhteisö)</span>' : '');
+			var mid = el('div', { style: 'flex:1;min-width:0' }, tx + '<div style="font-size:11px;opacity:.6">' + Math.round(it.dur) + ' s' + (isCur ? ' · jäljellä ' + Math.max(0, Math.round(it.start + it.dur - srvNow)) + ' s' : '') + '</div>');
+			var x = el('button', { type: 'button', style: 'flex:none' }, isCur ? '⏭ Ohita' : '✕ Ota pois');
+			x.addEventListener('click', function () {
+				if (isCur && !confirm('Ohitetaanko soiva? Kuuntelijoilla soitin siirtyy seuraavaan muutaman sekunnin kuluessa.')) { return; }
+				x.disabled = true;
+				api('POST', D.urls.queuecut, { key: it.key }).then(function () { qload(); }).catch(function (e) { qs.textContent = e.message; qload(); });
+			});
+			r.appendChild(left); r.appendChild(mid); r.appendChild(x);
+			return r;
+		}
+		function qload() {
+			if (qbusy || !qp.isConnected) { return; }
+			qbusy = true;
+			api('GET', D.urls.queue).then(function (j) {
+				qbusy = false;
+				qb.innerHTML = '';
+				if (!j.on) { qb.textContent = 'Radio ei ole päällä.'; return; }
+				if (j.cur) { qb.appendChild(qrow(j.cur, true, j.now)); } else { qb.appendChild(el('div', { style: 'opacity:.7;padding:6px 0' }, 'Ei soivaa kohdetta juuri nyt.')); }
+				if (!j.next.length) { qb.appendChild(el('div', { style: 'opacity:.7;padding:6px 0' }, 'Seuraavia ei ole vielä jonossa.')); }
+				j.next.forEach(function (it) { qb.appendChild(qrow(it, false, j.now)); });
+				qs.textContent = 'päivitetty ' + hm(j.now);
+			}).catch(function (e) { qbusy = false; qs.textContent = e.message; });
+		}
+		qp.querySelector('[data-qr]').addEventListener('click', qload);
+		if (window.__suorniQT) { clearInterval(window.__suorniQT); }
+		window.__suorniQT = setInterval(function () { if (!qp.isConnected) { clearInterval(window.__suorniQT); return; } if (!document.hidden) { qload(); } }, 10000);
+		box.appendChild(qp);
+		qload();
 		box.appendChild(nav);
 		TABS.forEach(function (t) { box.appendChild(panes[t[0]]); });
 		function show(k) {
