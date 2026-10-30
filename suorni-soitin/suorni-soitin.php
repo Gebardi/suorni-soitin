@@ -2,11 +2,11 @@
 /**
  * Plugin Name: Suorni Soitin
  * Description: Soitin mediakirjaston äänitiedostoista. Lyhytkoodit: [suorni_soitin] (valinnaisesti lista="nimi") ja [suorni_kauko] (kauko-ohjain kirjautuneelle).
- * Version: 9.39
+ * Version: 9.40
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SUORNI_VER', '9.39' );
+define( 'SUORNI_VER', '9.40' );
 require_once plugin_dir_path( __FILE__ ) . 'radio.php';
 require_once plugin_dir_path( __FILE__ ) . 'update.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-cache.php';
@@ -335,6 +335,7 @@ function suorni_tts_synth( $segs, $rate, $voices = array() ) {
 	if ( ! wp_mkdir_p( $dir ) ) { return new WP_Error( 'suorni_tts', 'Tallennuskansiota ei voitu luoda.', array( 'status' => 500 ) ); }
 	if ( false === file_put_contents( $file, $data ) ) { return new WP_Error( 'suorni_tts', 'Tiedoston tallennus epäonnistui.', array( 'status' => 500 ) ); }
 	set_transient( 'suorni_tts_n', $n + 1, HOUR_IN_SECONDS );
+	if ( function_exists( 'suorni_usage_add' ) ) { suorni_usage_add( 'tts', 1, $total ); }
 	if ( 1 === wp_rand( 1, 20 ) ) {
 		foreach ( (array) glob( $dir . '/*.mp3' ) as $f ) { if ( filemtime( $f ) < time() - 14 * DAY_IN_SECONDS ) { @unlink( $f ); } }
 	}
@@ -941,9 +942,21 @@ function suorni_addlink_post( $req ) {
 	}
 	suorni_add_to_theme( $teema, (int) $id );
 	suorni_clear_tracks();
+	/* Heti tarkistus: ellei tiedosto avaudu, kappale ei mene radion soittolistalle */
+	$warn = '';
+	$pr   = wp_safe_remote_get( $audio, array( 'timeout' => 8, 'headers' => array( 'Range' => 'bytes=0-1023' ), 'redirection' => 3 ) );
+	$pc   = is_wp_error( $pr ) ? 0 : (int) wp_remote_retrieve_response_code( $pr );
+	if ( $pc < 200 || $pc >= 400 ) {
+		$e = get_option( 'suorni_radio_excl', array() );
+		$e = is_array( $e ) ? $e : array();
+		$e[] = (int) $id;
+		update_option( 'suorni_radio_excl', array_values( array_unique( array_map( 'intval', $e ) ) ), false );
+		$warn = 'Kappale lisättiin, mutta sen tiedosto ei aukea' . ( $pc ? ' (HTTP ' . $pc . ')' : '' ) . ', joten se on piilotettu radiosta. Lataa kappale mp3-tiedostona mediakirjastoon.';
+	}
 	return suorni_json( array(
 		'lists'  => suorni_lists(),
 		'status' => 'added',
+		'warn'   => $warn,
 		'track'  => array( 'id' => (int) $id, 'title' => $final_title, 'artist' => $final_artist, 'url' => $audio ),
 	) );
 }

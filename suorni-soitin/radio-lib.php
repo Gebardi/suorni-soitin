@@ -71,11 +71,21 @@ function suorni_health_run( $ext_max = 10 ) {
 	/* ulkoisen lähteen ongelmat säilyvät, kunnes uusi tarkistus osuu samaan kappaleeseen */
 	$keep = array();
 	foreach ( (array) $old['ext'] as $o ) { $keep[ $o['id'] ] = $o; }
-	foreach ( $ext as $e ) { $keep[ $e['id'] ] = $e; }
+	foreach ( $ext as $e ) { $e['cnt'] = ( isset( $keep[ $e['id'] ]['cnt'] ) ? (int) $keep[ $e['id'] ]['cnt'] : 0 ) + 1; $keep[ $e['id'] ] = $e; }
 	$checked = array();
 	for ( $i = 0; $i < min( $ext_max, $cnt ); $i++ ) { $checked[] = (int) $extl[ ( $ptr + $i ) % $cnt ]['id']; }
 	foreach ( $checked as $cid ) { $isbad = false; foreach ( $ext as $e ) { if ( $e['id'] === $cid ) { $isbad = true; } } if ( ! $isbad ) { unset( $keep[ $cid ] ); } }
-	$h = array( 'at' => time(), 'n' => $n, 'bad' => $bad, 'ext' => array_values( $keep ), 'nodur' => $nodur );
+	/* Kappale, jonka linkki antaa kahdella peräkkäisellä tarkistuksella 403/404/410, piilotetaan radiosta automaattisesti */
+	$auto = array();
+	foreach ( $keep as $kid => $kx ) {
+		if ( ! empty( $kx['cnt'] ) && (int) $kx['cnt'] >= 2 && preg_match( '/HTTP (403|404|410)/', (string) $kx['why'] ) ) { $auto[] = (int) $kid; unset( $keep[ $kid ] ); }
+	}
+	if ( $auto ) {
+		$ex2 = suorni_radio_excl();
+		update_option( 'suorni_radio_excl', array_values( array_unique( array_merge( $ex2, $auto ) ) ), false );
+		update_option( 'suorni_health_auto', (int) get_option( 'suorni_health_auto', 0 ) + count( $auto ), false );
+	}
+	$h = array( 'at' => time(), 'n' => $n, 'bad' => $bad, 'ext' => array_values( $keep ), 'nodur' => $nodur, 'auto' => count( $auto ) );
 	update_option( 'suorni_health', $h, false );
 	return $h;
 }

@@ -13,6 +13,7 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-queue.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-lib.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-hist.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-req.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-watch.php';
 
 /* ---------- Asetukset ---------- */
 function suorni_radio_time( $v, $def ) {
@@ -506,16 +507,38 @@ function suorni_radio_get( $url, $timeout = 6 ) {
 	if ( 200 !== $code ) { return new WP_Error( 'suorni_feed', 'HTTP ' . $code ); }
 	return wp_remote_retrieve_body( $r );
 }
+/* Syötteiden tila ohjaamoa varten: onnistuminen, määrä, virhe */
+function suorni_feed_note( $label, $ok, $n, $err = '' ) {
+	$st = get_option( 'suorni_feed_stat', array() );
+	if ( ! is_array( $st ) ) { $st = array(); }
+	$old = isset( $st[ $label ] ) && is_array( $st[ $label ] ) ? $st[ $label ] : array();
+	$st[ $label ] = array(
+		't'   => time(),
+		'ok'  => $ok ? 1 : 0,
+		'n'   => (int) $n,
+		'err' => $ok ? '' : mb_substr( (string) $err, 0, 200 ),
+		'lastok' => $ok ? time() : ( isset( $old['lastok'] ) ? (int) $old['lastok'] : 0 ),
+	);
+	update_option( 'suorni_feed_stat', $st, false );
+}
 /* RSS -> [ [otsikko, kuvaus], ... ] */
-function suorni_radio_feed( $url, $limit = 8 ) {
+function suorni_radio_feed( $url, $limit = 8, $label = '' ) {
 	if ( '' === $url ) { return array(); }
-	$key = 'suorni_feed_' . md5( $url );
-	$c   = get_transient( $key );
+	$key  = 'suorni_feed_' . md5( $url );
+	$lkey = 'suorni_feedlast_' . md5( $url );
+	$c    = get_transient( $key );
 	if ( is_array( $c ) ) { return $c; }
 	$body = suorni_radio_get( $url );
-	if ( is_wp_error( $body ) ) { set_transient( $key, array(), 5 * MINUTE_IN_SECONDS ); update_option( 'suorni_feed_err', $url . ': ' . $body->get_error_message(), false ); return array(); }
+	if ( is_wp_error( $body ) ) {
+		$body = suorni_radio_get( $url, 10 );
+	}
 	$out = array();
-	if ( function_exists( 'simplexml_load_string' ) ) {
+	$err = '';
+	if ( is_wp_error( $body ) ) {
+		$err = $body->get_error_message();
+	} elseif ( ! function_exists( 'simplexml_load_string' ) ) {
+		$err = 'PHP:n SimpleXML puuttuu palvelimelta.';
+	} else {
 		$x = @simplexml_load_string( $body );
 		if ( $x && isset( $x->channel->item ) ) {
 			foreach ( $x->channel->item as $it ) {
@@ -525,9 +548,23 @@ function suorni_radio_feed( $url, $limit = 8 ) {
 				if ( count( $out ) >= $limit ) { break; }
 			}
 		}
+		if ( ! $out ) { $err = 'Syöte luettiin, mutta siinä ei ollut otsikoita.'; }
 	}
-	set_transient( $key, $out, 20 * MINUTE_IN_SECONDS );
-	return $out;
+	if ( $out ) {
+		set_transient( $key, $out, 20 * MINUTE_IN_SECONDS );
+		set_transient( $lkey, $out, 12 * HOUR_IN_SECONDS );
+		if ( '' !== $label ) { suorni_feed_note( $label, true, count( $out ) ); }
+		return $out;
+	}
+	update_option( 'suorni_feed_err', $url . ': ' . $err, false );
+	set_transient( $key, array(), 5 * MINUTE_IN_SECONDS );
+	$last = get_transient( $lkey );
+	if ( is_array( $last ) && $last ) {
+		if ( '' !== $label ) { suorni_feed_note( $label, false, count( $last ), $err . ' (käytetään vanhaa tallennettua)' ); }
+		return $last;
+	}
+	if ( '' !== $label ) { suorni_feed_note( $label, false, 0, $err ); }
+	return array();
 }
 /* NHL: edellisen illan ottelut ja suomalaisten pisteet */
 function suorni_radio_nhl( $finns_txt ) {
@@ -539,7 +576,7 @@ function suorni_radio_nhl( $finns_txt ) {
 	$c    = get_transient( $key );
 	if ( is_string( $c ) ) { return $c; }
 	$body = suorni_radio_get( 'https://api-web.nhle.com/v1/score/' . $date );
-	if ( is_wp_error( $body ) ) { update_option( 'suorni_feed_err', 'NHL: ' . $body->get_error_message(), false ); return ''; }
+	if ( is_wp_error( $body ) ) { update_option( 'suorni_feed_err', 'NHL: ' . $body->get_error_message(), false ); suorni_feed_note( 'nhl', false, 0, $body->get_error_message() ); return ''; }
 	$j = json_decode( $body, true );
 	if ( ! is_array( $j ) || empty( $j['games'] ) ) { set_transient( $key, '', 30 * MINUTE_IN_SECONDS ); return ''; }
 	$finns = array_values( array_filter( array_map( 'trim', preg_split( '/\r\n|\r|\n/', (string) $finns_txt ) ) ) );
@@ -590,6 +627,7 @@ function suorni_radio_nhl( $finns_txt ) {
 		}
 	}
 	if ( ! $lines ) { set_transient( $key, '', 30 * MINUTE_IN_SECONDS ); return ''; }
+	suorni_feed_note( 'nhl', true, count( $lines ) );
 	$txt = 'NHL:n edellisen illan tulokset (vieras–koti): ' . implode( '; ', array_slice( $lines, 0, 16 ) ) . '.';
 	if ( $fin ) { $txt .= ' Suomalaisten suoritukset: ' . implode( '; ', array_slice( $fin, 0, 14 ) ) . '.'; }
 	set_transient( $key, $txt, 3 * HOUR_IN_SECONDS );
@@ -599,30 +637,30 @@ function suorni_radio_nhl( $finns_txt ) {
 function suorni_radio_extra( $cfg, $prog, $ts, &$st ) {
 	$out = array();
 	$now = time();
-	$gap = 90 * MINUTE_IN_SECONDS;
+	$gap = 45 * MINUTE_IN_SECONDS;
 	if ( $prog['news'] && $now - (int) $st['news_at'] >= $gap ) {
-		$items = suorni_radio_feed( $cfg['news_feed'], 6 );
+		$items = suorni_radio_feed( $cfg['news_feed'], 6, 'news' );
 		if ( $items ) {
 			$st['news_at'] = $now;
 			$lines = array();
 			foreach ( $items as $i ) { $lines[] = '- ' . $i[0] . ( '' !== $i[1] ? ' (' . $i[1] . ')' : '' ); }
-			$out[] = array( 'fact' => "Päivän uutisotsikot (Yle, aineistoa; valitse 1–2 neutraalia tai kiinnostavaa, älä ota mukaan onnettomuuksien tai rikosten yksityiskohtia, sano lähteeksi Yle):\n" . implode( "\n", $lines ), 'plain' => 'Ylen uutisten mukaan: ' . $items[0][0] . '.' );
+			$out[] = array( 'fact' => "PAKOLLINEN AIHE tässä puheessa: kerro 1–2 uutista alla olevista (Yle, aineistoa; valitse neutraaleja tai kiinnostavia, älä ota mukaan onnettomuuksien tai rikosten yksityiskohtia, sano lähteeksi Yle):\n" . implode( "\n", $lines ), 'plain' => 'Ylen uutisten mukaan: ' . $items[0][0] . '.' );
 		}
 	}
 	if ( $prog['sports'] && $now - (int) $st['sport_at'] >= $gap ) {
-		$items = suorni_radio_feed( $cfg['sport_feed'], 8 );
+		$items = suorni_radio_feed( $cfg['sport_feed'], 8, 'sport' );
 		if ( $items ) {
 			$st['sport_at'] = $now;
 			$lines = array();
 			foreach ( $items as $i ) { $lines[] = '- ' . $i[0] . ( '' !== $i[1] ? ' (' . $i[1] . ')' : '' ); }
-			$out[] = array( 'fact' => "Urheilu-uutisia (Yle, aineistoa; poimi erityisesti Liigan ja muiden suomalaisten kiinnostavien lajien tuloksia, vain jos tulos näkyy tekstissä; älä arvaa):\n" . implode( "\n", $lines ), 'plain' => 'Ylen urheilu-uutisista: ' . $items[0][0] . '.' );
+			$out[] = array( 'fact' => "PAKOLLINEN AIHE tässä puheessa: kerro 1–2 urheilu-uutista alla olevista (Yle, aineistoa; poimi erityisesti Liigan ja muiden suomalaisten kiinnostavien lajien tuloksia, vain jos tulos näkyy tekstissä; älä arvaa):\n" . implode( "\n", $lines ), 'plain' => 'Ylen urheilu-uutisista: ' . $items[0][0] . '.' );
 		}
 	}
 	if ( $prog['nhl'] && $now - (int) $st['nhl_at'] >= 10 * HOUR_IN_SECONDS ) {
 		$t = suorni_radio_nhl( $cfg['finns'] );
 		if ( '' !== $t ) {
 			$st['nhl_at'] = $now;
-			$out[] = array( 'fact' => $t . ' Kerro lyhyesti pari tulosta ja erityisesti suomalaisten suoritukset (vain annetut tiedot).', 'plain' => mb_substr( $t, 0, 360 ) );
+			$out[] = array( 'fact' => $t . ' PAKOLLINEN AIHE: kerro lyhyesti pari tulosta ja erityisesti suomalaisten suoritukset (vain annetut tiedot).', 'plain' => mb_substr( $t, 0, 360 ) );
 		}
 	}
 	if ( function_exists( 'suorni_req_facts' ) ) { foreach ( suorni_req_facts() as $f ) { $out[] = $f; } }
@@ -633,8 +671,8 @@ function suorni_radio_feedtest( $req ) {
 	delete_option( 'suorni_feed_err' );
 	delete_transient( 'suorni_feed_' . md5( $cfg['news_feed'] ) );
 	delete_transient( 'suorni_feed_' . md5( $cfg['sport_feed'] ) );
-	$n = suorni_radio_feed( $cfg['news_feed'], 3 );
-	$s = suorni_radio_feed( $cfg['sport_feed'], 3 );
+	$n = suorni_radio_feed( $cfg['news_feed'], 3, 'news' );
+	$s = suorni_radio_feed( $cfg['sport_feed'], 3, 'sport' );
 	$h = suorni_radio_nhl( $cfg['finns'] );
 	$o = "UUTISET:\n" . ( $n ? implode( "\n", array_map( function ( $i ) { return '- ' . $i[0]; }, $n ) ) : '(ei tuloksia)' ) . "\n\nURHEILU:\n" . ( $s ? implode( "\n", array_map( function ( $i ) { return '- ' . $i[0]; }, $s ) ) : '(ei tuloksia)' ) . "\n\nNHL:\n" . ( '' !== $h ? $h : '(ei tuloksia tälle päivälle)' );
 	$e = get_option( 'suorni_feed_err', '' );
@@ -987,9 +1025,9 @@ function suorni_radio_admin_get() {
 		'tts'    => suorni_tts_public(),
 		'subs'   => suorni_comm_admin_list(),
 		'mon'    => suorni_mon_admin(),
-		'health' => suorni_health_get(), 'maxup' => (int) wp_max_upload_size(), 'reqs' => suorni_req_admin_list(), 'reqcfg' => suorni_reqcfg(),
+		'health' => suorni_health_get(), 'watch' => suorni_watch_data(), 'maxup' => (int) wp_max_upload_size(), 'reqs' => suorni_req_admin_list(), 'reqcfg' => suorni_reqcfg(),
 		'sunoleft' => function_exists( 'suorni_suno_left' ) ? suorni_suno_left() : 0,
-		'urls'   => array( 'upload' => suorni_ep( 'radio/upload' ), 'health' => suorni_ep( 'radio/health' ), 'reqact' => suorni_ep( 'radio/reqact' ), 'reqcfg' => suorni_ep( 'radio/reqcfg' ), 'sunocache' => suorni_ep( 'radio/sunocache' ), 'queue' => suorni_ep( 'radio/queue' ), 'queuecut' => suorni_ep( 'radio/queuecut' ), 'commact' => suorni_ep( 'radio/commact' ), 'trackprogs' => suorni_ep( 'radio/trackprogs' ), 'trackboost' => suorni_ep( 'radio/trackboost' ), 'monrenew' => suorni_ep( 'radio/monrenew' ), 'suggest' => suorni_ep( 'radio/suggest' ), 'suggact' => suorni_ep( 'radio/suggact' ), 'trackstyle' => suorni_ep( 'radio/trackstyle' ) ),
+		'urls'   => array( 'watch' => suorni_ep( 'radio/watch' ), 'watchmail' => suorni_ep( 'radio/watchmail' ), 'upload' => suorni_ep( 'radio/upload' ), 'health' => suorni_ep( 'radio/health' ), 'reqact' => suorni_ep( 'radio/reqact' ), 'reqcfg' => suorni_ep( 'radio/reqcfg' ), 'sunocache' => suorni_ep( 'radio/sunocache' ), 'queue' => suorni_ep( 'radio/queue' ), 'queuecut' => suorni_ep( 'radio/queuecut' ), 'commact' => suorni_ep( 'radio/commact' ), 'trackprogs' => suorni_ep( 'radio/trackprogs' ), 'trackboost' => suorni_ep( 'radio/trackboost' ), 'monrenew' => suorni_ep( 'radio/monrenew' ), 'suggest' => suorni_ep( 'radio/suggest' ), 'suggact' => suorni_ep( 'radio/suggact' ), 'trackstyle' => suorni_ep( 'radio/trackstyle' ) ),
 	) );
 }
 
@@ -1349,6 +1387,7 @@ function suorni_radio_ai_call( $system, $user, $max_tokens ) {
 		$why = ( is_array( $j ) && isset( $j['stop_reason'] ) ) ? (string) $j['stop_reason'] : '?';
 		return new WP_Error( 'suorni_ai', 'Tyhjä vastaus (lopetussyy: ' . $why . ', lohkot: ' . ( $types ? implode( ',', $types ) : 'ei yhtään' ) . ').' );
 	}
+	if ( function_exists( 'suorni_usage_add' ) ) { suorni_usage_add( 'ai', 1 ); }
 	return $t;
 }
 function suorni_ai_system( $persona ) {

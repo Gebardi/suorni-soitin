@@ -553,7 +553,37 @@
 			rqw.appendChild(lst);
 		}
 		drawReq();
-		var bucket = { yleinen: [info, sd, mw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, aw, fw], yhteiso: [hD, scw], lista: [upw, bw, tw] };
+
+		/* Valvonta: tila, hälytykset ja käytön yhteenveto */
+		var wtw = el('div', { 'class': 'st-watch', style: 'margin:6px 0 14px;padding:12px;border:1px solid #363d4a;border-radius:12px;background:#151922' });
+		function drawWatch() {
+			var W = D.watch; if (!W) { wtw.style.display = 'none'; return; }
+			var col = { ok: '#3ddc84', warn: '#ffb347', bad: '#ff5c5c' }, ico = { ok: '✅', warn: '⚠️', bad: '🛑' };
+			var head = W.lvl === 'ok' ? 'Kaikki toimii' : (W.lvl === 'warn' ? 'Huomioitavaa' : 'Vaatii toimenpiteitä');
+			var h = '<h3 style="margin:0 0 8px;display:flex;align-items:center;gap:8px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:' + col[W.lvl] + ';box-shadow:0 0 8px ' + col[W.lvl] + '"></span>🩺 Valvonta: ' + head + '</h3>';
+			var order = { bad: 0, warn: 1, ok: 2 };
+			var cs = W.checks.slice().sort(function (a, b) { return order[a.lvl] - order[b.lvl]; });
+			h += cs.map(function (c) { return '<div style="padding:5px 0;border-top:1px solid #272c36;font-size:14px"><b style="color:' + col[c.lvl] + '">' + ico[c.lvl] + ' ' + esc(c.title) + '</b><div style="opacity:.8;font-size:13px">' + esc(c.detail) + '</div></div>'; }).join('');
+			var u = W.usage || {}, t = u.today || {}, w = u.week || {}, m = u.month || {}, c$ = u.tts_usd || {};
+			h += '<h4 style="margin:12px 0 4px">📊 Käyttö ja kulut</h4><table style="width:100%;font-size:13px;border-collapse:collapse"><tr style="opacity:.7"><td></td><td>Tänään</td><td>7 pv</td><td>30 pv</td></tr>' +
+				'<tr><td>Tekoälypuheet</td><td>' + (t.ai || 0) + '</td><td>' + (w.ai || 0) + '</td><td>' + (m.ai || 0) + '</td></tr>' +
+				'<tr><td>Uudet äänitiedostot</td><td>' + (t.tts || 0) + '</td><td>' + (w.tts || 0) + '</td><td>' + (m.tts || 0) + '</td></tr>' +
+				'<tr><td>Puhuttuja merkkejä</td><td>' + (t.ch || 0) + '</td><td>' + (w.ch || 0) + '</td><td>' + (m.ch || 0) + '</td></tr>' +
+				'<tr><td>Puhesynteesi, arvio</td><td>' + (c$.today || 0) + ' $</td><td>' + (c$.week || 0) + ' $</td><td>' + (c$.month || 0) + ' $</td></tr></table>' +
+				'<p style="font-size:12px;opacity:.65;margin:6px 0 8px">Puhesynteesin hinta on arvio (noin 16 $ miljoonaa merkkiä kohden); tarkka hinta näkyy Azuren laskussa. Tekoälyn kulu riippuu mallista, katso Anthropic-tilisi käyttö.</p>';
+			wtw.innerHTML = h;
+			var lab = el('label', { style: 'display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer' });
+			var cb = el('input', { type: 'checkbox' }); cb.checked = !!W.mail;
+			lab.appendChild(cb); lab.appendChild(document.createTextNode('✉️ Lähetä vakavista ongelmista sähköposti sivuston ylläpitäjän osoitteeseen'));
+			cb.addEventListener('change', function () { api('POST', D.urls.watchmail, { on: cb.checked }).then(function (j) { D.watch = j; }).catch(function (e) { alert(e.message); cb.checked = !cb.checked; }); });
+			wtw.appendChild(lab);
+			var rf = el('button', { type: 'button', style: 'margin-top:8px' }, '🔄 Päivitä tila'); rf.addEventListener('click', function () { api('GET', D.urls.watch).then(function (j) { D.watch = j; drawWatch(); }); });
+			wtw.appendChild(rf);
+		}
+		drawWatch();
+		if (window.__suorniWatch) { clearInterval(window.__suorniWatch); }
+		window.__suorniWatch = setInterval(function () { if (!document.body.contains(wtw)) { return; } api('GET', D.urls.watch).then(function (j) { D.watch = j; drawWatch(); }).catch(function () {}); }, 60000);
+		var bucket = { yleinen: [wtw, info, sd, mw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, aw, fw], yhteiso: [hD, scw], lista: [upw, bw, tw] };
 		var used = [];
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });
