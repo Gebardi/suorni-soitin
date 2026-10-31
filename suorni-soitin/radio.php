@@ -13,6 +13,7 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-queue.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-lib.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-hist.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-channels.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-need.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-req.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-watch.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-welcome.php';
@@ -1304,6 +1305,7 @@ function suorni_radio_admin_get() {
 		'usable' => count( $pool ),
 		'scripts' => suorni_scripts(),
 		'channels' => suorni_ch_admin(),
+		'need'   => suorni_need_report(),
 		'ads'    => ( function () { $a = suorni_ads(); $cfg = suorni_radio_cfg(); $list = array(); $cand = array(); foreach ( suorni_tracks() as $t ) { if ( ! empty( $t['ann'] ) ) { continue; } if ( ! empty( $t['ad'] ) ) { $list[] = array( 'id' => $t['id'], 'title' => $t['title'], 'dur' => (int) $t['dur'], 'tg' => isset( $a['tg'][ (int) $t['id'] ] ) ? $a['tg'][ (int) $t['id'] ] : 's' ); } elseif ( $t['dur'] > 0 ) { $cand[] = array( 'id' => $t['id'], 'title' => $t['title'] ); } } return array( 'on' => (bool) $a['on'], 'min' => $a['min'], 'max' => $a['max'], 'rmin' => $a['rmin'], 'rmax' => $a['rmax'], 'radads' => ! empty( $cfg['radads'] ), 'list' => $list, 'cand' => $cand, 'vfi' => suorni_tts_public()['vfi'], 'haskey' => suorni_tts_public()['haskey'] ); } )(),
 		'chat'   => array_reverse( array_slice( suorni_chat(), -30 ) ),
 		'djerr'  => (string) get_option( 'suorni_radio_djerr', '' ),

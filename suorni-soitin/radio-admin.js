@@ -515,7 +515,7 @@
 		var sc = document.querySelector('[data-sb-clock]');
 		if (sc) { if (window.__suorniClk) { clearInterval(window.__suorniClk); } var tickc = function () { var d = new Date(); sc.textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }; tickc(); window.__suorniClk = setInterval(tickc, 1000); }
 		var loose = [].slice.call(box.children);
-		var TABS = [['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista'], ['kanavat', '📻 Kanavat'], ['mainokset', '📢 Mainokset']];
+		var TABS = [['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista'], ['kanavat', '📻 Kanavat'], ['tarve', '🎯 Kappaletarve'], ['mainokset', '📢 Mainokset']];
 
 		/* Massalisäys + päivittäinen tarkistus */
 		var upw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
@@ -901,7 +901,45 @@
 			});
 		})();
 
-		var bucket = { yleinen: [wtw, info, sd, mw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, bw, tw], kanavat: [chw, clw], mainokset: [adw] };
+		/* Kappaletarve: missä ohjelmissa ja kanavilla kappaleita puuttuu */
+		var nw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
+		(function () {
+			var N = D.need || { progs: [], chans: [], styles: [], text: '' };
+			var col = { bad: '#ff5a4f', low: '#ffb347', ok: '#e5d04f', good: '#4cc27a' };
+			var lbl = { bad: 'Liian vähän', low: 'Vähän', ok: 'Melkein', good: 'Riittävästi' };
+			function row(name, sub, n, hours, stt, need, hint, warn) {
+				var w = Math.max(3, Math.min(100, Math.round(n / (N.goal || 45) * 100)));
+				return '<div style="padding:8px;margin:5px 0;border:1px solid #2a303b;border-radius:10px;background:#101319"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:baseline;justify-content:space-between"><b>' + esc(name) + '</b><span style="font-size:13px;opacity:.75">' + esc(sub) + '</span><span style="font-size:13px"><b style="color:' + col[stt] + '">' + lbl[stt] + '</b> · ' + n + ' kpl · ' + hours + ' h</span></div>' +
+					'<div style="height:7px;border-radius:4px;background:#252b36;margin:6px 0"><div style="height:7px;border-radius:4px;width:' + w + '%;background:' + col[stt] + '"></div></div>' +
+					(need > 0 ? '<div style="font-size:13px">Tarvitaan noin <b>+' + need + '</b>: ' + esc(hint) + '</div>' : '<div style="font-size:13px;opacity:.7">Riittävästi kappaleita.</div>') + (warn ? '<div style="font-size:12px;color:#ffb347;margin-top:2px">' + esc(warn) + '</div>' : '') + '</div>';
+			}
+			var h = '<h3 style="margin:0 0 6px">🎯 Kappaletarve</h3><p style="font-size:13px;opacity:.8;margin:0 0 8px">Lasketaan oikeasta kappalelistasta. Tavoite on vähintään ' + (N.goal || 45) + ' eri kappaletta jokaista ohjelmaa ja kanavaa kohti (noin 3 tuntia musiikkia ennen toistoa). Päivittyy, kun avaat ohjaamon uudelleen.</p>';
+			h += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:0 0 8px"><span><b>' + (N.playable || 0) + '</b> soitettavaa kappaletta</span><span><b>' + (N.hours || 0) + '</b> h musiikkia</span><span>keskipituus <b>' + (N.avg ? Math.floor(N.avg / 60) + ':' + ('0' + (N.avg % 60)).slice(-2) : '–') + '</b></span>' + (N.nodur ? '<span style="color:#ffb347">' + N.nodur + ' ilman kestoa (ei soi)</span>' : '') + '</div>';
+			h += '<p style="margin:10px 0 2px"><b>Ohjelmat</b></p>';
+			(N.progs || []).forEach(function (p) { h += row(p.name, 'klo ' + p.from + '–' + p.to, p.n, p.hours, p.st, p.need, p.hint, p.only ? p.only + ' kappaletta rajattu vain tiettyihin ohjelmiin' : ''); });
+			if ((N.chans || []).length) {
+				h += '<p style="margin:12px 0 2px"><b>Kanavat</b></p>';
+				N.chans.forEach(function (c) { h += row((c.icon ? c.icon + ' ' : '') + c.name, c.pub ? 'näkyy kuuntelijoille' : (c.on ? 'ei vielä näy (alle 3 kappaletta)' : 'ei käytössä'), c.n, c.hours, c.st, c.need, c.hint, ''); });
+			}
+			var notes = [];
+			if (N.uncl) { notes.push(N.uncl + ' kappaletta ei kuulu millekään omalle kanavalle. Luokittele ne Kanavat-välilehdellä.'); }
+			if (N.short) { notes.push(N.short + ' kappaletta on alle 2 min.'); }
+			if (N.long) { notes.push(N.long + ' kappaletta on yli 5,5 min.'); }
+			if (N.nostyle) { notes.push(N.nostyle + ' kappaleella ei ole tyyli- tai genretietoa.'); }
+			notes.push('Nyt ajankohtaista: ' + (N.season || ''));
+			h += '<p style="margin:12px 0 2px"><b>Muuta</b></p><ul style="margin:0 0 6px 18px;font-size:13px">' + notes.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+			if ((N.styles || []).length) { h += '<p style="font-size:13px;margin:6px 0"><b>Yleisimmät tyylit:</b> ' + N.styles.slice(0, 10).map(function (x) { return esc(x.name) + ' (' + x.n + ')'; }).join(', ') + '</p>'; }
+			h += '<p style="margin:12px 0 4px"><b>Kopioitava tilannekatsaus biisien tekoon</b></p><textarea data-nt readonly rows="12" style="' + st + 'font:13px/1.45 ui-monospace,Menlo,Consolas,monospace"></textarea><div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" data-nc>📋 Kopioi teksti</button><span data-nm style="font-size:13px"></span></div>';
+			nw.innerHTML = h;
+			nw.querySelector('[data-nt]').value = N.text || '';
+			nw.querySelector('[data-nc]').addEventListener('click', function () {
+				var ta = nw.querySelector('[data-nt]'), m = nw.querySelector('[data-nm]');
+				function ok() { m.textContent = '✅ Kopioitu. Liitä se biisiapurille.'; }
+				if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(ta.value).then(ok, function () { ta.select(); try { document.execCommand('copy'); ok(); } catch (e) { m.textContent = 'Valitse teksti ja kopioi käsin.'; } }); }
+				else { ta.select(); try { document.execCommand('copy'); ok(); } catch (e) { m.textContent = 'Valitse teksti ja kopioi käsin.'; } }
+			});
+		})();
+		var bucket = { yleinen: [wtw, info, sd, mw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, bw, tw], kanavat: [chw, clw], tarve: [nw], mainokset: [adw] };
 		var used = [];
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });
