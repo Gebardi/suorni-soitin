@@ -562,6 +562,25 @@
 		lastPing = 0;
 		if (!items.length || !current()) { fetchNow(true); setTimeout(sync, 800); } else { sync(); fetchNow(true); }
 	});
+	/* Jaa nykyinen kappale (?biisi=ID) ja jaetun kappaleen pieni soitin */
+	(function () {
+		var sb = $('[data-share]'), sm = $('[data-sharem]'), shr = document.querySelector('[data-shr] audio'), smT = 0;
+		function say(t) { if (!sm) { return; } sm.textContent = t; clearTimeout(smT); smT = setTimeout(function () { sm.textContent = ''; }, 4000); }
+		if (sb) {
+			sb.addEventListener('click', function () {
+				var c = current(), it = c && c.it;
+				if (!it || it.type !== 'track' || !it.id || it.sub) { say('Tätä ei voi jakaa juuri nyt.'); return; }
+				var u = location.origin + location.pathname + '?biisi=' + it.id + '&src=jako';
+				var data = { title: (it.title || '') + (it.artist ? ' – ' + it.artist : ''), text: 'Kuuntele Radio Suornissa: ' + (it.title || ''), url: u };
+				if (navigator.share) { navigator.share(data).catch(function () {}); return; }
+				if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(u).then(function () { say('✅ Linkki kopioitu'); }, function () { say(u); }); } else { say(u); }
+			});
+		}
+		if (shr) {
+			shr.addEventListener('play', function () { if (playing) { elPlay.click(); } });
+			elPlay.addEventListener('click', function () { if (playing) { try { shr.pause(); } catch (e) {} } });
+		}
+	})();
 	$('[data-vol]').addEventListener('input', function (e) { au.volume = Math.max(0, Math.min(1, e.target.value / 100)) * (duckOn ? duckCur : 1); });
 	var badSent = {};
 	au.addEventListener('error', function () {

@@ -16,6 +16,8 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-channels.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-need.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-push.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-tags.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-seo.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-backup.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-req.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-watch.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-welcome.php';
@@ -1319,6 +1321,8 @@ function suorni_radio_admin_get() {
 		'need'   => suorni_need_report(),
 		'push'   => suorni_push_state(),
 		'tags'   => suorni_tags_state(),
+		'social' => suorni_social_state(),
+		'bk'     => suorni_bk_state(),
 		'ads'    => ( function () { $a = suorni_ads(); $cfg = suorni_radio_cfg(); $list = array(); $cand = array(); foreach ( suorni_tracks() as $t ) { if ( ! empty( $t['ann'] ) ) { continue; } if ( ! empty( $t['ad'] ) ) { $list[] = array( 'id' => $t['id'], 'title' => $t['title'], 'dur' => (int) $t['dur'], 'tg' => isset( $a['tg'][ (int) $t['id'] ] ) ? $a['tg'][ (int) $t['id'] ] : 's' ); } elseif ( $t['dur'] > 0 ) { $cand[] = array( 'id' => $t['id'], 'title' => $t['title'] ); } } return array( 'on' => (bool) $a['on'], 'min' => $a['min'], 'max' => $a['max'], 'rmin' => $a['rmin'], 'rmax' => $a['rmax'], 'radads' => ! empty( $cfg['radads'] ), 'list' => $list, 'cand' => $cand, 'vfi' => suorni_tts_public()['vfi'], 'haskey' => suorni_tts_public()['haskey'] ); } )(),
 		'chat'   => array_reverse( array_slice( suorni_chat(), -30 ) ),
 		'djerr'  => (string) get_option( 'suorni_radio_djerr', '' ),
@@ -1330,7 +1334,7 @@ function suorni_radio_admin_get() {
 		'mon'    => suorni_mon_admin(),
 		'health' => suorni_health_get(), 'watch' => suorni_watch_data(), 'maxup' => (int) wp_max_upload_size(), 'reqs' => suorni_req_admin_list(), 'reqcfg' => suorni_reqcfg(),
 		'sunoleft' => function_exists( 'suorni_suno_left' ) ? suorni_suno_left() : 0,
-		'urls'   => array( 'tags' => suorni_ep( 'radio/tags' ), 'tagdel' => suorni_ep( 'radio/tagdel' ), 'push' => suorni_ep( 'radio/push' ), 'channels' => suorni_ep( 'radio/channels' ), 'classify' => suorni_ep( 'radio/classify' ), 'scripts' => suorni_ep( 'radio/scripts' ), 'scriptprev' => suorni_ep( 'radio/scriptprev' ), 'scriptnow' => suorni_ep( 'radio/scriptnow' ), 'ads' => suorni_ep( 'ads' ), 'adgen' => suorni_ep( 'radio/adgen' ), 'unhide' => suorni_ep( 'radio/unhide' ), 'coverup' => suorni_ep( 'radio/coverup' ), 'chatreply' => suorni_ep( 'radio/chatreply' ), 'watch' => suorni_ep( 'radio/watch' ), 'watchmail' => suorni_ep( 'radio/watchmail' ), 'upload' => suorni_ep( 'radio/upload' ), 'health' => suorni_ep( 'radio/health' ), 'reqact' => suorni_ep( 'radio/reqact' ), 'reqcfg' => suorni_ep( 'radio/reqcfg' ), 'sunocache' => suorni_ep( 'radio/sunocache' ), 'queue' => suorni_ep( 'radio/queue' ), 'queuecut' => suorni_ep( 'radio/queuecut' ), 'commact' => suorni_ep( 'radio/commact' ), 'trackprogs' => suorni_ep( 'radio/trackprogs' ), 'trackboost' => suorni_ep( 'radio/trackboost' ), 'monrenew' => suorni_ep( 'radio/monrenew' ), 'suggest' => suorni_ep( 'radio/suggest' ), 'suggact' => suorni_ep( 'radio/suggact' ), 'trackstyle' => suorni_ep( 'radio/trackstyle' ) ),
+		'urls'   => array( 'bkexport' => suorni_ep( 'radio/export' ), 'bkmake' => suorni_ep( 'radio/bkmake' ), 'bkimport' => suorni_ep( 'radio/import' ), 'bkrestore' => suorni_ep( 'radio/bkrestore' ), 'bkdel' => suorni_ep( 'radio/bkdel' ), 'social' => suorni_ep( 'radio/social' ), 'tags' => suorni_ep( 'radio/tags' ), 'tagdel' => suorni_ep( 'radio/tagdel' ), 'push' => suorni_ep( 'radio/push' ), 'channels' => suorni_ep( 'radio/channels' ), 'classify' => suorni_ep( 'radio/classify' ), 'scripts' => suorni_ep( 'radio/scripts' ), 'scriptprev' => suorni_ep( 'radio/scriptprev' ), 'scriptnow' => suorni_ep( 'radio/scriptnow' ), 'ads' => suorni_ep( 'ads' ), 'adgen' => suorni_ep( 'radio/adgen' ), 'unhide' => suorni_ep( 'radio/unhide' ), 'coverup' => suorni_ep( 'radio/coverup' ), 'chatreply' => suorni_ep( 'radio/chatreply' ), 'watch' => suorni_ep( 'radio/watch' ), 'watchmail' => suorni_ep( 'radio/watchmail' ), 'upload' => suorni_ep( 'radio/upload' ), 'health' => suorni_ep( 'radio/health' ), 'reqact' => suorni_ep( 'radio/reqact' ), 'reqcfg' => suorni_ep( 'radio/reqcfg' ), 'sunocache' => suorni_ep( 'radio/sunocache' ), 'queue' => suorni_ep( 'radio/queue' ), 'queuecut' => suorni_ep( 'radio/queuecut' ), 'commact' => suorni_ep( 'radio/commact' ), 'trackprogs' => suorni_ep( 'radio/trackprogs' ), 'trackboost' => suorni_ep( 'radio/trackboost' ), 'monrenew' => suorni_ep( 'radio/monrenew' ), 'suggest' => suorni_ep( 'radio/suggest' ), 'suggact' => suorni_ep( 'radio/suggact' ), 'trackstyle' => suorni_ep( 'radio/trackstyle' ) ),
 	) );
 }
 
@@ -1371,7 +1375,7 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 .sr details{border-top:1px solid rgba(255,255,255,.12);margin-top:16px;padding-top:10px}
 .sr summary{cursor:pointer;font-weight:600}
 .sr input.rt,.sr textarea.rt{width:100%;margin-top:8px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font:inherit}
-.sr button.rg{margin-top:8px;padding:9px 16px;border-radius:7px;border:1px solid #0e0f12;background:linear-gradient(180deg,#5a5e68,#32353c 55%,#25272c);color:#f2ead7;font:inherit;font-size:14px;font-weight:700;letter-spacing:.5px;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 2px 4px rgba(0,0,0,.5);text-shadow:0 1px 0 #000}.sr button.rg:active{transform:translateY(1px)}
+.sr button.rg,.sr a.rg{margin-top:8px;padding:9px 16px;border-radius:7px;border:1px solid #0e0f12;background:linear-gradient(180deg,#5a5e68,#32353c 55%,#25272c);color:#f2ead7;font:inherit;font-size:14px;font-weight:700;letter-spacing:.5px;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 2px 4px rgba(0,0,0,.5);text-shadow:0 1px 0 #000}.sr button.rg:active,.sr a.rg:active{transform:translateY(1px)}
 .sr .rh{position:absolute;left:-9999px}
 .sr select,.sr input,.sr textarea,.sra select,.sra input,.sra textarea{color-scheme:dark}
 .sr select option,.sra select option{background:#0b1a3a;color:#fff}
@@ -1408,6 +1412,10 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 @media(max-width:999px){.sr .rgrid{display:flex;flex-direction:column}.sr .rcol2{order:1}.sr .rcol3{order:2}.sr .rcol1{order:3}}
 .sr .rcol1 .ri,.sr .rcol3 .rch{margin-top:12px}.sr .rcol1 .ri:first-child{margin-top:0}.sr .rhx{margin:0}.sr .rcol1 .rhr{padding:6px 0;font-size:13px}.sr .rcol1 .rhr .tm{min-width:40px}
 .sr.shop .rhx,.sr.shop .rchn{display:none}
+.sr .rshr{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:rgba(var(--ar),.12);border:1px solid rgba(var(--ar),.45)}.sr .rshr b{display:block;font-size:13px;color:var(--a)}.sr .rshr span{display:block;margin:2px 0 6px;font-weight:600}.sr .rshr audio{width:100%;height:36px}.sr .rshr small{display:block;opacity:.7;margin-top:4px;font-size:12px}
+.sr .rsh{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0 0}.sr .rsh button.rg{margin:0;padding:8px 12px;font-size:13px}.sr .rsh span{font-size:13px;opacity:.85}
+.sr .rsoc{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 0;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)}.sr .rsoc .rsl{font-size:13px;opacity:.75}.sr .rsoc a.rg{display:inline-block;margin:0;padding:8px 12px;font-size:13px;text-decoration:none}.sr .rsoc a.rpro{flex-basis:100%;display:block;margin-top:4px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:700;text-align:center;text-decoration:none;color:#14161a;background:linear-gradient(180deg,var(--a),var(--b))}
+.sr.shop .rsoc,.sr.shop .rsh,.sr.shop .rshr{display:none}
 .sr .rchn{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.sr .rchn button.rg{margin:0;padding:8px 13px;font-size:13px;line-height:1.2;white-space:nowrap}.sr .rchn button.on{border-color:var(--a);color:var(--a);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 0 0 2px rgba(var(--ar),.55),0 0 12px rgba(var(--ar),.45)}
 .sr .rhxt{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.sr .rhxt button.rg{margin:0;padding:8px 10px;font-size:13px}.sr .rhxt button.on{border-color:var(--a);color:var(--a)}
 .sr .rhr{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid rgba(255,255,255,.1);font-size:14px}.sr .rhr:first-child{border-top:0}
@@ -1470,6 +1478,7 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 	</div>
 	</aside>
 	<div class="rcol2">
+	<?php if ( ! $shop ) { echo suorni_share_card_html(); } ?>
 	<?php if ( ! $shop ) : ?><div class="rchn" data-chn role="tablist" aria-label="Kanavat"></div><?php endif; ?>
 	<div class="rb">
 		<button class="rp" data-play aria-label="Kuuntele">▶</button>
@@ -1487,11 +1496,13 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 		<button type="button" class="rg" data-pre="vote"><b>4</b>PEUKUTA</button><?php endif; ?>
 	</div>
 	<div class="rv"><span>VOL</span><input type="range" min="0" max="100" value="100" data-vol aria-label="Äänenvoimakkuus"></div>
+	<?php if ( ! $shop ) : ?><div class="rsh"><button type="button" class="rg" data-share aria-label="Jaa tämä kappale">🔗 Jaa tämä kappale</button><span data-sharem aria-live="polite"></span></div><?php endif; ?>
 	<div class="rc" data-cap></div>
 	<div class="rvt" data-votebox hidden><span data-vlabel>🎵 Uuden artistin kappale</span><button type="button" class="rg" data-vup aria-label="Ylöspeukku">👍 <span data-vu>0</span></button><button type="button" class="rg" data-vdn aria-label="Alapeukku">👎 <span data-vd>0</span></button><button type="button" class="rg" data-vchat>💬 Keskustele</button><span class="rs" data-vst style="margin:0;flex:1 1 100%"></span></div>
 	<?php if ( $cfg['comm'] ) : ?>
 	<div class="ri" data-cq hidden><b>🆕 Tulossa uusilta artisteilta</b><div data-cqlist></div></div>
 	<?php endif; ?>
+	<?php if ( ! $shop ) { echo suorni_social_html(); } ?>
 	</div>
 	<aside class="rcol3">
 	<?php if ( $cfg['chat'] ) : ?>
