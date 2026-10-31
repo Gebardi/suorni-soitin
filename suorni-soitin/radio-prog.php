@@ -128,7 +128,8 @@ function suorni_track_boosted( $t, $cfg ) {
 	$mode = isset( $t['boost'] ) ? $t['boost'] : '';
 	if ( 'off' === $mode ) { return false; }
 	if ( 'on' === $mode ) { return true; }
-	return ! empty( $t['at'] ) && ( time() - (int) $t['at'] ) < $cfg['boost_days'] * DAY_IN_SECONDS;
+	/* Uusien kappaleiden automaattinen tehosoitto on oletuksena pois (asetus boost_auto) */
+	return ! empty( $cfg['boost_auto'] ) && ! empty( $t['at'] ) && ( time() - (int) $t['at'] ) < $cfg['boost_days'] * DAY_IN_SECONDS;
 }
 /* Palauttaa tehosoittokappaleen tai null. Uusi (vielä radiossa soittamaton) kappale soi aina ensin. */
 function suorni_boost_pick( $st, $pool ) {

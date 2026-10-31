@@ -277,7 +277,7 @@
 		var msg = el('p');
 		save.addEventListener('click', function () {
 			progs.forEach(function (p) { if (p.to === '00:00') { p.to = '24:00'; } });
-			api('POST', U.cfg, { on: box.querySelector('[data-on]').checked, name: box.querySelector('[data-name]').value, cover: box.querySelector('[data-cover]').value, greet_mode: box.querySelector('[data-gm]').value, greet_voices: box.querySelector('[data-gv]').checked, chat: box.querySelector('[data-chon]').checked, chat_ai: box.querySelector('[data-chai]').checked, chat_air: box.querySelector('[data-chair]').value, guests: box.querySelector('[data-gon]').checked, comm: box.querySelector('[data-cmon]').checked, comm_share: +box.querySelector('[data-cmsh]').value, comm_min_votes: +box.querySelector('[data-cmmv]').value || 10, comm_min_pct: +box.querySelector('[data-cmmp]').value || 40, comm_max_mb: +box.querySelector('[data-cmmb]').value || 15, guests_every: +box.querySelector('[data-gev]').value || 40, guests_off: +box.querySelector('[data-goff]').value || 0, guests_reply: +box.querySelector('[data-grp]').value, guests_max: +box.querySelector('[data-gmax]').value || 60, guests_list: box.querySelector('[data-glist]').value, chat_block: box.querySelector('[data-chbl]').value, chat_max: +box.querySelector('[data-chmx]').value || 60, news_feed: box.querySelector('[data-nf]').value, sport_feed: box.querySelector('[data-sf]').value, finns: box.querySelector('[data-fin]').value, dj_time: box.querySelector('[data-djt]').checked, dj_weather: box.querySelector('[data-djw]').checked, dj_where: box.querySelector('[data-djwh]').value, dj_lat: +box.querySelector('[data-djla]').value, dj_lon: +box.querySelector('[data-djlo]').value, dj_next: +box.querySelector('[data-djn]').value, dj_titles: box.querySelector('[data-djti]').value, dj_rate: +box.querySelector('[data-djr]').value || 1, dj_talk: box.querySelector('[data-djtk]').value, dj_talks: +box.querySelector('[data-djts]').value || 6, dj_talki: +box.querySelector('[data-djti2]').value || 4, dj_duck: +box.querySelector('[data-djdk]').value || 25, greet_limit: +box.querySelector('[data-gl]').value || 0, showcount: box.querySelector('[data-sc]').checked, welcome: box.querySelector('[data-wel]').checked, wx_show: box.querySelector('[data-wxs]').checked, new_default: box.querySelector('[data-nd]').value, boost_on: box.querySelector('[data-bon]').checked, boost_days: +box.querySelector('[data-bdy]').value || 7, boost_share: +box.querySelector('[data-bsh]').value, tips: box.querySelector('[data-tips]').value, programs: progs })
+			api('POST', U.cfg, { on: box.querySelector('[data-on]').checked, name: box.querySelector('[data-name]').value, cover: box.querySelector('[data-cover]').value, greet_mode: box.querySelector('[data-gm]').value, greet_voices: box.querySelector('[data-gv]').checked, chat: box.querySelector('[data-chon]').checked, chat_ai: box.querySelector('[data-chai]').checked, chat_air: box.querySelector('[data-chair]').value, guests: box.querySelector('[data-gon]').checked, comm: box.querySelector('[data-cmon]').checked, comm_share: +box.querySelector('[data-cmsh]').value, comm_min_votes: +box.querySelector('[data-cmmv]').value || 10, comm_min_pct: +box.querySelector('[data-cmmp]').value || 40, comm_max_mb: +box.querySelector('[data-cmmb]').value || 15, guests_every: +box.querySelector('[data-gev]').value || 40, guests_off: +box.querySelector('[data-goff]').value || 0, guests_reply: +box.querySelector('[data-grp]').value, guests_max: +box.querySelector('[data-gmax]').value || 60, guests_list: box.querySelector('[data-glist]').value, chat_block: box.querySelector('[data-chbl]').value, chat_max: +box.querySelector('[data-chmx]').value || 60, news_feed: box.querySelector('[data-nf]').value, sport_feed: box.querySelector('[data-sf]').value, finns: box.querySelector('[data-fin]').value, dj_time: box.querySelector('[data-djt]').checked, dj_weather: box.querySelector('[data-djw]').checked, dj_where: box.querySelector('[data-djwh]').value, dj_lat: +box.querySelector('[data-djla]').value, dj_lon: +box.querySelector('[data-djlo]').value, dj_next: +box.querySelector('[data-djn]').value, dj_titles: box.querySelector('[data-djti]').value, dj_rate: +box.querySelector('[data-djr]').value || 1, dj_talk: box.querySelector('[data-djtk]').value, dj_talks: +box.querySelector('[data-djts]').value || 6, dj_talki: +box.querySelector('[data-djti2]').value || 4, dj_duck: +box.querySelector('[data-djdk]').value || 25, greet_limit: +box.querySelector('[data-gl]').value || 0, showcount: box.querySelector('[data-sc]').checked, welcome: box.querySelector('[data-wel]').checked, wx_show: box.querySelector('[data-wxs]').checked, new_default: box.querySelector('[data-nd]').value, boost_on: box.querySelector('[data-bon]').checked, boost_auto: box.querySelector('[data-bau]').checked, boost_days: +box.querySelector('[data-bdy]').value || 7, boost_share: +box.querySelector('[data-bsh]').value, tips: box.querySelector('[data-tips]').value, programs: progs })
 				.then(function () { msg.textContent = 'Tallennettu. Uusi ohjelmajono rakentuu seuraavan kuuntelijan myötä.'; })
 				.catch(function (e) { msg.textContent = 'Virhe: ' + e.message; });
 		});
@@ -341,8 +341,9 @@
 
 		/* Radion soittolista: poisto koskee vain radiota, ei mediakirjastoa */
 		var bw = el('div');
-		bw.innerHTML = '<h3 style="margin:14px 0 6px">⚡ Tehosoitto</h3><p style="font-size:13px;opacity:.7;margin:0">Uusi kappale lisätään heti radion soittolistalle, ja se soi seuraavaksi (omien ja yhteisön uusien kappaleiden jälkeen). Sen jälkeen se soi muita useammin määräajan. Voit myös pakottaa tehosoiton päälle tai pois yksittäiselle kappaleelle.</p>' +
-			'<label><input type="checkbox" data-bon' + (c.boost_on ? ' checked' : '') + '> Uudet kappaleet saavat tehosoiton automaattisesti</label>' +
+		bw.innerHTML = '<h3 style="margin:14px 0 6px">⚡ Tehosoitto</h3><p style="font-size:13px;opacity:.7;margin:0">Tehosoitossa oleva kappale soi ensin seuraavaksi (omien ja yhteisön uusien kappaleiden jälkeen) ja sen jälkeen muita useammin määräajan. Uudet kappaleet eivät saa tehosoittoa itsestään, ellet laita automaatiota päälle. Voit valita tehosoiton päälle tai pois yksittäiselle kappaleelle Soittolista-välilehdellä.</p>' +
+			'<label><input type="checkbox" data-bon' + (c.boost_on ? ' checked' : '') + '> Tehosoitto käytössä (kappaleille, joille valitset "Aina päällä")</label><br>' +
+			'<label><input type="checkbox" data-bau' + (c.boost_auto ? ' checked' : '') + '> Uudet kappaleet saavat tehosoiton automaattisesti (oletus pois)</label>' +
 			'<p style="margin:10px 0 2px"><b>Uuden kappaleen oletus</b></p><select style="' + st + '" data-nd><option value="">Soi kaikissa ohjelmissa (yhteinen)</option>' + c.programs.map(function (p) { return '<option value="' + esc(p.id) + '"' + (c.new_default === p.id ? ' selected' : '') + '>Vain ohjelmassa: ' + esc(p.name) + '</option>'; }).join('') + '</select><p style="font-size:13px;opacity:.7;margin:2px 0">Koskee vasta lisättäviä kappaleita. Voit aina muuttaa kappaleen ohjelmat soittolistalla.</p>' +
 			'<p style="margin:6px 0 2px">Kuinka monta päivää uusi kappale on tehosoitossa</p><input style="' + st + '" type="number" min="1" max="90" data-bdy value="' + c.boost_days + '">' +
 			'<p style="margin:6px 0 2px">Kuinka suuri osa kappaleista on tehosoittokappaleita (%)</p><input style="' + st + '" type="number" min="0" max="100" data-bsh value="' + c.boost_share + '">';
@@ -465,7 +466,7 @@
 					});
 					lb.appendChild(cb); lb.appendChild(document.createTextNode(' ' + p.name)); pr.appendChild(lb);
 				});
-				var isNew = c.boost_on && t.at && (Date.now() / 1000 - t.at) < c.boost_days * 86400;
+				var isNew = c.boost_on && c.boost_auto && t.at && (Date.now() / 1000 - t.at) < c.boost_days * 86400;
 				var bm = el('div', { style: 'margin:6px 0;font-size:14px' }, '<span style="opacity:.7">⚡ Tehosoitto:</span> ');
 				var bs = el('select', { style: 'padding:6px;border-radius:8px;font-size:14px' }, '<option value="auto">Automaattinen' + (isNew ? ' (nyt päällä, uusi kappale)' : '') + '</option><option value="on">Aina päällä</option><option value="off">Ei koskaan</option>');
 				bs.value = t.boost === 'on' || t.boost === 'off' ? t.boost : 'auto';
@@ -965,7 +966,44 @@
 			}
 			draw('');
 		})();
-		var bucket = { yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, bw, tw], kanavat: [chw, clw], tarve: [nw], mainokset: [adw] };
+		/* Radio-tagit: sanoitusapurin antamat kanava- ja ohjelmatiedot kappaleille */
+		var tgw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
+		(function () {
+			var G = D.tags || { list: [], chn: [], prn: [] };
+			var sm = st.replace('width:100%;', 'width:auto;');
+			function guide() {
+				return 'Kun teet kappaleesta valmiin, anna lopuksi jokaisesta kappaleesta yksi Radio-tagi -rivi tässä muodossa:\n\n' +
+					'Kappaleen nimi | kanavat: Iskelmä, Miesten ilta | ohjelmat: Ilta, Yö | tyyli: lämmin iskelmä, haitari, keskitempo | kuvaus: yksi lause kappaleen tarinasta\n\n' +
+					'Säännöt:\n- Kappaleen nimi on täsmälleen sama kuin tiedoston/kappaleen nimi.\n- Kanavat valitaan vain näistä: ' + (G.chn.length ? G.chn.join(', ') : '(ei omia kanavia vielä)') + '. Kappale voi kuulua usealle kanavalle. Jos kappale sopii vain pääkanavalle, jätä kanavat-kenttä pois.\n- Ohjelmat valitaan näistä: ' + (G.prn.length ? G.prn.join(', ') : '–') + ' (1–3 kpl). Jos kappale sopii kaikkiin, kirjoita: ohjelmat: kaikki.\n- Tyyli kuvataan soittimilla, tempolla ja tunnelmalla, ei artistin nimellä.\n- Kuvaus on yksi lyhyt lause, ilman Suno-mainintoja.\n- Anna kaikki rivit samassa viestissä peräkkäin, yksi rivi per kappale.';
+			}
+			function draw(msg) {
+				var rows = G.list.map(function (e) {
+					var st2 = e.n > 0 ? '<span style="color:#4cc27a">✅ käytetty ' + e.n + ' kappaleelle</span>' : '<span style="color:#ffb347">⏳ odottaa kappaletta</span>';
+					return '<div style="padding:7px 8px;margin:4px 0;border:1px solid #2a303b;border-radius:10px;background:#101319;font-size:13px"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:baseline;justify-content:space-between"><b>' + esc(e.t) + '</b><span>' + st2 + ' <button type="button" data-tgd="' + esc(e.key) + '" style="padding:2px 8px" title="Poista rivi (kappaleiden luokitus säilyy)">🗑</button></span></div>' +
+						'<div style="opacity:.85">Kanavat: ' + (e.ch.length ? esc(e.ch.join(', ')) : '–') + ' · Ohjelmat: ' + (e.pr.length ? esc(e.pr.join(', ')) : '–') + (e.st ? ' · Tyyli: ' + esc(e.st) : '') + '</div>' +
+						(e.bad.length ? '<div style="color:#ffb347;margin-top:2px">⚠️ Tuntematon: ' + esc(e.bad.join(', ')) + ' (tarkista nimi tai luo kanava)</div>' : '') + '</div>';
+				}).join('');
+				tgw.innerHTML = '<h3 style="margin:0 0 6px">🏷️ Sanoittajan tiedot (Radio-tagit)</h3>' +
+					'<p style="font-size:13px;opacity:.8;margin:0 0 8px">Liitä tähän sanoitusapurin antamat rivit. Kun samanniminen kappale on tai tulee mediakirjastoon, se lisätään heti oikeille kanaville ja ohjelmiin, ja sille tallennetaan tyyli ja kuvaus. Rivin muoto:<br><code style="font-size:12px">Kappaleen nimi | kanavat: Iskelmä, Miesten ilta | ohjelmat: Ilta | tyyli: lämmin iskelmä, haitari | kuvaus: lyhyt tarina</code></p>' +
+					'<textarea data-tgt rows="6" style="' + st + 'font:13px/1.45 ui-monospace,Menlo,Consolas,monospace" placeholder="Liitä rivit tähän, yksi rivi per kappale"></textarea>' +
+					'<div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" data-tgs>💾 Tallenna tiedot</button><button type="button" data-tgc>📋 Kopioi ohje sanoitusapurille</button><span data-tgm style="font-size:13px">' + (msg || '') + '</span></div>' +
+					'<p style="margin:12px 0 2px"><b>Tallennetut rivit (' + G.list.length + ')</b></p>' + (rows || '<div style="font-size:13px;opacity:.7">Ei vielä rivejä.</div>');
+				var g = function (k) { return tgw.querySelector(k); };
+				g('[data-tgs]').addEventListener('click', function () {
+					var txt = g('[data-tgt]').value; if (!txt.trim()) { g('[data-tgm]').textContent = 'Liitä ensin rivit.'; return; }
+					g('[data-tgm]').textContent = 'Tallennetaan…';
+					api('POST', D.urls.tags, { text: txt }).then(function (j) { G = j.tags; D.tags = G; draw('✅ ' + j.added + ' uutta, ' + j.replaced + ' korvattua. Käytetty heti ' + j.applied + ' kappaleelle.'); }).catch(function (e) { g('[data-tgm]').textContent = '⚠️ ' + e.message; });
+				});
+				g('[data-tgc]').addEventListener('click', function () {
+					var tx = guide(), m = g('[data-tgm]');
+					function ok() { m.textContent = '✅ Ohje kopioitu. Liitä se sanoitusapurille.'; }
+					if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(tx).then(ok, function () { m.textContent = 'Kopiointi ei onnistunut.'; }); } else { m.textContent = 'Kopiointi ei onnistunut.'; }
+				});
+				tgw.querySelectorAll('[data-tgd]').forEach(function (b) { b.addEventListener('click', function () { api('POST', D.urls.tagdel, { key: b.getAttribute('data-tgd') }).then(function (j) { G = j.tags; D.tags = G; draw(''); }).catch(function (e) { alert(e.message); }); }); });
+			}
+			draw('');
+		})();
+		var bucket = { yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, tgw, bw, tw], kanavat: [chw, clw], tarve: [nw], mainokset: [adw] };
 		var used = [];
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });
