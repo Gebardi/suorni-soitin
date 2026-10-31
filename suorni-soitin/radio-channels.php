@@ -8,11 +8,70 @@ function suorni_ch_cur() { return isset( $GLOBALS['suorni_ch'] ) ? (string) $GLO
 function suorni_ch_set( $c ) { $GLOBALS['suorni_ch'] = (string) $c; }
 function suorni_ch_sfx() { $c = suorni_ch_cur(); return '' === $c ? '' : '_' . $c; }
 
+
+/* ---------- Ulkoasu: valmiit tyylit + omat värit + taustakuva ---------- */
+function suorni_ch_styles() {
+	return array(
+		array( 'id' => 'classic', 'name' => 'Retro-oranssi (oletus)', 'a' => '#ffb347', 'b' => '#ff8a1f', 'bg' => '#0f141d' ),
+		array( 'id' => 'metal', 'name' => 'Metalli', 'a' => '#ff3b3b', 'b' => '#a3121b', 'bg' => '#140808' ),
+		array( 'id' => 'party', 'name' => 'Party', 'a' => '#ff4fd8', 'b' => '#7c4dff', 'bg' => '#170a26' ),
+		array( 'id' => 'iskelma', 'name' => 'Iskelmä', 'a' => '#ffd27a', 'b' => '#e0707a', 'bg' => '#1f1316' ),
+		array( 'id' => 'teras', 'name' => 'Teräs (miesten ilta)', 'a' => '#6fb1ff', 'b' => '#2f6fd0', 'bg' => '#0a1320' ),
+		array( 'id' => 'rauhallinen', 'name' => 'Rauhallinen', 'a' => '#7fd6c2', 'b' => '#3aa08c', 'bg' => '#0a1a1c' ),
+	);
+}
+function suorni_ch_style_find( $id ) {
+	foreach ( suorni_ch_styles() as $x ) { if ( $x['id'] === $id ) { return $x; } }
+	return null;
+}
+/* Arvaa tyyli kanavan nimestä (uusi kanava, jolle ei ole valittu tyyliä) */
+function suorni_ch_style_guess( $name ) {
+	$n   = mb_strtolower( $name );
+	$map = array(
+		'metal' => array( 'metal', 'rock', 'raskas', 'hevi' ),
+		'party' => array( 'party', 'juhl', 'bile', 'dance', 'tanss', 'disco' ),
+		'iskelma' => array( 'iskelm', 'suomi', 'tango', 'schlager' ),
+		'teras' => array( 'mies', 'sauna', 'garage', 'autotalli' ),
+		'rauhallinen' => array( 'rauhall', 'chill', 'lounge', 'rento', 'yö', 'uni' ),
+	);
+	foreach ( $map as $st => $words ) {
+		foreach ( $words as $w ) { if ( false !== mb_strpos( $n, $w ) ) { return $st; } }
+	}
+	return '';
+}
+/* Tallennettava ulkoasu: st (tyyli), a/b/bg (omat värit, tyhjä = tyylin väri), img (taustakuvan osoite) */
+function suorni_ch_th_norm( $raw ) {
+	$raw = is_array( $raw ) ? $raw : array();
+	$st  = isset( $raw['st'] ) ? sanitize_key( $raw['st'] ) : '';
+	if ( '' !== $st && ! suorni_ch_style_find( $st ) ) { $st = ''; }
+	$out = array( 'st' => $st );
+	foreach ( array( 'a', 'b', 'bg' ) as $k ) {
+		$v = isset( $raw[ $k ] ) ? sanitize_hex_color( trim( (string) $raw[ $k ] ) ) : '';
+		$out[ $k ] = $v ? strtolower( $v ) : '';
+	}
+	$out['img'] = isset( $raw['img'] ) ? esc_url_raw( trim( (string) $raw['img'] ) ) : '';
+	return $out;
+}
+/* Kuuntelijalle näytettävä ulkoasu: {a,b,bg,img} tai null, jos oletusilme */
+function suorni_ch_th_out( $th ) {
+	$th = suorni_ch_th_norm( $th );
+	if ( '' === $th['st'] && '' === $th['a'] && '' === $th['b'] && '' === $th['bg'] && '' === $th['img'] ) { return null; }
+	if ( 'classic' === $th['st'] && '' === $th['a'] && '' === $th['b'] && '' === $th['bg'] && '' === $th['img'] ) { return null; }
+	$base = suorni_ch_style_find( '' !== $th['st'] ? $th['st'] : 'classic' );
+	return array(
+		'a'   => '' !== $th['a'] ? $th['a'] : $base['a'],
+		'b'   => '' !== $th['b'] ? $th['b'] : $base['b'],
+		'bg'  => '' !== $th['bg'] ? $th['bg'] : $base['bg'],
+		'img' => $th['img'],
+	);
+}
+
 function suorni_ch_main() {
 	$m = get_option( 'suorni_chmain', array() );
 	return array(
 		'name' => ( is_array( $m ) && ! empty( $m['name'] ) ) ? (string) $m['name'] : 'Kaikki',
 		'icon' => ( is_array( $m ) && ! empty( $m['icon'] ) ) ? (string) $m['icon'] : '📻',
+		'th'   => suorni_ch_th_norm( ( is_array( $m ) && isset( $m['th'] ) ) ? $m['th'] : array() ),
 	);
 }
 function suorni_ch_all() {
@@ -21,7 +80,7 @@ function suorni_ch_all() {
 	$out = array();
 	foreach ( $c as $x ) {
 		if ( is_array( $x ) && ! empty( $x['id'] ) && ! empty( $x['name'] ) ) {
-			$out[] = array( 'id' => (string) $x['id'], 'name' => (string) $x['name'], 'icon' => isset( $x['icon'] ) ? (string) $x['icon'] : '', 'list' => isset( $x['list'] ) ? (string) $x['list'] : '', 'on' => ! isset( $x['on'] ) || ! empty( $x['on'] ) );
+			$out[] = array( 'id' => (string) $x['id'], 'name' => (string) $x['name'], 'icon' => isset( $x['icon'] ) ? (string) $x['icon'] : '', 'list' => isset( $x['list'] ) ? (string) $x['list'] : '', 'on' => ! isset( $x['on'] ) || ! empty( $x['on'] ), 'th' => suorni_ch_th_norm( isset( $x['th'] ) ? $x['th'] : array() ) );
 		}
 	}
 	return $out;
@@ -53,10 +112,12 @@ function suorni_ch_public() {
 	$c = get_transient( 'suorni_ch_pub' );
 	if ( is_array( $c ) ) { return $c; }
 	$m   = suorni_ch_main();
-	$out = array( array( 'id' => '', 'name' => $m['name'], 'icon' => $m['icon'] ) );
+	$mt  = suorni_ch_th_out( $m['th'] );
+	$out = array( array_merge( array( 'id' => '', 'name' => $m['name'], 'icon' => $m['icon'] ), $mt ? array( 'th' => $mt ) : array() ) );
 	foreach ( suorni_ch_all() as $x ) {
 		if ( ! $x['on'] || count( suorni_ch_tracks( $x['id'] ) ) < 3 ) { continue; }
-		$out[] = array( 'id' => $x['id'], 'name' => $x['name'], 'icon' => $x['icon'] );
+		$xt    = suorni_ch_th_out( $x['th'] );
+		$out[] = array_merge( array( 'id' => $x['id'], 'name' => $x['name'], 'icon' => $x['icon'] ), $xt ? array( 'th' => $xt ) : array() );
 	}
 	set_transient( 'suorni_ch_pub', $out, 120 );
 	return $out;
@@ -79,7 +140,7 @@ function suorni_ch_ids() {
 function suorni_ch_admin() {
 	$out = array();
 	foreach ( suorni_ch_all() as $c ) { $c['n'] = count( suorni_ch_tracks( $c['id'] ) ); $out[] = $c; }
-	return array( 'main' => suorni_ch_main(), 'list' => $out );
+	return array( 'main' => suorni_ch_main(), 'list' => $out, 'styles' => suorni_ch_styles() );
 }
 function suorni_ch_post( $req ) {
 	$in = $req->get_param( 'channels' );
@@ -96,6 +157,7 @@ function suorni_ch_post( $req ) {
 		if ( '' === $name ) { continue; }
 		$icon = mb_substr( trim( sanitize_text_field( isset( $x['icon'] ) ? $x['icon'] : '' ) ), 0, 8 );
 		$id   = sanitize_key( isset( $x['id'] ) ? $x['id'] : '' );
+		$is_new = '' === $id;
 		if ( '' === $id ) { $id = sanitize_title( $name ); }
 		if ( '' === $id ) { $id = 'kanava'; }
 		$id   = substr( $id, 0, 24 );
@@ -113,14 +175,16 @@ function suorni_ch_post( $req ) {
 			$lists[] = array( 'id' => $lid, 'name' => $name, 'ids' => array() );
 			$lch     = true;
 		}
-		$out[] = array( 'id' => $id, 'name' => $name, 'icon' => $icon, 'list' => $lid, 'on' => ! isset( $x['on'] ) || ! empty( $x['on'] ) );
+		$th = suorni_ch_th_norm( isset( $x['th'] ) ? $x['th'] : array() );
+		if ( $is_new && '' === $th['st'] && '' === $th['a'] && '' === $th['b'] && '' === $th['bg'] && '' === $th['img'] ) { $th['st'] = suorni_ch_style_guess( $name ); }
+		$out[] = array( 'id' => $id, 'name' => $name, 'icon' => $icon, 'list' => $lid, 'on' => ! isset( $x['on'] ) || ! empty( $x['on'] ), 'th' => $th );
 	}
 	if ( $lch ) { update_option( 'suorni_lists', $lists, false ); }
 	update_option( 'suorni_channels', $out, false );
 	$m = $req->get_param( 'main' );
 	if ( is_array( $m ) ) {
 		$mn = mb_substr( trim( sanitize_text_field( isset( $m['name'] ) ? $m['name'] : '' ) ), 0, 24 );
-		update_option( 'suorni_chmain', array( 'name' => '' !== $mn ? $mn : 'Kaikki', 'icon' => mb_substr( trim( sanitize_text_field( isset( $m['icon'] ) ? $m['icon'] : '' ) ), 0, 8 ) ), false );
+		update_option( 'suorni_chmain', array( 'name' => '' !== $mn ? $mn : 'Kaikki', 'icon' => mb_substr( trim( sanitize_text_field( isset( $m['icon'] ) ? $m['icon'] : '' ) ), 0, 8 ), 'th' => suorni_ch_th_norm( isset( $m['th'] ) ? $m['th'] : array() ) ), false );
 	}
 	delete_transient( 'suorni_ch_pub' );
 	return suorni_json( array( 'ch' => suorni_ch_admin(), 'lists' => suorni_lists() ) );

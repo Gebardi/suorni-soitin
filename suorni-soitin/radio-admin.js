@@ -701,11 +701,48 @@
 			var sm = st.replace('width:100%;', 'width:auto;');
 			chw.innerHTML = '<h3 style="margin:0 0 6px">📻 Kanavat</h3><p style="font-size:13px;opacity:.8;margin:0 0 8px">Kuuntelija valitsee soittimen yläpuolelta kanavan, ja kanavalla soi vain sen soittolistan musiikki. Juontajat, ohjelmat, sää, uutiset ja mainokset ovat kaikilla kanavilla samat. <b>Kaikki</b>-kanavalla soi kaikki musiikki ja kuuntelijoiden lähettämät kappaleet. Kanava näkyy kuuntelijoille, kun sillä on vähintään 3 kappaletta. Kanavan aikajana rakennetaan vain, kun sillä on kuuntelija.</p><div data-chl></div><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" data-chn>＋ Uusi kanava</button><button type="button" data-chs>💾 Tallenna kanavat</button><span data-chst style="font-size:13px"></span></div>';
 			var box = chw.querySelector('[data-chl]'), stt = chw.querySelector('[data-chst]');
+			/* Ulkoasu: valmis tyyli + omat värit + taustakuva (näkyy kuuntelijalla koko etusivulla) */
+			function thEditor(o) {
+				if (!o.th) { o.th = { st: '', a: '', b: '', bg: '', img: '' }; }
+				var t = o.th, S = (CH.styles && CH.styles.length) ? CH.styles : [{ id: 'classic', name: 'Retro-oranssi (oletus)', a: '#ffb347', b: '#ff8a1f', bg: '#0f141d' }];
+				var w = el('div', { style: 'flex-basis:100%;width:100%;margin-top:6px;padding-top:6px;border-top:1px dashed #2a303b' });
+				var so = '<option value="">(oletus: retro-oranssi)</option>' + S.filter(function (x) { return x.id !== 'classic'; }).map(function (x) { return '<option value="' + esc(x.id) + '"' + (x.id === t.st ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('');
+				w.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><b style="font-size:13px">🎨 Ulkoasu</b><select style="' + sm + '" data-ts aria-label="Ulkoasun tyyli">' + so + '</select>' +
+					'<label style="font-size:13px">Pääväri <input type="color" data-ta></label><label style="font-size:13px">Toinen väri <input type="color" data-tb></label><label style="font-size:13px">Tausta <input type="color" data-tg></label>' +
+					'<button type="button" data-tr title="Palauta tyylin omat värit">↺ Tyylin värit</button><span data-tp style="display:inline-block;min-width:92px;padding:5px 10px;border-radius:8px;font-size:13px;font-weight:700;text-align:center;border:1px solid #444">Esikatselu</span></div>' +
+					'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px"><input style="' + sm + 'flex:1;min-width:200px" data-ti placeholder="Taustakuva (kuvan osoite, tyhjä = pelkkä väri)" value="' + esc(t.img || '') + '"><button type="button" data-tu>📷 Lataa taustakuva</button><button type="button" data-tx>Poista kuva</button><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" data-tf><span data-tm style="font-size:12px;opacity:.85"></span></div>';
+				var g = function (k) { return w.querySelector(k); };
+				function base() { return S.filter(function (x) { return x.id === (t.st || 'classic'); })[0] || S[0]; }
+				function paint() {
+					var b = base(), a = t.a || b.a, c2 = t.b || b.b, bgc = t.bg || b.bg;
+					g('[data-ta]').value = a; g('[data-tb]').value = c2; g('[data-tg]').value = bgc;
+					var pv = g('[data-tp]'); pv.style.background = 'linear-gradient(135deg,' + bgc + ',' + c2 + ')'; pv.style.color = a;
+				}
+				g('[data-ts]').addEventListener('change', function (e) { t.st = e.target.value; t.a = ''; t.b = ''; t.bg = ''; paint(); });
+				g('[data-ta]').addEventListener('input', function (e) { t.a = e.target.value; paint(); });
+				g('[data-tb]').addEventListener('input', function (e) { t.b = e.target.value; paint(); });
+				g('[data-tg]').addEventListener('input', function (e) { t.bg = e.target.value; paint(); });
+				g('[data-tr]').addEventListener('click', function () { t.a = ''; t.b = ''; t.bg = ''; paint(); });
+				g('[data-ti]').addEventListener('input', function (e) { t.img = e.target.value.trim(); });
+				g('[data-tx]').addEventListener('click', function () { t.img = ''; g('[data-ti]').value = ''; g('[data-tm]').textContent = 'Muista Tallenna kanavat.'; });
+				g('[data-tu]').addEventListener('click', function () { g('[data-tf]').click(); });
+				g('[data-tf]').addEventListener('change', function (e) {
+					var f = e.target.files && e.target.files[0]; if (!f) { return; }
+					var mg = g('[data-tm]'), bu = g('[data-tu]'); mg.textContent = '⏳ Ladataan…'; bu.disabled = true;
+					var fd = new FormData(); fd.append('file', f);
+					fetch(D.urls.coverup, { method: 'POST', credentials: 'same-origin', headers: { 'X-WP-Nonce': nonce }, body: fd }).then(function (r) { return r.json().then(function (j) { if (!r.ok) { throw new Error(j.message || 'Virhe'); } return j; }); }).then(function (j) {
+						t.img = j.url; g('[data-ti]').value = j.url; mg.textContent = '✅ Kuva ladattu. Paina lopuksi Tallenna kanavat.'; bu.disabled = false; e.target.value = '';
+					}).catch(function (er) { mg.textContent = '❌ ' + er.message; bu.disabled = false; });
+				});
+				paint();
+				return w;
+			}
 			function drawCh() {
 				box.innerHTML = '';
 				var m = el('div', { style: 'padding:8px;margin:6px 0;border:1px solid #2a303b;border-radius:10px;background:#101319;display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, '<input style="' + sm + 'width:64px" data-mi maxlength="8" value="' + esc(mainC.icon) + '" aria-label="Kuvake"><input style="' + sm + 'flex:1;min-width:140px" data-mn maxlength="24" value="' + esc(mainC.name) + '" aria-label="Pääkanavan nimi"><span style="font-size:13px;opacity:.75">Pääkanava, kaikki musiikki (aina käytössä)</span>');
 				m.querySelector('[data-mi]').addEventListener('input', function (e) { mainC.icon = e.target.value; });
 				m.querySelector('[data-mn]').addEventListener('input', function (e) { mainC.name = e.target.value; });
+				m.appendChild(thEditor(mainC));
 				box.appendChild(m);
 				L.forEach(function (c, i) {
 					var n = D.lists.filter(function (l) { return l.id === c.list; })[0];
@@ -721,6 +758,7 @@
 					q2('[data-co]').addEventListener('change', function (e) { c.on = e.target.checked; });
 					q2('[data-cl]').addEventListener('change', function (e) { c.list = e.target.value; });
 					q2('[data-cd]').addEventListener('click', function () { if (confirm('Poistetaanko kanava ' + (c.name || '') + '? Soittolista ja sen kappaleet säilyvät.')) { L.splice(i, 1); drawCh(); } });
+					r.appendChild(thEditor(c));
 					box.appendChild(r);
 				});
 			}

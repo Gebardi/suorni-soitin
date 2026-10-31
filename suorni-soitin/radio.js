@@ -70,11 +70,43 @@
 		return v && chKnown(v) ? v : '';
 	})();
 	root.setAttribute('data-curch', ch);
+	/* Kanavan oma ulkoasu: värit, taustakuva ja koko etusivun tausta (CSS-muuttujat html-elementillä) */
+	var themeMeta = null, themeMetaOrig = '';
+	var THV = ['--sch-a', '--sch-b', '--sch-ar', '--sch-bg0', '--sch-bgh', '--sch-tx', '--sch-page'];
+	function hex2rgb(h) { h = String(h || '').replace('#', ''); if (h.length === 3) { h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2]; } if (!/^[0-9a-f]{6}$/i.test(h)) { return null; } return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)]; }
+	function mixc(c, t, f) { return [Math.round(c[0] + (t[0] - c[0]) * f), Math.round(c[1] + (t[1] - c[1]) * f), Math.round(c[2] + (t[2] - c[2]) * f)]; }
+	function rgbs(c) { return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'; }
+	function applyTheme() {
+		var th = null, hh = document.documentElement;
+		for (var ti = 0; ti < chs.length; ti++) { if (chs[ti].id === ch) { th = chs[ti].th || null; } }
+		var A = th && hex2rgb(th.a), B = th && hex2rgb(th.b), G = th && hex2rgb(th.bg);
+		if (!th || !A || !B || !G) {
+			hh.classList.remove('sch-on');
+			THV.forEach(function (k) { hh.style.removeProperty(k); });
+			if (themeMeta) { themeMeta.setAttribute('content', themeMetaOrig); }
+			return;
+		}
+		var W = [255, 255, 255], K = [0, 0, 0];
+		var bg1 = mixc(G, W, 0.12), bg0 = mixc(G, K, 0.45), bgh = mixc(G, W, 0.1);
+		var page;
+		if (th.img && /^(https?:)?\/\//i.test(th.img)) {
+			page = 'linear-gradient(rgba(' + G.join(',') + ',.74),rgba(' + bg0.join(',') + ',.93)),url("' + th.img.replace(/["\\\s()]/g, encodeURIComponent) + '") center/cover no-repeat fixed';
+		} else {
+			page = 'radial-gradient(120% 60% at 50% 0%,' + rgbs(bg1) + ' 0%,' + rgbs(G) + ' 55%,' + rgbs(bg0) + ' 100%) fixed';
+		}
+		hh.style.setProperty('--sch-a', th.a); hh.style.setProperty('--sch-b', th.b); hh.style.setProperty('--sch-ar', A.join(','));
+		hh.style.setProperty('--sch-bg0', rgbs(bg0)); hh.style.setProperty('--sch-bgh', rgbs(bgh)); hh.style.setProperty('--sch-tx', rgbs(mixc(A, W, 0.65)));
+		hh.style.setProperty('--sch-page', page);
+		hh.classList.add('sch-on');
+		if (!themeMeta) { themeMeta = document.querySelector('meta[name="theme-color"]'); themeMetaOrig = themeMeta ? themeMeta.getAttribute('content') : ''; }
+		if (themeMeta) { themeMeta.setAttribute('content', rgbs(bg0)); }
+	}
 	function drawChn() {
 		if (!chn) { return; }
 		var sig = JSON.stringify(chs) + '|' + ch;
 		if (chn.getAttribute('data-sig') === sig) { return; }
 		chn.setAttribute('data-sig', sig);
+		applyTheme();
 		chn.innerHTML = '';
 		chs.forEach(function (c) {
 			var b = document.createElement('button');
@@ -356,9 +388,9 @@
 	var autoTried = false, tapArmed = false;
 	function blocked() {
 		var hn = root.querySelector('[data-hint]');
-		if (!hn) { hn = document.createElement('div'); hn.setAttribute('data-hint', ''); hn.className = 'rc'; hn.style.color = '#ffb347'; elCap.parentNode.insertBefore(hn, elCap); }
+		if (!hn) { hn = document.createElement('div'); hn.setAttribute('data-hint', ''); hn.className = 'rc'; hn.style.color = 'var(--a)'; elCap.parentNode.insertBefore(hn, elCap); }
 		hn.textContent = '👆 Napauta mihin tahansa aloittaaksesi radion (selain vaatii napautuksen).';
-		elPlay.style.boxShadow = '0 0 0 8px rgba(255,179,71,.7)';
+		elPlay.style.boxShadow = '0 0 0 8px rgba(var(--ar),.7)';
 		if (tapArmed) { return; }
 		tapArmed = true;
 		var go = function (ev) { document.removeEventListener('pointerdown', go, true); tapArmed = false; elPlay.style.boxShadow = ''; if (ev && ev.target && elPlay.contains(ev.target)) { return; } if (!playing) { elPlay.click(); } };
@@ -655,7 +687,7 @@
 			shopData = d;
 			var was = shopOpen; shopOpen = d.open;
 			var hint = root.querySelector('[data-shophint]');
-			if (!hint) { hint = document.createElement('div'); hint.setAttribute('data-shophint', ''); hint.className = 'rc'; hint.style.cssText = 'color:#ffb347;font-weight:700'; elCap.parentNode.insertBefore(hint, elCap); }
+			if (!hint) { hint = document.createElement('div'); hint.setAttribute('data-shophint', ''); hint.className = 'rc'; hint.style.cssText = 'color:var(--a);font-weight:700'; elCap.parentNode.insertBefore(hint, elCap); }
 			if (!d.open) {
 				hint.textContent = '🔒 Myymälä on suljettu' + (d.next ? '. Musiikki alkaa ' + d.next + '.' : '.');
 				if (playing) { autoStop = true; elPlay.click(); autoStop = false; }
