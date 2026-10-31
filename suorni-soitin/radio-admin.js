@@ -61,10 +61,18 @@
 		var s = D.stats, sd = el('div');
 		var rows = s.days.slice(0, 7).map(function (d) { return '<tr><td>' + d.day + '</td><td>' + d.unique + '</td><td>' + d.minutes + ' min</td><td>' + d.avg + ' min</td></tr>'; }).join('');
 		var pendS = (D.subs || []).filter(function (x) { return x.status === 'pending'; }).length, pendG = (D.greets || []).filter(function (g) { return ['ok', 'no', 'played'].indexOf(g.status) < 0; }).length, pendR = (D.reqs || []).filter(function (x) { return x.st === 'pending'; }).length;
+		var srcTot = 0, srcMax = 1; (s.src || []).forEach(function (r) { srcTot += r[1]; if (r[1] > srcMax) { srcMax = r[1]; } });
+		var srcUnk = Math.max(0, (s.week_sum || 0) - srcTot);
+		function barRow(lbl, n, mx) { return '<div style="display:flex;align-items:center;gap:8px;margin:3px 0;font-size:14px"><span style="width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(lbl) + '</span><span style="flex:1;background:rgba(255,255,255,.08);border-radius:4px;height:12px"><i style="display:block;height:12px;border-radius:4px;background:var(--sp-acc,#ffb347);width:' + Math.max(2, Math.round(n / mx * 100)) + '%"></i></span><b style="width:34px;text-align:right">' + n + '</b></div>'; }
+		var srcHtml = (s.src || []).length ? (s.src || []).map(function (r) { return barRow(r[0], r[1], srcMax); }).join('') + (srcUnk > 0 ? '<div style="font-size:13px;opacity:.65;margin-top:4px">Lähde tuntematon: ' + srcUnk + ' (ennen seurannan käyttöönottoa)</div>' : '') : '<p style="font-size:13px;opacity:.7">Ei vielä tietoja. Lähde alkaa kertyä, kun kuuntelijat tulevat sivulle.</p>';
+		var hrs = s.hours14 || [], hrMax = 1; hrs.forEach(function (v) { if (v > hrMax) { hrMax = v; } });
+		var hourHtml = '<div style="display:flex;align-items:flex-end;gap:2px;height:70px">' + hrs.map(function (v, i) { return '<i title="' + i + ':00 – ' + v + ' min" style="flex:1;border-radius:2px 2px 0 0;background:var(--sp-acc,#ffb347);opacity:' + (v ? 1 : .18) + ';height:' + Math.max(3, Math.round(v / hrMax * 100)) + '%"></i>'; }).join('') + '</div><div style="display:flex;justify-content:space-between;font-size:11px;opacity:.6"><span>0</span><span>6</span><span>12</span><span>18</span><span>23</span></div>';
 		function tile(v, l) { return '<div class="st-tile"><b>' + v + '</b><span>' + l + '</span></div>'; }
 		sd.innerHTML = '<h3>Yleiskatsaus</h3><div class="st-tiles">' + tile(s.live, 'Kuuntelijaa nyt') + tile(s.week_sum, 'Kuuntelijaa viikolla') + tile(s.peak_hour >= 0 ? s.peak_hour + ':00' : '–', 'Vilkkain tunti tänään') + tile(D.usable, 'Soitettavaa kappaletta') + tile(pendS + pendG + pendR, 'Odottaa käsittelyä') + '</div>' +
 			'<h3>Kuuntelijat viikolla</h3>' + '<table style="width:100%;font-size:14px;border-collapse:collapse"><tr style="text-align:left"><th>Päivä</th><th>Kuuntelijoita</th><th>Kuunteluaika</th><th>Keskim.</th></tr>' + rows + '</table>' +
-			'<p style="font-size:13px;opacity:.7">Tilastot ovat anonyymejä (ei evästeitä, ei tunnistetietoja). Sama kuuntelija lasketaan kerran päivässä.</p>';
+			'<h3>Mistä kuuntelijat tulevat (7 pv)</h3>' + srcHtml + '<h3>Kuunteluaika tunneittain (14 pv, min)</h3>' + hourHtml +
+			'<p style="font-size:13px;opacity:.7">Tilastot ovat anonyymejä (ei evästeitä, ei tunnistetietoja). Sama kuuntelija lasketaan kerran päivässä. Huippu viikolla: <b>' + (s.peak_live || 0) + '</b> kuuntelijaa yhtä aikaa.</p>' +
+			'<p style="font-size:13px;opacity:.7">💡 Käytä somessa linkkiä <b>suorni.fi/?src=tiktok</b>. Eri videoille voit tehdä omat tunnisteet (esim. <b>?src=video1</b>), jolloin näet, mikä video toi kuuntelijoita. Tunniste on 1–20 merkkiä: a–z, 0–9, - ja _.</p>';
 		box.appendChild(sd);
 
 		/* Asetukset */

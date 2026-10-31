@@ -920,6 +920,9 @@ function suorni_radio_extend( &$log, $now, $horizon ) {
 }
 
 /* ---------- Tilastot ---------- */
+function suorni_radio_src_clean( $v ) {
+	return substr( strtolower( preg_replace( '/[^a-z0-9_-]/i', '', (string) $v ) ), 0, 20 );
+}
 function suorni_radio_ping() {
 	$ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
 	if ( '' === $ua || preg_match( '/bot|crawl|spider|slurp|curl|wget|headless/i', $ua ) ) { return; }
@@ -936,7 +939,14 @@ function suorni_radio_ping() {
 	if ( ! is_array( $d ) ) { $d = array(); }
 	if ( empty( $d['u'] ) || ! is_array( $d['u'] ) ) { $d['u'] = array(); }
 	if ( empty( $d['h'] ) || ! is_array( $d['h'] ) ) { $d['h'] = array_fill( 0, 24, 0 ); }
+	if ( empty( $d['sr'] ) || ! is_array( $d['sr'] ) ) { $d['sr'] = array(); }
 	if ( isset( $d['u'][ $h ] ) || count( $d['u'] ) < 5000 ) {
+		/* Tulolähde (nimetön): kuuntelijan ensimmäinen lähde päivässä. Enintään 30 eri tunnistetta/päivä. */
+		$src = suorni_radio_src_clean( isset( $_GET['src'] ) ? wp_unslash( $_GET['src'] ) : '' );
+		if ( '' !== $src && ! isset( $d['sr'][ $h ] ) && ( in_array( $src, $d['sr'], true ) || count( array_unique( $d['sr'] ) ) < 30 ) ) { $d['sr'][ $h ] = $src; }
+		$pk = 0;
+		foreach ( $live as $t ) { if ( $t >= $now - 75 ) { $pk++; } }
+		if ( $pk > (int) ( isset( $d['pk'] ) ? $d['pk'] : 0 ) ) { $d['pk'] = $pk; }
 		$d['u'][ $h ] = (int) ( isset( $d['u'][ $h ] ) ? $d['u'][ $h ] : 0 ) + 1;
 		$hr           = (int) wp_date( 'G' );
 		$d['h'][ $hr ] = (int) ( isset( $d['h'][ $hr ] ) ? $d['h'][ $hr ] : 0 ) + 1;
@@ -957,6 +967,9 @@ function suorni_radio_live_count() {
 }
 function suorni_radio_stats_get() {
 	$days = array();
+	$h14  = array_fill( 0, 24, 0 );
+	$srcs = array();
+	$pk7  = 0;
 	for ( $i = 0; $i < 14; $i++ ) {
 		$ts  = time() - $i * DAY_IN_SECONDS;
 		$day = wp_date( 'Ymd', $ts );
@@ -964,13 +977,25 @@ function suorni_radio_stats_get() {
 		$u   = ( is_array( $d ) && ! empty( $d['u'] ) ) ? $d['u'] : array();
 		$pings = array_sum( $u );
 		$days[] = array( 'day' => wp_date( 'j.n.', $ts ), 'unique' => count( $u ), 'minutes' => (int) round( $pings * 0.5 ), 'avg' => count( $u ) ? round( $pings * 0.5 / count( $u ), 1 ) : 0 );
+		if ( is_array( $d ) && ! empty( $d['h'] ) && is_array( $d['h'] ) ) {
+			foreach ( array_values( $d['h'] ) as $k => $v ) { if ( $k < 24 ) { $h14[ $k ] += (int) $v; } }
+		}
+		if ( $i < 7 && is_array( $d ) ) {
+			if ( ! empty( $d['sr'] ) && is_array( $d['sr'] ) ) {
+				foreach ( $d['sr'] as $sv ) { $srcs[ $sv ] = ( isset( $srcs[ $sv ] ) ? $srcs[ $sv ] : 0 ) + 1; }
+			}
+			$pk7 = max( $pk7, (int) ( isset( $d['pk'] ) ? $d['pk'] : 0 ) );
+		}
 	}
 	$today = get_option( 'suorni_rs_' . wp_date( 'Ymd' ), array() );
 	$hours = ( is_array( $today ) && ! empty( $today['h'] ) ) ? array_values( $today['h'] ) : array_fill( 0, 24, 0 );
 	$peak  = array_search( max( $hours ), $hours, true );
 	$week  = 0;
 	for ( $i = 0; $i < 7; $i++ ) { $week += $days[ $i ]['unique']; }
-	return array( 'live' => suorni_radio_live_count(), 'days' => $days, 'week_sum' => $week, 'peak_hour' => max( $hours ) > 0 ? (int) $peak : -1 );
+	arsort( $srcs );
+	$srcl = array();
+	foreach ( $srcs as $k => $v ) { $srcl[] = array( (string) $k, (int) $v ); }
+	return array( 'live' => suorni_radio_live_count(), 'days' => $days, 'week_sum' => $week, 'peak_hour' => max( $hours ) > 0 ? (int) $peak : -1, 'hours14' => array_map( function ( $v ) { return (int) round( $v * 0.5 ); }, $h14 ), 'src' => $srcl, 'peak_live' => $pk7 );
 }
 
 /* ---------- REST ---------- */

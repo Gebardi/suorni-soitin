@@ -12,6 +12,26 @@
 	var elPlay = $('[data-play]'), elTitle = $('[data-title]'), elArtist = $('[data-artist]'), elNext = $('[data-next]');
 	var elCap = $('[data-cap]'), elCount = $('[data-count]'), elProg = $('[data-prog]');
 
+	/* Nimetön tulolähde: ?src=tiktok / ?utm_source=... tai viittaava sivusto. Muistetaan istunnon ajan. */
+	var srcLbl = (function () {
+		try { var z = sessionStorage.getItem('suorni_src'); if (z) { return z; } } catch (e) {}
+		var v = '';
+		try { var pp = new URLSearchParams(location.search); v = (pp.get('src') || pp.get('utm_source') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 20); } catch (e) {}
+		if (!v) {
+			var hh = ''; try { hh = document.referrer ? new URL(document.referrer).hostname.toLowerCase() : ''; } catch (e) {}
+			if (!hh) { v = 'suora'; }
+			else if (hh === location.hostname) { v = ''; }
+			else if (/tiktok\./.test(hh)) { v = 'tiktok'; }
+			else if (/instagram\./.test(hh)) { v = 'instagram'; }
+			else if (/(^|\.)(facebook|fb)\.|^l\.messenger/.test(hh)) { v = 'facebook'; }
+			else if (/youtube\.|youtu\.be/.test(hh)) { v = 'youtube'; }
+			else if (/google\.|bing\.|duckduckgo\./.test(hh)) { v = 'haku'; }
+			else if (/(^|\.)(t\.co|twitter\.com|x\.com)$/.test(hh)) { v = 'x'; }
+			else { v = 'muu'; }
+		}
+		if (v) { try { sessionStorage.setItem('suorni_src', v); } catch (e) {} }
+		return v;
+	})();
 	function q(u, p) { return u + (u.indexOf('?') < 0 ? '?' : '&') + p; }
 	function srv() { return Date.now() / 1000 + off; }
 
@@ -20,7 +40,7 @@
 		if (busy) { return; }
 		busy = true;
 		var t0 = Date.now();
-		fetch(q(U.now, 'r=' + t0 + (listen ? '&l=1&cid=' + cid + (shopUrl ? '&shop=1' : '') : '')), { cache: 'no-store' })
+		fetch(q(U.now, 'r=' + t0 + (listen ? '&l=1&cid=' + cid + (srcLbl ? '&src=' + encodeURIComponent(srcLbl) : '') + (shopUrl ? '&shop=1' : '') : '')), { cache: 'no-store' })
 			.then(function (r) { return r.json(); })
 			.then(function (j) {
 				busy = false;
