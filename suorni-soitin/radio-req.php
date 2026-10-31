@@ -11,7 +11,8 @@ function suorni_reqs_save( $r ) { update_option( 'suorni_reqs', array_slice( arr
 function suorni_req_tracks() {
 	$excl = suorni_radio_excl();
 	$out  = array();
-	foreach ( suorni_view( suorni_tracks(), '' ) as $t ) {
+	$src = ( '' === suorni_ch_cur() ) ? suorni_view( suorni_tracks(), '' ) : suorni_ch_tracks( suorni_ch_cur() );
+	foreach ( $src as $t ) {
 		if ( $t['dur'] > 0 && empty( $t['ad'] ) && empty( $t['ann'] ) && ! in_array( (int) $t['id'], $excl, true ) ) { $out[] = array( 'id' => (int) $t['id'], 't' => suorni_nosuno( $t['title'] ), 'a' => suorni_nosuno( $t['artist'] ) ); }
 	}
 	usort( $out, function ( $x, $y ) { return strcasecmp( $x['a'] . ' ' . $x['t'], $y['a'] . ' ' . $y['t'] ); } );
@@ -20,8 +21,9 @@ function suorni_req_tracks() {
 function suorni_reqlist_get( $req ) {
 	$c = suorni_reqcfg();
 	if ( ! $c['on'] || ! suorni_radio_on() ) { return suorni_json( array( 'on' => false ) ); }
-	$l = get_transient( 'suorni_reqlist' );
-	if ( ! is_array( $l ) ) { $l = suorni_req_tracks(); set_transient( 'suorni_reqlist', $l, 5 * MINUTE_IN_SECONDS ); }
+	suorni_ch_set( suorni_ch_clean( $req->get_param( 'ch' ) ) );
+	$l = get_transient( 'suorni_reqlist' . suorni_ch_sfx() );
+	if ( ! is_array( $l ) ) { $l = suorni_req_tracks(); set_transient( 'suorni_reqlist' . suorni_ch_sfx(), $l, 5 * MINUTE_IN_SECONDS ); }
 	$act = 0;
 	foreach ( suorni_reqs() as $r ) { if ( in_array( $r['st'], array( 'pending', 'ok' ), true ) ) { $act++; } }
 	return suorni_json( array( 'on' => true, 'tracks' => $l, 'waiting' => $act ) );
@@ -32,6 +34,7 @@ function suorni_req_post( $req ) {
 	if ( '' !== (string) $req->get_param( 'hp' ) ) { return suorni_json( array( 'ok' => true, 'message' => 'Kiitos!' ) ); }
 	$h = suorni_comm_vhash();
 	if ( get_transient( 'suorni_rq_' . $h ) ) { return new WP_Error( 'suorni_rate', 'Voit toivoa yhden kappaleen kymmenessä minuutissa.', array( 'status' => 429 ) ); }
+	suorni_ch_set( suorni_ch_clean( $req->get_param( 'ch' ) ) );
 	$tid = absint( $req->get_param( 'id' ) );
 	$ok  = false; $title = '';
 	foreach ( suorni_req_tracks() as $t ) { if ( $t['id'] === $tid ) { $ok = true; $title = $t['t']; break; } }
@@ -46,7 +49,7 @@ function suorni_req_post( $req ) {
 	if ( '' === $name ) { $name = 'Kuuntelija'; }
 	$n = 1;
 	foreach ( $r as $x ) { $n = max( $n, (int) $x['n'] + 1 ); }
-	$r[] = array( 'n' => $n, 'tid' => $tid, 'name' => $name, 'at' => time(), 'st' => $c['auto'] ? 'ok' : 'pending', 'ann' => 0, 'pat' => 0 );
+	$r[] = array( 'ch' => suorni_ch_cur(), 'n' => $n, 'tid' => $tid, 'name' => $name, 'at' => time(), 'st' => $c['auto'] ? 'ok' : 'pending', 'ann' => 0, 'pat' => 0 );
 	suorni_reqs_save( $r );
 	set_transient( 'suorni_rq_' . $h, 1, 10 * MINUTE_IN_SECONDS );
 	return suorni_json( array( 'ok' => true, 'message' => $c['auto'] ? 'Toive otettu vastaan! Kappale soi pian: ' . $title : 'Toive lähetetty! Se soi, kun se on hyväksytty: ' . $title ) );
@@ -55,14 +58,14 @@ function suorni_req_post( $req ) {
 function suorni_req_pick( $by ) {
 	$r = suorni_reqs();
 	foreach ( $r as $x ) {
-		if ( 'ok' === $x['st'] && isset( $by[ $x['tid'] ] ) && time() - (int) $x['at'] < 6 * HOUR_IN_SECONDS ) { return $by[ $x['tid'] ]; }
+		if ( 'ok' === $x['st'] && ( isset( $x['ch'] ) ? $x['ch'] : '' ) === suorni_ch_cur() && isset( $by[ $x['tid'] ] ) && time() - (int) $x['at'] < 6 * HOUR_IN_SECONDS ) { return $by[ $x['tid'] ]; }
 	}
 	return null;
 }
 function suorni_req_mark_played( $tid ) {
 	$r = suorni_reqs(); $ch = false;
 	foreach ( $r as $i => $x ) {
-		if ( 'ok' === $x['st'] && (int) $x['tid'] === (int) $tid ) { $r[ $i ]['st'] = 'played'; $r[ $i ]['pat'] = time(); $ch = true; break; }
+		if ( 'ok' === $x['st'] && ( isset( $x['ch'] ) ? $x['ch'] : '' ) === suorni_ch_cur() && (int) $x['tid'] === (int) $tid ) { $r[ $i ]['st'] = 'played'; $r[ $i ]['pat'] = time(); $ch = true; break; }
 	}
 	if ( $ch ) { suorni_reqs_save( $r ); }
 }
@@ -72,7 +75,7 @@ function suorni_req_facts() {
 	$names = array();
 	foreach ( suorni_req_tracks() as $t ) { $names[ $t['id'] ] = $t; }
 	foreach ( $r as $i => $x ) {
-		if ( 'ok' !== $x['st'] || ! empty( $x['ann'] ) || ! isset( $names[ $x['tid'] ] ) || count( $out ) >= 2 ) { continue; }
+		if ( 'ok' !== $x['st'] || ( isset( $x['ch'] ) ? $x['ch'] : '' ) !== suorni_ch_cur() || ! empty( $x['ann'] ) || ! isset( $names[ $x['tid'] ] ) || count( $out ) >= 2 ) { continue; }
 		$t = $names[ $x['tid'] ];
 		$r[ $i ]['ann'] = 1; $ch = true;
 		$out[] = array( 'fact' => 'Kuuntelija "' . $x['name'] . '" toivoi kappaleen "' . $t['t'] . '" (esittäjä ' . $t['a'] . '). Mainitse lyhyesti ja lämpimästi, että toive soi pian, ja kerro toivojan nimimerkki.', 'plain' => 'Kuuntelija ' . $x['name'] . ' toivoi kappaleen ' . $t['t'] . ', esittäjä ' . $t['a'] . '. Toive soi pian.' );

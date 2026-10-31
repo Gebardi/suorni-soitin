@@ -2,7 +2,7 @@
 /* Soittohistoria, viikon top 10 ja kappaleen jakaminen. */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-function suorni_hist_get() { $h = get_option( 'suorni_hist', array() ); return is_array( $h ) ? $h : array(); }
+function suorni_hist_get() { $h = get_option( 'suorni_hist' . suorni_ch_sfx(), array() ); return is_array( $h ) ? $h : array(); }
 /* Kirjataan soiva kappale historiaan (kutsutaan /radio/now -pyynnöstä) */
 function suorni_hist_note( $items, $now ) {
 	foreach ( $items as $it ) {
@@ -11,7 +11,7 @@ function suorni_hist_note( $items, $now ) {
 		$h = suorni_hist_get();
 		foreach ( array_slice( $h, -3 ) as $x ) { if ( isset( $x['k'] ) && $x['k'] === $k ) { return; } }
 		$h[] = array( 'k' => $k, 'id' => $it['id'], 'sub' => ! empty( $it['sub'] ) ? 1 : 0, 't' => (string) $it['title'], 'a' => (string) $it['artist'], 'at' => (int) $it['start'] );
-		update_option( 'suorni_hist', array_slice( $h, -40 ), false );
+		update_option( 'suorni_hist' . suorni_ch_sfx(), array_slice( $h, -40 ), false );
 		return;
 	}
 }
@@ -22,7 +22,7 @@ function suorni_wk_add( $key, $delta ) {
 	if ( ! is_array( $w ) || ! isset( $w['w'] ) || suorni_wk_key() !== $w['w'] ) { $w = array( 'w' => suorni_wk_key(), 'm' => array() ); }
 	$w['m'][ $key ] = ( isset( $w['m'][ $key ] ) ? (int) $w['m'][ $key ] : 0 ) + (int) $delta;
 	update_option( 'suorni_wk', $w, false );
-	delete_transient( 'suorni_hist_out' );
+	foreach ( suorni_ch_ids() as $c ) { delete_transient( 'suorni_hist_out' . ( '' === $c ? '' : '_' . $c ) ); }
 }
 function suorni_hist_row( $key, $tracks, $subs ) {
 	if ( 0 === strpos( $key, 't' ) ) {
@@ -35,7 +35,7 @@ function suorni_hist_row( $key, $tracks, $subs ) {
 	return null;
 }
 function suorni_hist_build() {
-	$c = get_transient( 'suorni_hist_out' );
+	$c = get_transient( 'suorni_hist_out' . suorni_ch_sfx() );
 	if ( is_array( $c ) ) { return $c; }
 	$tracks = suorni_tracks();
 	$subs   = function_exists( 'suorni_subs' ) ? suorni_subs() : array();
@@ -59,11 +59,12 @@ function suorni_hist_build() {
 		if ( $r ) { $r['n'] = $net; $r['t'] = suorni_nosuno( $r['t'] ); $r['a'] = suorni_nosuno( $r['a'] ); $top[] = $r; }
 	}
 	$out = array( 'recent' => $recent, 'top' => $top, 'toplabel' => $lab );
-	set_transient( 'suorni_hist_out', $out, 60 );
+	set_transient( 'suorni_hist_out' . suorni_ch_sfx(), $out, 60 );
 	return $out;
 }
 function suorni_hist_get_rest( $req ) {
 	if ( ! suorni_radio_on() ) { return suorni_json( array( 'off' => true ) ); }
+	suorni_ch_set( suorni_ch_clean( $req->get_param( 'ch' ) ) );
 	$out = suorni_hist_build();
 	$one = (string) $req->get_param( 'id' );
 	if ( '' !== $one && preg_match( '#^c?\d{1,9}$#', $one ) ) {

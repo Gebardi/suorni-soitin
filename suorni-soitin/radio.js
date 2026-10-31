@@ -57,6 +57,48 @@
 		if (v) { try { sessionStorage.setItem('suorni_src', v); } catch (e) {} }
 		return v;
 	})();
+	/* Kanavat: oma aikajana ja oma soittolista; valinta muistetaan ja sen voi linkittää (?kanava=...) */
+	var chs = [], ch = '', chn = $('[data-chn]');
+	try { chs = JSON.parse(root.getAttribute('data-chs') || '[]') || []; } catch (e) { chs = []; }
+	function chKnown(id) { for (var ci = 0; ci < chs.length; ci++) { if (chs[ci].id === id) { return true; } } return false; }
+	ch = (function () {
+		if (shopUrl) { return ''; }
+		var v = '';
+		try { v = (new URLSearchParams(location.search).get('kanava') || '').toLowerCase().replace(/[^a-z0-9_-]/g, ''); } catch (e) {}
+		if (v && chKnown(v)) { return v; }
+		try { v = localStorage.getItem('suorni_ch') || ''; } catch (e) { v = ''; }
+		return v && chKnown(v) ? v : '';
+	})();
+	root.setAttribute('data-curch', ch);
+	function drawChn() {
+		if (!chn) { return; }
+		var sig = JSON.stringify(chs) + '|' + ch;
+		if (chn.getAttribute('data-sig') === sig) { return; }
+		chn.setAttribute('data-sig', sig);
+		chn.innerHTML = '';
+		chs.forEach(function (c) {
+			var b = document.createElement('button');
+			b.type = 'button'; b.className = 'rg' + (c.id === ch ? ' on' : ''); b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', c.id === ch ? 'true' : 'false');
+			b.textContent = (c.icon ? c.icon + ' ' : '') + c.name;
+			b.addEventListener('click', function () { setCh(c.id); });
+			chn.appendChild(b);
+		});
+	}
+	function setCh(id, quiet) {
+		if (id === ch || shopUrl) { return; }
+		ch = id;
+		root.setAttribute('data-curch', ch);
+		try { localStorage.setItem('suorni_ch', ch); } catch (e) {}
+		try { var u = new URL(location.href); if (ch) { u.searchParams.set('kanava', ch); } else { u.searchParams.delete('kanava'); } history.replaceState(null, '', u.toString()); } catch (e) {}
+		items = []; curKey = ''; clearTimeout(endT); rgKey = ''; tailEnd = 0; lag = 0; busy = false; lastFetch = 0; duckCur = 1;
+		try { au.pause(); rg.pause(); au.volume = userVol(); } catch (e) {}
+		drawChn();
+		if (quiet) { return; }
+		elTitle.textContent = 'Vaihdetaan kanavaa…'; elArtist.textContent = ''; if (elNext) { elNext.textContent = ''; }
+		try { document.dispatchEvent(new CustomEvent('suornich')); } catch (e) {}
+		fetchNow(playing);
+		if (playing) { setTimeout(sync, 700); setTimeout(sync, 1800); }
+	}
 	function q(u, p) { return u + (u.indexOf('?') < 0 ? '?' : '&') + p; }
 	/* lag = myymälän mainoksen ajaksi kertynyt viive (s): myymälän kuuntelija on lähetyksestä jäljessä, kunnes seuraava juonto palauttaa hänet reaaliaikaan */
 	var lag = 0, shopAdHold = false, shopSeen = '';
@@ -66,12 +108,14 @@
 	function fetchNow(listen) {
 		if (busy) { return; }
 		busy = true;
-		var t0 = Date.now();
-		fetch(q(U.now, 'r=' + t0 + (listen ? '&l=1&cid=' + cid + (srcLbl ? '&src=' + encodeURIComponent(srcLbl) : '') + (shopUrl ? '&shop=1' : '') : '') + (lag > 0 ? '&back=' + Math.ceil(lag + 5) : '')), { cache: 'no-store' })
+		var t0 = Date.now(), fch = ch;
+		fetch(q(U.now, 'r=' + t0 + (ch ? '&ch=' + encodeURIComponent(ch) : '') + (listen ? '&l=1&cid=' + cid + (srcLbl ? '&src=' + encodeURIComponent(srcLbl) : '') + (shopUrl ? '&shop=1' : '') : '') + (lag > 0 ? '&back=' + Math.ceil(lag + 5) : '')), { cache: 'no-store' })
 			.then(function (r) { return r.json(); })
 			.then(function (j) {
 				busy = false;
+				if (fch !== ch) { return; }
 				lastFetch = Date.now();
+				if (j.chs) { chs = j.chs; if (typeof j.ch === 'string' && j.ch !== ch) { setCh(j.ch, true); } drawChn(); }
 				if (j.now) { var no = j.now - (t0 + (Date.now() - t0) / 2) / 1000; if (!hasOff || Math.abs(no - off) > 1.5) { off = no; hasOff = true; } else { off += (no - off) * 0.2; } }
 				if (j.off) { elTitle.textContent = 'Radio on tauolla'; elArtist.textContent = ''; items = []; return; }
 				items = j.items || [];
@@ -214,7 +258,7 @@
 			if (!mi.value.trim()) { return; }
 			b.disabled = true; st.textContent = 'Lähetetään…';
 			try { localStorage.setItem('suorni_nick', nm.value); } catch (e) {}
-			fetch(chatEl.getAttribute('data-chaturl'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: nm.value, msg: mi.value, hp: chatEl.querySelector('[data-chp]').value }) })
+			fetch(chatEl.getAttribute('data-chaturl'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: nm.value, msg: mi.value, ch: ch, hp: chatEl.querySelector('[data-chp]').value }) })
 				.then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
 				.then(function (x) { b.disabled = false; if (x.ok) { mi.value = ''; st.textContent = ''; drawChat(x.j.chat); fastUntil = Date.now() + 45000; fastPoll(); setTyping(x.j.typing || ('')); } else { st.textContent = (x.j && x.j.message) || 'Lähetys epäonnistui.'; } })
 				.catch(function () { b.disabled = false; st.textContent = 'Lähetys epäonnistui.'; });
@@ -533,13 +577,14 @@
 		else if (now - lastFetch > (playing ? 8000 : 45000)) { fetchNow(false); }
 		else { var tail = items.length ? items[items.length - 1] : null; if (tail && srv() > tail.start + tail.dur - 60 && now - lastFetch > 8000) { fetchNow(playing); } }
 	}, 700);
+	drawChn();
 	fetchNow(false);
 
 	var gs = $('[data-gsend]');
 	if (gs) {
 		gs.addEventListener('click', function () {
 			var st = $('[data-gst]');
-			var body = JSON.stringify({ name: $('[data-gname]').value, msg: $('[data-gmsg]').value, voice: ($('[data-gvoice]') || {}).value || '', hp: $('[data-ghp]').value });
+			var body = JSON.stringify({ ch: ch, name: $('[data-gname]').value, msg: $('[data-gmsg]').value, voice: ($('[data-gvoice]') || {}).value || '', hp: $('[data-ghp]').value });
 			gs.disabled = true;
 			fetch(U.greet, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body })
 				.then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
@@ -663,6 +708,8 @@
 	if (!hx) { return; }
 	var body = hx.querySelector('[data-hxb]'), rec = hx.querySelector('[data-hxr]'), tabs = hx.querySelectorAll('[data-hxt]');
 	var H = null, tab = 'top', reqL = null, selId = 0, reqMsg = '';
+	function curCh() { return root.getAttribute('data-curch') || ''; }
+	function chq() { var c = curCh(); return c ? '&ch=' + encodeURIComponent(c) : ''; }
 	function q(u, p) { return u + (u.indexOf('?') < 0 ? '?' : '&') + p; }
 	function mk(t, c, tx) { var e = document.createElement(t); if (c) { e.className = c; } if (tx != null) { e.textContent = tx; } return e; }
 	function hm(ts) { var d = new Date(ts * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
@@ -699,7 +746,7 @@
 	}
 	function drawReq() {
 		var w = mk('div', 'rhq');
-		if (!reqL) { body.appendChild(mk('div', 'rs', 'Ladataan kappaleita…')); fetch(q(hx.getAttribute('data-reqlist'), 'r=' + Date.now()), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) { reqL = j; if (tab === 'req') { draw(); } }).catch(function () {}); return; }
+		if (!reqL) { body.appendChild(mk('div', 'rs', 'Ladataan kappaleita…')); fetch(q(hx.getAttribute('data-reqlist'), 'r=' + Date.now() + chq()), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) { reqL = j; if (tab === 'req') { draw(); } }).catch(function () {}); return; }
 		if (!reqL.on) { body.appendChild(mk('div', 'rs', 'Toiveet eivät ole nyt käytössä.')); return; }
 		w.appendChild(mk('div', 'rs', 'Valitse kappale, jonka haluat kuulla. Toive soi pian' + (reqL.waiting ? ' (jonossa ' + reqL.waiting + ' toivetta)' : '') + '.'));
 		var sr = mk('input', 'rt'); sr.type = 'text'; sr.placeholder = 'Hae esittäjää tai kappaletta'; sr.setAttribute('aria-label', 'Hae kappaletta');
@@ -718,7 +765,7 @@
 		go.addEventListener('click', function () {
 			if (!selId) { st.textContent = 'Valitse ensin kappale.'; return; }
 			go.disabled = true; st.textContent = 'Lähetetään…';
-			fetch(hx.getAttribute('data-req'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: selId, name: nm.value, hp: hp.value }) }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }).then(function (x) {
+			fetch(hx.getAttribute('data-req'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: selId, name: nm.value, ch: curCh(), hp: hp.value }) }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }).then(function (x) {
 				go.disabled = false; st.textContent = x.ok ? x.j.message : (x.j.message || 'Lähetys epäonnistui.');
 				if (x.ok) { selId = 0; reqL = null; reqMsg = x.j.message; draw(); }
 			}).catch(function () { go.disabled = false; st.textContent = 'Lähetys epäonnistui.'; });
@@ -731,13 +778,14 @@
 	function load(first) {
 		var one = '', m = /[?&]biisi=(c?\d{1,9})/.exec(location.search);
 		if (first && m) { one = '&id=' + m[1]; }
-		fetch(q(hx.getAttribute('data-hist'), 'r=' + Math.floor(Date.now() / 60000) + one), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+		fetch(q(hx.getAttribute('data-hist'), 'r=' + Math.floor(Date.now() / 60000) + one + chq()), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
 			if (j.off) { return; }
 			H = j; hx.hidden = false; if (tab !== 'req') { draw(); } else { drawRecent(); }
 			if (j.one) { var n = mk('div', 'rbn', '🎧 Sinulle suositeltu: ' + (j.one.a ? j.one.a + ' – ' : '') + j.one.t + '. Paina play, niin kuulet radion tunnelman.'); root.insertBefore(n, root.firstChild); }
 		}).catch(function () {});
 	}
 	load(true);
+	document.addEventListener('suornich', function () { reqL = null; load(false); });
 	setInterval(function () { if (!document.hidden && tab !== 'req') { load(false); } }, 60000);
 	if (tab !== 'req') { draw(); }
 })();

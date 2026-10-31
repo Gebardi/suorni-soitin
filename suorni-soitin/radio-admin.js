@@ -70,7 +70,7 @@
 		function tile(v, l) { return '<div class="st-tile"><b>' + v + '</b><span>' + l + '</span></div>'; }
 		sd.innerHTML = '<h3>Yleiskatsaus</h3><div class="st-tiles">' + tile(s.live, 'Kuuntelijaa nyt') + tile(s.week_sum, 'Kuuntelijaa viikolla') + tile(s.peak_hour >= 0 ? s.peak_hour + ':00' : '–', 'Vilkkain tunti tänään') + tile(D.usable, 'Soitettavaa kappaletta') + tile(pendS + pendG + pendR, 'Odottaa käsittelyä') + '</div>' +
 			'<h3>Kuuntelijat viikolla</h3>' + '<table style="width:100%;font-size:14px;border-collapse:collapse"><tr style="text-align:left"><th>Päivä</th><th>Kuuntelijoita</th><th>Kuunteluaika</th><th>Keskim.</th></tr>' + rows + '</table>' +
-			'<h3>Mistä kuuntelijat tulevat (7 pv)</h3>' + srcHtml + '<h3>Kuunteluaika tunneittain (14 pv, min)</h3>' + hourHtml +
+			'<h3>Mistä kuuntelijat tulevat (7 pv)</h3>' + srcHtml + ((s.chs || []).length > 1 ? '<h3>Kuunteluaika kanavittain (7 pv, min)</h3>' + (function () { var mx = 1; s.chs.forEach(function (r) { if (r[1] > mx) { mx = r[1]; } }); return s.chs.map(function (r) { return barRow(r[0], r[1], mx); }).join(''); })() : '') + '<h3>Kuunteluaika tunneittain (14 pv, min)</h3>' + hourHtml +
 			'<p style="font-size:13px;opacity:.7">Tilastot ovat anonyymejä (ei evästeitä, ei tunnistetietoja). Sama kuuntelija lasketaan kerran päivässä. Huippu viikolla: <b>' + (s.peak_live || 0) + '</b> kuuntelijaa yhtä aikaa.</p>' +
 			'<p style="font-size:13px;opacity:.7">💡 Käytä somessa linkkiä <b>suorni.fi/?src=tiktok</b>. Eri videoille voit tehdä omat tunnisteet (esim. <b>?src=video1</b>), jolloin näet, mikä video toi kuuntelijoita. Tunniste on 1–20 merkkiä: a–z, 0–9, - ja _.</p>';
 		box.appendChild(sd);
@@ -515,7 +515,7 @@
 		var sc = document.querySelector('[data-sb-clock]');
 		if (sc) { if (window.__suorniClk) { clearInterval(window.__suorniClk); } var tickc = function () { var d = new Date(); sc.textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }; tickc(); window.__suorniClk = setInterval(tickc, 1000); }
 		var loose = [].slice.call(box.children);
-		var TABS = [['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista'], ['mainokset', '📢 Mainokset']];
+		var TABS = [['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista'], ['kanavat', '📻 Kanavat'], ['mainokset', '📢 Mainokset']];
 
 		/* Massalisäys + päivittäinen tarkistus */
 		var upw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
@@ -692,6 +692,113 @@
 			ow.querySelector('[data-ows]').addEventListener('click', function () { saveAll().catch(function () {}); });
 		})();
 
+		/* Kanavat: musiikkikanavat ja kappaleiden luokittelu */
+		var chw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
+		var clw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
+		(function () {
+			var CH = D.channels || { main: { name: 'Kaikki', icon: '📻' }, list: [] };
+			var mainC = JSON.parse(JSON.stringify(CH.main)), L = JSON.parse(JSON.stringify(CH.list));
+			var sm = st.replace('width:100%;', 'width:auto;');
+			chw.innerHTML = '<h3 style="margin:0 0 6px">📻 Kanavat</h3><p style="font-size:13px;opacity:.8;margin:0 0 8px">Kuuntelija valitsee soittimen yläpuolelta kanavan, ja kanavalla soi vain sen soittolistan musiikki. Juontajat, ohjelmat, sää, uutiset ja mainokset ovat kaikilla kanavilla samat. <b>Kaikki</b>-kanavalla soi kaikki musiikki ja kuuntelijoiden lähettämät kappaleet. Kanava näkyy kuuntelijoille, kun sillä on vähintään 3 kappaletta. Kanavan aikajana rakennetaan vain, kun sillä on kuuntelija.</p><div data-chl></div><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" data-chn>＋ Uusi kanava</button><button type="button" data-chs>💾 Tallenna kanavat</button><span data-chst style="font-size:13px"></span></div>';
+			var box = chw.querySelector('[data-chl]'), stt = chw.querySelector('[data-chst]');
+			function drawCh() {
+				box.innerHTML = '';
+				var m = el('div', { style: 'padding:8px;margin:6px 0;border:1px solid #2a303b;border-radius:10px;background:#101319;display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, '<input style="' + sm + 'width:64px" data-mi maxlength="8" value="' + esc(mainC.icon) + '" aria-label="Kuvake"><input style="' + sm + 'flex:1;min-width:140px" data-mn maxlength="24" value="' + esc(mainC.name) + '" aria-label="Pääkanavan nimi"><span style="font-size:13px;opacity:.75">Pääkanava, kaikki musiikki (aina käytössä)</span>');
+				m.querySelector('[data-mi]').addEventListener('input', function (e) { mainC.icon = e.target.value; });
+				m.querySelector('[data-mn]').addEventListener('input', function (e) { mainC.name = e.target.value; });
+				box.appendChild(m);
+				L.forEach(function (c, i) {
+					var n = D.lists.filter(function (l) { return l.id === c.list; })[0];
+					var cnt = n ? n.ids.filter(function (id) { return D.tracks.some(function (t) { return t.id === id; }); }).length : 0;
+					var r = el('div', { style: 'padding:8px;margin:6px 0;border:1px solid #2a303b;border-radius:10px;background:#101319' });
+					var lopts = '<option value="">(luo uusi lista nimellä)</option>' + D.lists.map(function (l) { return '<option value="' + esc(l.id) + '"' + (l.id === c.list ? ' selected' : '') + '>' + esc(l.name) + '</option>'; }).join('');
+					r.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input style="' + sm + 'width:64px" data-ci maxlength="8" value="' + esc(c.icon) + '" aria-label="Kuvake" placeholder="🎸"><input style="' + sm + 'flex:1;min-width:140px" data-cn maxlength="24" value="' + esc(c.name) + '" aria-label="Kanavan nimi" placeholder="Kanavan nimi"><label><input type="checkbox" data-co' + (c.on ? ' checked' : '') + '> käytössä</label></div>' +
+						'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px"><label style="font-size:13px">Soittolista <select style="' + sm + '" data-cl>' + lopts + '</select></label><span style="font-size:13px;' + (cnt < 3 ? 'color:#ffb347' : 'opacity:.75') + '">' + cnt + ' kappaletta' + (cnt < 3 ? ' – ei näy kuuntelijoille ennen kuin kappaleita on vähintään 3' : '') + '</span><button type="button" data-cd>🗑 Poista kanava</button></div>' +
+						(c.id ? '<div style="font-size:12px;opacity:.65;margin-top:4px">Suora linkki: sivun osoitteen perään <b>?kanava=' + esc(c.id) + '</b></div>' : '<div style="font-size:12px;opacity:.65;margin-top:4px">Linkki ilmestyy, kun tallennat.</div>');
+					var q2 = function (k) { return r.querySelector(k); };
+					q2('[data-ci]').addEventListener('input', function (e) { c.icon = e.target.value; });
+					q2('[data-cn]').addEventListener('input', function (e) { c.name = e.target.value; });
+					q2('[data-co]').addEventListener('change', function (e) { c.on = e.target.checked; });
+					q2('[data-cl]').addEventListener('change', function (e) { c.list = e.target.value; });
+					q2('[data-cd]').addEventListener('click', function () { if (confirm('Poistetaanko kanava ' + (c.name || '') + '? Soittolista ja sen kappaleet säilyvät.')) { L.splice(i, 1); drawCh(); } });
+					box.appendChild(r);
+				});
+			}
+			function afterSave(j) {
+				D.channels = j.ch; D.lists = j.lists;
+				mainC = JSON.parse(JSON.stringify(j.ch.main)); L = JSON.parse(JSON.stringify(j.ch.list));
+				drawCh(); drawCl();
+			}
+			drawCh();
+			chw.querySelector('[data-chn]').addEventListener('click', function () { if (L.length >= 12) { stt.textContent = 'Enintään 12 kanavaa.'; return; } L.push({ id: '', name: '', icon: '', list: '', on: true }); drawCh(); });
+			chw.querySelector('[data-chs]').addEventListener('click', function () {
+				stt.textContent = 'Tallennetaan…';
+				api('POST', D.urls.channels, { main: mainC, channels: L.filter(function (c) { return (c.name || '').trim(); }) }).then(function (j) { afterSave(j); stt.textContent = '✅ Tallennettu. Muutos näkyy kuuntelijoille parin minuutin kuluessa.'; }).catch(function (e) { stt.textContent = '⚠️ ' + e.message; });
+			});
+
+			/* Luokittelu: jokaiselle kappaleelle kanavanapit */
+			var f = { q: '', un: false, ch: '' }, shown = 80, sel = {};
+			clw.innerHTML = '<h3 style="margin:0 0 6px">🏷️ Kappaleiden luokittelu</h3><p style="font-size:13px;opacity:.8;margin:0 0 8px">Merkitse jokaiselle kappaleelle kanavat, joilla se saa soida. Kappale voi kuulua useammalle kanavalle. Muutokset tallentuvat heti. Luo ensin kanavat ja tallenna ne yllä.</p><div data-clf style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></div><div data-clb style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0"></div><div data-clt></div><div data-clm style="margin-top:8px"></div><div data-cls style="font-size:13px;margin-top:4px"></div>';
+			var fb = clw.querySelector('[data-clf]'), bb = clw.querySelector('[data-clb]'), tb = clw.querySelector('[data-clt]'), mb = clw.querySelector('[data-clm]'), cst = clw.querySelector('[data-cls]');
+			function chans() { return (D.channels && D.channels.list || []).filter(function (c) { return c.list; }); }
+			function inList(c, id) { var l = D.lists.filter(function (z) { return z.id === c.list; })[0]; return !!(l && l.ids.indexOf(id) >= 0); }
+			function setLocal(c, id, on) { D.lists.forEach(function (l) { if (l.id === c.list) { var k = l.ids.indexOf(id); if (on && k < 0) { l.ids.push(id); } if (!on && k >= 0) { l.ids.splice(k, 1); } } }); }
+			function send(ops) {
+				cst.textContent = 'Tallennetaan…';
+				return api('POST', D.urls.classify, { ops: ops }).then(function (j) { D.lists = j.lists; D.channels = j.ch; cst.textContent = '✅ Tallennettu.'; }).catch(function (e) { cst.textContent = '⚠️ ' + e.message; });
+			}
+			function drawCl() {
+				var cs = chans();
+				fb.innerHTML = '<input style="' + sm + 'flex:1;min-width:160px" data-q placeholder="Hae kappaletta tai esittäjää" value="' + esc(f.q) + '"><label><input type="checkbox" data-un' + (f.un ? ' checked' : '') + '> vain luokittelemattomat</label><select style="' + sm + '" data-fc><option value="">Kaikki kanavat</option>' + cs.map(function (c) { return '<option value="' + esc(c.id) + '"' + (f.ch === c.id ? ' selected' : '') + '>' + esc((c.icon ? c.icon + ' ' : '') + c.name) + '</option>'; }).join('') + '</select>';
+				fb.querySelector('[data-q]').addEventListener('input', function (e) { f.q = e.target.value; shown = 80; drawRows(); });
+				fb.querySelector('[data-un]').addEventListener('change', function (e) { f.un = e.target.checked; shown = 80; drawRows(); });
+				fb.querySelector('[data-fc]').addEventListener('change', function (e) { f.ch = e.target.value; shown = 80; drawRows(); });
+				if (!cs.length) { bb.innerHTML = ''; tb.innerHTML = '<p style="font-size:13px;opacity:.75">Ei vielä kanavia. Lisää kanava ylhäällä ja tallenna se.</p>'; mb.innerHTML = ''; return; }
+				bb.innerHTML = '<span style="font-size:13px">Valitut kappaleet (<b data-sn>0</b>):</span><select style="' + sm + '" data-bc>' + cs.map(function (c) { return '<option value="' + esc(c.id) + '">' + esc((c.icon ? c.icon + ' ' : '') + c.name) + '</option>'; }).join('') + '</select><button type="button" data-ba>＋ Lisää kanavalle</button><button type="button" data-br>− Poista kanavalta</button><button type="button" data-bx>Tyhjennä valinta</button>';
+				var bulk = function (add) {
+					var c = cs.filter(function (z) { return z.id === bb.querySelector('[data-bc]').value; })[0], ids = Object.keys(sel).map(Number);
+					if (!c || !ids.length) { cst.textContent = 'Valitse ensin kappaleita.'; return; }
+					ids.forEach(function (id) { setLocal(c, id, add); });
+					var op = { list: c.list }; op[add ? 'add' : 'remove'] = ids;
+					send([op]).then(function () { sel = {}; drawRows(); });
+				};
+				bb.querySelector('[data-ba]').addEventListener('click', function () { bulk(true); });
+				bb.querySelector('[data-br]').addEventListener('click', function () { bulk(false); });
+				bb.querySelector('[data-bx]').addEventListener('click', function () { sel = {}; drawRows(); });
+				drawRows();
+			}
+			function drawRows() {
+				var cs = chans(), qq = f.q.trim().toLowerCase(), fc = cs.filter(function (c) { return c.id === f.ch; })[0];
+				var rows = D.tracks.filter(function (t) {
+					if (qq && ((t.artist || '') + ' ' + (t.title || '')).toLowerCase().indexOf(qq) < 0) { return false; }
+					if (f.un && cs.some(function (c) { return inList(c, t.id); })) { return false; }
+					if (fc && !inList(fc, t.id)) { return false; }
+					return true;
+				});
+				var un = D.tracks.filter(function (t) { return !cs.some(function (c) { return inList(c, t.id); }); }).length;
+				tb.innerHTML = '<div style="font-size:12px;opacity:.75;margin:4px 0">' + rows.length + ' kappaletta · luokittelemattomia ' + un + '</div>';
+				var sn = bb.querySelector('[data-sn]'); if (sn) { sn.textContent = Object.keys(sel).length; }
+				rows.slice(0, shown).forEach(function (t) {
+					var r = el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 4px;border-top:1px solid #2a303b' });
+					r.innerHTML = '<label style="flex:none"><input type="checkbox" data-s' + (sel[t.id] ? ' checked' : '') + ' aria-label="Valitse"></label><span style="flex:1;min-width:150px;font-size:14px">' + esc((t.artist ? t.artist + ' – ' : '') + t.title) + '</span><span style="display:flex;gap:6px;flex-wrap:wrap">' + cs.map(function (c) { var on = inList(c, t.id); return '<button type="button" data-c="' + esc(c.id) + '" aria-pressed="' + on + '" style="padding:4px 10px;border-radius:14px;border:1px solid ' + (on ? '#ffb347' : '#363d4a') + ';background:' + (on ? 'rgba(255,179,71,.2)' : '#1b1f27') + ';color:#eef0f4;font-size:13px;cursor:pointer">' + esc((c.icon ? c.icon + ' ' : '') + c.name) + '</button>'; }).join('') + '</span>';
+					r.querySelector('[data-s]').addEventListener('change', function (e) { if (e.target.checked) { sel[t.id] = 1; } else { delete sel[t.id]; } var sn2 = bb.querySelector('[data-sn]'); if (sn2) { sn2.textContent = Object.keys(sel).length; } });
+					r.querySelectorAll('[data-c]').forEach(function (b) {
+						b.addEventListener('click', function () {
+							var c = cs.filter(function (z) { return z.id === b.getAttribute('data-c'); })[0], on = !inList(c, t.id);
+							setLocal(c, t.id, on);
+							var op = { list: c.list }; op[on ? 'add' : 'remove'] = [t.id];
+							b.setAttribute('aria-pressed', on); b.style.borderColor = on ? '#ffb347' : '#363d4a'; b.style.background = on ? 'rgba(255,179,71,.2)' : '#1b1f27';
+							send([op]);
+						});
+					});
+					tb.appendChild(r);
+				});
+				mb.innerHTML = rows.length > shown ? '<button type="button" data-more>Näytä lisää (' + (rows.length - shown) + ')</button>' : '';
+				var mo = mb.querySelector('[data-more]'); if (mo) { mo.addEventListener('click', function () { shown += 120; drawRows(); }); }
+			}
+			drawCl();
+		})();
+
 		/* Mainokset: myymälä / radio / molemmat, omat välit, mainosgeneraattori */
 		var adw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
 		(function () {
@@ -756,7 +863,7 @@
 			});
 		})();
 
-		var bucket = { yleinen: [wtw, info, sd, mw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, bw, tw], mainokset: [adw] };
+		var bucket = { yleinen: [wtw, info, sd, mw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, bw, tw], kanavat: [chw, clw], mainokset: [adw] };
 		var used = [];
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });

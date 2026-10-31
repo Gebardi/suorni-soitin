@@ -47,7 +47,7 @@ function suorni_scripts_save( $req ) {
 		$x['done'] = $reset ? 0 : $o['done'];
 		$x['last'] = $o['last'];
 		$x['lastday'] = $o['lastday'];
-		if ( $reset ) { $x['lastday'] = ''; }
+		if ( $reset ) { $x['lastday'] = ''; $mm = get_option( 'suorni_scr_ld', array() ); if ( is_array( $mm ) ) { foreach ( array_keys( $mm ) as $kk ) { if ( 0 === strpos( $kk, $id . '|' ) ) { unset( $mm[ $kk ] ); } } update_option( 'suorni_scr_ld', $mm, false ); } }
 		$s = suorni_script_norm( array_merge( $x, array( 'id' => $id ) ) );
 		if ( '' === $s['text'] ) { continue; }
 		$out[] = $s;
@@ -55,7 +55,25 @@ function suorni_scripts_save( $req ) {
 	update_option( 'suorni_scripts', $out, false );
 	return suorni_json( array( 'ok' => true, 'scripts' => $out ) );
 }
+/* Kellonaikajuonto soitetaan jokaisella kanavalla erikseen: viimeisin soittopäivä kanavittain */
+function suorni_script_ld( $s ) {
+	$c = suorni_ch_cur();
+	if ( '' === $c ) { return $s['lastday']; }
+	$m = get_option( 'suorni_scr_ld', array() );
+	return ( is_array( $m ) && isset( $m[ $s['id'] . '|' . $c ] ) ) ? (string) $m[ $s['id'] . '|' . $c ] : '';
+}
 function suorni_script_mark( $id, $ts = 0 ) {
+	$c = suorni_ch_cur();
+	if ( '' !== $c ) {
+		$m = get_option( 'suorni_scr_ld', array() );
+		if ( ! is_array( $m ) ) { $m = array(); }
+		foreach ( suorni_scripts() as $s ) {
+			if ( $s['id'] === $id && 'time' === $s['mode'] ) { $m[ $id . '|' . $c ] = wp_date( 'Ymd', $ts ? $ts : time() ); update_option( 'suorni_scr_ld', $m, false ); }
+			if ( $s['id'] === $id && 'next' === $s['mode'] ) { $l = suorni_scripts(); foreach ( $l as $i => $z ) { if ( $z['id'] === $id ) { $l[ $i ]['done'] = time(); $l[ $i ]['last'] = time(); } } update_option( 'suorni_scripts', $l, false ); }
+			if ( $s['id'] === $id && 'rot' === $s['mode'] ) { $l = suorni_scripts(); foreach ( $l as $i => $z ) { if ( $z['id'] === $id ) { $l[ $i ]['last'] = time(); } } update_option( 'suorni_scripts', $l, false ); }
+		}
+		return;
+	}
 	$l = suorni_scripts();
 	foreach ( $l as $i => $s ) {
 		if ( $s['id'] !== $id ) { continue; }
@@ -104,7 +122,7 @@ function suorni_radio_script_next_time( $e ) {
 		foreach ( array( 0, 86400 ) as $add ) {
 			$c = $mid + $add + $h * 3600 + $m * 60;
 			if ( $c <= $e || $c > $e + 3600 ) { continue; }
-			if ( ! in_array( (int) wp_date( 'N', $c ), $s['days'], true ) || wp_date( 'Ymd', $c ) === $s['lastday'] ) { continue; }
+			if ( ! in_array( (int) wp_date( 'N', $c ), $s['days'], true ) || wp_date( 'Ymd', $c ) === suorni_script_ld( $s ) ) { continue; }
 			if ( ! $best || $c < $best ) { $best = $c; }
 		}
 	}
@@ -119,7 +137,7 @@ function suorni_radio_script_due( $end ) {
 		list( $h, $m ) = array_map( 'intval', explode( ':', $s['time'] ) );
 		$c = $mid + $h * 3600 + $m * 60;
 		if ( $c > $e || $e - $c > 600 ) { continue; }
-		if ( ! in_array( (int) wp_date( 'N', $c ), $s['days'], true ) || wp_date( 'Ymd', $c ) === $s['lastday'] ) { continue; }
+		if ( ! in_array( (int) wp_date( 'N', $c ), $s['days'], true ) || wp_date( 'Ymd', $c ) === suorni_script_ld( $s ) ) { continue; }
 		return $s;
 	}
 	return null;
