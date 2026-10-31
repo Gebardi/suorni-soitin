@@ -939,7 +939,33 @@
 				else { ta.select(); try { document.execCommand('copy'); ok(); } catch (e) { m.textContent = 'Valitse teksti ja kopioi käsin.'; } }
 			});
 		})();
-		var bucket = { yleinen: [wtw, info, sd, mw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, bw, tw], kanavat: [chw, clw], tarve: [nw], mainokset: [adw] };
+		/* Ilmoitus puhelimeen uudesta kuuntelijasta (ntfy) */
+		var psw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
+		(function () {
+			var P = D.push || { on: false, topic: '', int: 0, url: '' };
+			var sm = st.replace('width:100%;', 'width:auto;');
+			function draw(msg) {
+				psw.innerHTML = '<h3 style="margin:0 0 6px">📲 Ilmoitus uudesta kuuntelijasta</h3>' +
+					'<p style="font-size:13px;opacity:.8;margin:0 0 8px">Puhelimeesi tulee pling-ilmoitus, kun uusi kuuntelija tulee radioon. Ilmoitus kertoo, montako kuuntelee, mistä kuuntelija tuli (esim. tiktok) ja millä kanavalla. Tunnistetietoja ei lähetetä. Palvelu on ilmainen <b>ntfy</b>-sovellus (iPhone ja Android).</p>' +
+					'<label><input type="checkbox" data-pon' + (P.on ? ' checked' : '') + '> Ilmoitukset päällä</label>' +
+					'<p style="margin:8px 0 2px;font-size:13px">Ilmoitus enintään</p><select style="' + sm + '" data-pint><option value="0"' + (P.int === 0 ? ' selected' : '') + '>jokaisesta uudesta kuuntelijasta</option><option value="60"' + (P.int === 60 ? ' selected' : '') + '>kerran minuutissa</option><option value="300"' + (P.int === 300 ? ' selected' : '') + '>kerran 5 minuutissa</option><option value="900"' + (P.int === 900 ? ' selected' : '') + '>kerran 15 minuutissa</option><option value="3600"' + (P.int === 3600 ? ' selected' : '') + '>kerran tunnissa</option></select>' +
+					'<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" data-psv>💾 Tallenna</button><button type="button" data-pts>🔔 Lähetä testi</button><button type="button" data-pnw>🔑 Uusi osoite</button><span data-pmsg style="font-size:13px">' + (msg || '') + '</span></div>' +
+					(P.topic ? '<div style="margin-top:10px;font-size:13px;line-height:1.6"><b>Näin otat käyttöön:</b><ol style="margin:4px 0 0 18px"><li>Asenna puhelimeen ilmainen <b>ntfy</b>-sovellus (App Store tai Google Play).</li><li>Paina sovelluksessa <b>＋</b> ja kirjoita aiheen nimeksi: <b data-ptp style="user-select:all;word-break:break-all">' + esc(P.topic) + '</b></li><li>Jätä palvelimeksi ntfy.sh, paina Tilaa. Paina tässä ruudussa vielä "Lähetä testi".</li></ol><div style="opacity:.7;margin-top:4px">Aiheen nimi toimii salasanana: älä jaa sitä. Jos se vuotaa, paina "Uusi osoite" ja tilaa uusi nimi sovelluksessa.</div></div>' : '<div style="margin-top:8px;font-size:13px;opacity:.75">Paina "Tallenna", niin ilmoitusosoite luodaan.</div>') +
+					(P.err ? '<div style="margin-top:6px;font-size:12px;color:#ffb347">Viimeisin virhe: ' + esc(P.err) + '</div>' : '');
+				var g = function (k) { return psw.querySelector(k); };
+				function send(extra) {
+					var body = { on: g('[data-pon]').checked, int: parseInt(g('[data-pint]').value, 10) || 0 };
+					Object.keys(extra || {}).forEach(function (k) { body[k] = extra[k]; });
+					g('[data-pmsg]').textContent = 'Tallennetaan…';
+					return api('POST', D.urls.push, body).then(function (j) { P = j.push || P; D.push = P; var m = '✅ Tallennettu.'; if (j.test) { m = j.test === 'ok' ? '✅ Testi lähetetty. Jos et saanut sitä, tarkista tilaus ntfy-sovelluksessa.' : '⚠️ ' + j.test; } draw(m); }).catch(function (e) { g('[data-pmsg]').textContent = '⚠️ ' + e.message; });
+				}
+				g('[data-psv]').addEventListener('click', function () { send(); });
+				g('[data-pts]').addEventListener('click', function () { send({ test: true }); });
+				g('[data-pnw]').addEventListener('click', function () { if (confirm('Luodaanko uusi osoite? Vanha lakkaa toimimasta ja sinun pitää tilata uusi nimi ntfy-sovelluksessa.')) { send({ renew: true }); } });
+			}
+			draw('');
+		})();
+		var bucket = { yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, bw, tw], kanavat: [chw, clw], tarve: [nw], mainokset: [adw] };
 		var used = [];
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });
