@@ -289,6 +289,8 @@
 		document.addEventListener('pointerdown', go, true);
 	}
 	function loadItem(it, pos, key) {
+		/* edellisen kappaleen häivytys ei saa jäädä päälle uuden kohteen alussa */
+		if (fadeOn) { fadeOn = false; try { au.volume = Math.max(0, Math.min(1, (volEl ? volEl.value : 100) / 100)); } catch (e) {} }
 		if (shopUrl && shopAdGate(it, key)) { return; }
 		/* Ensimmäinen kappale kuunneltu loppuun -> tervetuloa-tervehdys seuraavan kappaleen päälle */
 		if (welArm && !welState && curKey && curKey !== key) {
