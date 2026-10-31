@@ -102,7 +102,7 @@ function suorni_radio_cfg() {
 		'finns'      => isset( $c['finns'] ) ? (string) $c['finns'] : suorni_radio_default_finns(),
 		'cover'     => isset( $c['cover'] ) ? esc_url_raw( (string) $c['cover'] ) : '',
 		'tips'      => isset( $c['tips'] ) ? (string) $c['tips'] : suorni_radio_default_tips(),
-		'dj'        => array_intersect_key( suorni_radio_dj(), array_flip( array( 'time', 'weather', 'next', 'titles', 'where', 'lat', 'lon', 'rate' ) ) ),
+		'dj'        => array_intersect_key( suorni_radio_dj(), array_flip( array( 'time', 'weather', 'next', 'titles', 'where', 'lat', 'lon', 'rate', 'talk', 'talks', 'talki', 'duck' ) ) ),
 		'programs'  => $progs,
 	);
 }
@@ -119,6 +119,11 @@ function suorni_radio_dj() {
 	if ( isset( $r['lat'] ) ) { $d['lat'] = max( -90, min( 90, (float) $r['lat'] ) ); }
 	if ( isset( $r['lon'] ) ) { $d['lon'] = max( -180, min( 180, (float) $r['lon'] ) ); }
 	if ( isset( $r['rate'] ) ) { $d['rate'] = max( 0.6, min( 1.4, (float) $r['rate'] ) ); }
+	/* Juonto musiikin päälle: off | out (edellisen kappaleen lopun päälle) | in (seuraavan kappaleen alun päälle) | both */
+	$d['talk']  = ( isset( $r['talk'] ) && in_array( $r['talk'], array( 'off', 'out', 'in', 'both' ), true ) ) ? $r['talk'] : 'off';
+	$d['talks'] = isset( $r['talks'] ) ? max( 3, min( 10, (int) $r['talks'] ) ) : 6;
+	$d['talki'] = isset( $r['talki'] ) ? max( 2, min( 8, (int) $r['talki'] ) ) : 4;
+	$d['duck']  = isset( $r['duck'] ) ? max( 10, min( 60, (int) $r['duck'] ) ) : 25;
 	return $d;
 }
 function suorni_radio_default_tips() {
@@ -199,6 +204,10 @@ function suorni_radio_cfg_post( $req ) {
 			'lat'     => (float) $req->get_param( 'dj_lat' ),
 			'lon'     => (float) $req->get_param( 'dj_lon' ),
 			'rate'    => (float) $req->get_param( 'dj_rate' ),
+			'talk'    => in_array( $req->get_param( 'dj_talk' ), array( 'off', 'out', 'in', 'both' ), true ) ? $req->get_param( 'dj_talk' ) : 'off',
+			'talks'   => max( 3, min( 10, (int) $req->get_param( 'dj_talks' ) ) ),
+			'talki'   => max( 2, min( 8, (int) $req->get_param( 'dj_talki' ) ) ),
+			'duck'    => max( 10, min( 60, (int) $req->get_param( 'dj_duck' ) ) ),
 		),
 		'programs'  => $progs,
 	), false );
@@ -929,6 +938,7 @@ function suorni_radio_extend( &$log, $now, $horizon ) {
 	$end  = $last ? $last['start'] + $last['dur'] : $now;
 	if ( $end < $now - 2 ) { $end = $now; $st['queue'] = array(); }
 	$guard = 0;
+	$tk    = suorni_radio_dj();
 	while ( $end < $now + $horizon && $guard++ < 6 ) {
 		/* Tasa-aika: juonto alkaa tasatunnilta (tai puolelta); kappaleet sovitetaan päättymään siihen */
 		$anc = suorni_radio_anchor( $cfg, $end );
@@ -977,12 +987,42 @@ function suorni_radio_extend( &$log, $now, $horizon ) {
 			elseif ( abs( $end - round( $end ) ) < 0.01 && 0 === (int) round( $end ) % 60 ) { $it['anc'] = (int) round( $end ); }
 		}
 		if ( ! $it ) { $it = suorni_radio_ad_item( $cfg, $st, $log['items'], $end, $anc ); }
-		if ( ! $it ) { $it = suorni_radio_pick_track( $st, $pool, ( $anc && $R > 1 && $R <= 1500 ) ? array( 'R' => $R ) : null ); }
+		/* Juonnon loppu seuraavan kappaleen intron päälle: kappale sovitetaan alkamaan juonnon lopussa b sekuntia ennen sen päättymistä */
+		$pi = count( $log['items'] ) - 1;
+		$rb = ( $pi >= 0 && 'dj' === $log['items'][ $pi ]['type'] && ! empty( $log['items'][ $pi ]['rb'] ) ) ? (float) $log['items'][ $pi ]['rb'] : 0;
+		if ( ! $it ) { $it = suorni_radio_pick_track( $st, $pool, ( $anc && $R + $rb > 1 && $R + $rb <= 1500 ) ? array( 'R' => $R + $rb ) : null ); }
 		if ( 'track' === $it['type'] ) { $st['adn'] = (int) $st['adn'] + 1; }
 		if ( ! empty( $it['sub'] ) ) { if ( ! isset( $st['cplayed'] ) || ! is_array( $st['cplayed'] ) ) { $st['cplayed'] = array(); } $st['cplayed'][ $it['sub'] ] = (int) $end; $st['cplayed'] = array_slice( $st['cplayed'], -50, null, true ); suorni_comm_played( $it['sub'] ); }
 		if ( ! empty( $it['boost'] ) ) { suorni_boost_played( $it['id'] ); }
+		if ( $pi >= 0 && 'dj' === $log['items'][ $pi ]['type'] && isset( $log['items'][ $pi ]['rb'] ) ) {
+			if ( $rb > 0 && 'track' === $it['type'] && $log['items'][ $pi ]['dur'] - $rb >= 8 ) {
+				$log['items'][ $pi ]['dur']  = round( $log['items'][ $pi ]['dur'] - $rb, 3 );
+				$log['items'][ $pi ]['ring'] = round( $rb, 3 );
+				$end -= $rb;
+			}
+			unset( $log['items'][ $pi ]['rb'] );
+		}
 		$it['start'] = $end;
 		$it['prog']  = $prog['name'];
+		/* Juonto edellisen kappaleen lopun päälle (outro) */
+		if ( 'dj' === $it['type'] && 'off' !== $tk['talk'] ) {
+			$it['dk'] = round( $tk['duck'] / 100, 2 );
+			$P = ( $pi >= 0 && 'track' === $log['items'][ $pi ]['type'] ) ? $log['items'][ $pi ] : null;
+			if ( $P && in_array( $tk['talk'], array( 'out', 'both' ), true ) && empty( $P['ring'] ) ) {
+				if ( ! empty( $it['anc'] ) && abs( $it['start'] - $it['anc'] ) < 1 && ! empty( $P['cut'] ) && ! empty( $P['full'] ) ) {
+					$o = $P['full'] - $P['dur'];
+					if ( $o >= 1.5 ) { $log['items'][ $pi ]['ring'] = round( min( $o, $tk['talks'] ), 3 ); }
+				} elseif ( empty( $it['anc'] ) && empty( $P['cut'] ) && $P['dur'] >= $tk['talks'] + 25 && $P['start'] + $P['dur'] - $tk['talks'] > $now + 12 ) {
+					if ( empty( $P['full'] ) ) { $log['items'][ $pi ]['full'] = $P['dur']; }
+					$log['items'][ $pi ]['dur']  = round( $P['dur'] - $tk['talks'], 3 );
+					$log['items'][ $pi ]['ring'] = (float) $tk['talks'];
+					$log['items'][ $pi ]['fade'] = 3;
+					$end -= $tk['talks'];
+					$it['start'] = $end;
+				}
+			}
+			if ( in_array( $tk['talk'], array( 'in', 'both' ), true ) && $it['dur'] >= $tk['talki'] + 12 ) { $it['rb'] = (float) $tk['talki']; }
+		}
 		$cut = false;
 		if ( $anc && 'track' === $it['type'] && $end + $it['dur'] > $anc + 0.5 ) {
 			/* Kappale päättyy tasalla: leikataan ylitys pois ja häivytetään loppu */
@@ -1188,6 +1228,8 @@ function suorni_radio_now( $req ) {
 				'prog'   => isset( $it['prog'] ) ? $it['prog'] : '',
 				'fade'   => ! empty( $it['fade'] ) ? (int) $it['fade'] : 0,
 				'anc'    => ! empty( $it['anc'] ) ? (int) $it['anc'] : 0,
+				'ring'   => ! empty( $it['ring'] ) ? round( (float) $it['ring'], 2 ) : 0,
+				'dk'     => ! empty( $it['dk'] ) ? round( (float) $it['dk'], 2 ) : 0,
 				'sub'    => ! empty( $it['sub'] ) ? (int) $it['sub'] : 0,
 				'tid'    => ( 'track' === $it['type'] && empty( $it['sub'] ) && isset( $it['id'] ) ) ? (int) $it['id'] : 0,
 			);

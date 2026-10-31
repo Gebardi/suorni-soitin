@@ -8,6 +8,31 @@
 	var au = new Audio();
 	try { au.referrerPolicy = 'no-referrer'; } catch (e) {}
 	au.preload = 'auto';
+	/* Toinen ääniraita: juontaja puhuu musiikin päälle (kappaleen loppu / alku), musiikki hiljenee taustalle. iPhone ja myymälä eivät käytä tätä. */
+	var rg = new Audio();
+	try { rg.referrerPolicy = 'no-referrer'; } catch (e) {}
+	rg.preload = 'auto';
+	var noVol = (function () { try { var t = new Audio(); t.volume = 0.5; return t.volume !== 0.5; } catch (e) { return true; } })();
+	var rgKey = '', rgDk = 0.25, rgUrl = '', rgBad = false, tailEnd = 0, duckCur = 1, duckOn = false;
+	var SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+	function ringOK() { return !noVol && !rgBad && !(root.getAttribute('data-shop') || ''); }
+	function rgPlaying() { return !!rgUrl && !rg.paused && !rg.ended && rg.readyState > 1; }
+	function userVol() { return Math.max(0, Math.min(1, (volEl ? volEl.value : 100) / 100)); }
+	function rgPrep(url) { if (rgPlaying() || rgUrl === url) { return; } rgUrl = url; try { rg.src = url; rg.load(); } catch (e) {} }
+	function rgStart(it, pos, key) {
+		rgKey = key; rgDk = it.dk > 0 ? it.dk : 0.25;
+		if (rgUrl !== it.url) { rgUrl = it.url; try { rg.src = it.url; } catch (e) {} }
+		try { rg.volume = userVol(); } catch (e) {}
+		var go = function () {
+			rg.removeEventListener('loadedmetadata', go);
+			if (rgKey !== key) { return; }
+			try { if (pos > 0.5) { rg.currentTime = Math.min(pos + 0.2, Math.max(0, (rg.duration || 1e9) - 0.2)); } } catch (e) {}
+			var pr = rg.play();
+			if (pr && pr.catch) { pr.catch(function () { if (rgKey === key) { rgBad = true; rgKey = ''; curKey = ''; tailEnd = 0; sync(); } }); }
+		};
+		if (rg.readyState >= 1) { go(); } else { rg.addEventListener('loadedmetadata', go); try { rg.load(); } catch (e) {} }
+	}
+	rg.addEventListener('error', function () { if (rgKey && rgUrl) { rgBad = true; rgKey = ''; curKey = ''; tailEnd = 0; if (playing) { sync(); } } });
 	var fixes = 0, lastFix = 0, loadTok = 0, cid = Math.random().toString(36).slice(2, 12), hasOff = false, warm = (function () { var w = new Audio(); try { w.referrerPolicy = 'no-referrer'; } catch (e) {} return w; })(), warmUrl = '', items = [], off = 0, playing = false, curKey = '', lastPing = 0, lastFetch = 0, busy = false;
 	var elPlay = $('[data-play]'), elTitle = $('[data-title]'), elArtist = $('[data-artist]'), elNext = $('[data-next]');
 	var elCap = $('[data-cap]'), elCount = $('[data-count]'), elProg = $('[data-prog]');
@@ -197,6 +222,13 @@
 	}
 	function current() {
 		var t = srv();
+		/* Juonnon loppu on tarkoitettu seuraavan kappaleen alun päälle. Jos kuuntelija ei voi hiljentää musiikkia, juonto kuunnellaan loppuun ja kappale liittyy mukaan hieman myöhässä. */
+		if (curKey && !ringOK()) {
+			for (var h = 0; h < items.length; h++) {
+				var hi = items[h];
+				if (hi.type === 'dj' && hi.ring > 0 && curKey === hi.url + '@' + hi.start && t >= hi.start + hi.dur && t < hi.start + hi.dur + hi.ring + 0.5 && !au.ended) { return { it: hi, next: items[h + 1] || null, pos: t - hi.start }; }
+			}
+		}
 		for (var i = 0; i < items.length; i++) {
 			if (t >= items[i].start && t < items[i].start + items[i].dur) { return { it: items[i], next: items[i + 1] || null, pos: t - items[i].start }; }
 		}
@@ -292,6 +324,17 @@
 		/* edellisen kappaleen häivytys ei saa jäädä päälle uuden kohteen alussa */
 		if (fadeOn) { fadeOn = false; try { au.volume = Math.max(0, Math.min(1, (volEl ? volEl.value : 100) / 100)); } catch (e) {} }
 		if (shopUrl && shopAdGate(it, key)) { return; }
+		/* Juonto puhuu edellisen kappaleen lopun tai seuraavan alun päälle (toinen ääniraita) */
+		var useRg = false, tailOn = false, pvi = null;
+		if (ringOK() && it.type === 'dj') {
+			for (var vi = 1; vi < items.length; vi++) { if (items[vi] === it) { pvi = items[vi - 1]; break; } }
+			tailOn = !!(pvi && pvi.type === 'track' && pvi.ring > 0 && curKey === pvi.url + '@' + pvi.start && !au.paused && !au.ended);
+			useRg = tailOn || it.ring > 0;
+		}
+		if (!useRg) {
+			if (rgPlaying() && it.type !== 'dj' && rgKey) { duckCur = rgDk; try { au.volume = userVol() * duckCur; } catch (e) {} }
+			rgKey = ''; tailEnd = 0;
+		}
 		/* Ensimmäinen kappale kuunneltu loppuun -> tervetuloa-tervehdys seuraavan kappaleen päälle */
 		if (welArm && !welState && curKey && curKey !== key) {
 			var pv = null;
@@ -303,13 +346,20 @@
 		}
 		curKey = key;
 		clearTimeout(endT);
-		if (it.fade) {
+		if (it.fade || it.ring) {
 			/* Tasalle leikattu kappale: vaihto seuraavaan tasan oikealla hetkellä (ei vasta seuraavalla tarkistuksella) */
 			var endMs = (it.start + it.dur - srv()) * 1000 + 30;
 			if (endMs > 0 && endMs < 3600000) { endT = setTimeout(function () { if (playing) { sync(); } }, endMs); }
 		}
 		fixes = 0;
 		var tok = ++loadTok;
+		if (useRg) {
+			curKey = key;
+			if (tailOn) { tailEnd = pvi.start + pvi.dur + pvi.ring + 0.3; } else { tailEnd = 0; try { au.pause(); } catch (e) {} }
+			rgStart(it, pos, key);
+			render();
+			return;
+		}
 		au.src = it.url;
 		var go = function () {
 			au.removeEventListener('loadedmetadata', go);
@@ -355,21 +405,37 @@
 	setInterval(function () {
 		if (!playing || shopAdHold) { return; }
 		var c = current(), base = Math.max(0, Math.min(1, (volEl ? volEl.value : 100) / 100));
+		/* Puhe musiikin päällä: musiikki hiljenee nopeasti ja palaa hitaasti */
+		var rp = rgPlaying();
+		if (rp) { try { rg.volume = base; } catch (e) {} }
+		var dt = rp ? rgDk : 1;
+		if (duckCur !== dt) { duckCur = duckCur > dt ? Math.max(dt, duckCur - 0.25) : Math.min(dt, duckCur + 0.07); }
+		var dk = duckCur;
 		if (c && c.it.type !== 'dj' && lag > 0 && c.next && c.next.type === 'dj') {
 			/* Myymälän kuuntelija on jäljessä: juonto aloitetaan reaaliajassa tasan oikeaan aikaan, edellisen kappaleen loppu ohitetaan häivyttäen */
 			var cutAt = c.next.start - lag, rm = cutAt - srv();
 			if (rm <= 0) { lag = 0; fadeOn = false; try { au.volume = base; } catch (e) {} sync(); return; }
 			if (rm < 3) { fadeOn = true; var m2 = rm / 3; try { au.volume = base * m2 * m2; } catch (e) {} return; }
 		}
-		if (c && c.it.fade && !au.paused) {
-			var rem = c.it.start + c.it.dur - srv();
-			if (rem < c.it.fade) { fadeOn = true; var m = Math.max(0, rem / c.it.fade); try { au.volume = base * m * m; } catch (e) {} return; }
+		if (tailEnd && curKey === rgKey && !au.paused) {
+			/* Kappaleen loppu soi juonnon alla: häivytetään pois, jos se kestää odotettua pidempään */
+			var tr = tailEnd - srv();
+			if (tr <= 0) { try { au.pause(); } catch (e) {} tailEnd = 0; }
+			else if (tr < 0.8) { var mt = tr / 0.8; try { au.volume = base * dk * mt * mt; } catch (e) {} return; }
 		}
-		if (fadeOn) { fadeOn = false; try { au.volume = base; } catch (e) {} }
+		var ringTail = c && c.it.ring > 0 && c.next && c.next.type === 'dj' && ringOK();
+		if (c && c.it.fade && !au.paused && !ringTail) {
+			var rem = c.it.start + c.it.dur - srv();
+			if (rem < c.it.fade) { fadeOn = true; var m = Math.max(0, rem / c.it.fade); try { au.volume = base * dk * m * m; } catch (e) {} return; }
+		}
+		if (fadeOn) { fadeOn = false; try { au.volume = base * dk; } catch (e) {} duckOn = dk < 1; return; }
+		if (dk < 1) { try { au.volume = base * dk; } catch (e) {} duckOn = true; }
+		else if (duckOn) { try { au.volume = base; } catch (e) {} duckOn = false; }
 	}, 100);
 	/* Kun kappale päättyy, siirrytään heti seuraavaan ilman ajastinta (ajastimet hidastuvat, kun näyttö on sammutettu) */
 	function advance() {
 		if (!playing || shopAdHold) { return; }
+		if (rgKey && curKey === rgKey) { return; }
 		var idx = -1;
 		for (var i = 0; i < items.length; i++) { if (items[i].url + '@' + items[i].start === curKey) { idx = i; break; } }
 		var nx = idx >= 0 ? items[idx + 1] : null;
@@ -385,6 +451,8 @@
 		var key = c.it.url + '@' + c.it.start;
 		if (key !== curKey) {
 			loadItem(c.it, c.pos + (c.it.from || 0), key);
+		} else if (rgKey && key === rgKey) {
+			/* juonto soi toisella ääniraidalla */
 		} else {
 			var want = c.pos + (c.it.from || 0);
 			if (!au.paused && !au.seeking && au.readyState > 2 && Math.abs(au.currentTime - want) > 7 && fixes < 1 && Date.now() - lastFix > 20000) {
@@ -395,6 +463,7 @@
 				if (p2 && p2.catch) { p2.catch(function (e) { if (e && e.name === 'NotAllowedError') { setUi(false); } }); }
 			}
 		}
+		if (c.next && c.next.type === 'dj' && ringOK() && (c.it.ring > 0 || c.next.ring > 0) && c.it.start + c.it.dur - srv() < 25) { rgPrep(c.next.url); }
 		if (c.next && c.next.type === 'dj' && c.next.url !== warmUrl && c.it.start + c.it.dur - srv() < 25) { warmUrl = c.next.url; warm.preload = 'auto'; warm.muted = true; warm.src = warmUrl; try { warm.load(); } catch (e) {} }
 	}
 	function setUi(on) {
@@ -407,15 +476,17 @@
 	}
 	elPlay.addEventListener('click', function () {
 		if (shopUrl && !playing && shopOpen === false) { return; }
-		if (playing) { au.pause(); setUi(false); curKey = ''; if (shopUrl && !autoStop) { userStop = true; } return; }
+		if (playing) { au.pause(); try { rg.pause(); } catch (e) {} rgKey = ''; tailEnd = 0; setUi(false); curKey = ''; if (shopUrl && !autoStop) { userStop = true; } return; }
 		setUi(true);
+		/* Toinen ääniraita vapautetaan käyttäjän napautuksella (Safari) */
+		if (ringOK()) { try { rg.muted = true; rgUrl = ''; rg.src = SILENT; var up = rg.play(); var un = function () { try { rg.pause(); } catch (e) {} rg.muted = false; rgUrl = ''; }; if (up && up.then) { up.then(un).catch(function () { rg.muted = false; }); } else { un(); } } catch (e) {} }
 		welPrepare();
 		lag = 0;
 		curKey = '';
 		lastPing = 0;
 		if (!items.length || !current()) { fetchNow(true); setTimeout(sync, 800); } else { sync(); fetchNow(true); }
 	});
-	$('[data-vol]').addEventListener('input', function (e) { au.volume = Math.max(0, Math.min(1, e.target.value / 100)); });
+	$('[data-vol]').addEventListener('input', function (e) { au.volume = Math.max(0, Math.min(1, e.target.value / 100)) * (duckOn ? duckCur : 1); });
 	var badSent = {};
 	au.addEventListener('error', function () {
 		var c = current();
