@@ -66,6 +66,12 @@ function suorni_radio_queue_cut( $req ) {
 		$items[] = $x;
 	}
 	$log['items'] = $items;
+	/* Jos poisto siirsi tasalle (tasatunnin juonto) asetetun kohteen aikaisemmaksi, täytetään aukko kappaleilla, jotta juonto pysyy tasalla */
+	$cfg = suorni_radio_cfg();
+	for ( $i = max( 0, $idx ); $i < count( $log['items'] ); $i++ ) {
+		$x = $log['items'][ $i ];
+		if ( ! empty( $x['anc'] ) && $x['start'] > $now && $x['anc'] - $x['start'] > 8 ) { suorni_radio_fill_before( $log, $i, $cfg ); }
+	}
 	update_option( 'suorni_radio_log', $log, false );
 	suorni_radio_unlock();
 	return suorni_json( array( 'ok' => true ) );

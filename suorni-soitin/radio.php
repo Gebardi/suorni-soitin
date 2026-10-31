@@ -15,6 +15,7 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-hist.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-req.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-watch.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-welcome.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-fit.php';
 
 /* ---------- Asetukset ---------- */
 function suorni_radio_time( $v, $def ) {
@@ -68,6 +69,7 @@ function suorni_radio_cfg() {
 		'name'      => ( isset( $c['name'] ) && '' !== trim( $c['name'] ) ) ? (string) $c['name'] : 'Suorni Radio',
 		'showcount' => ! isset( $c['showcount'] ) || ! empty( $c['showcount'] ),
 		'welcome'   => ! isset( $c['welcome'] ) || ! empty( $c['welcome'] ),
+		'radads'    => ! empty( $c['radads'] ),
 		'greet_voices' => ! isset( $c['greet_voices'] ) || ! empty( $c['greet_voices'] ),
 		'chat'       => ! isset( $c['chat'] ) || ! empty( $c['chat'] ),
 		'chat_ai'    => ! isset( $c['chat_ai'] ) || ! empty( $c['chat_ai'] ),
@@ -156,6 +158,7 @@ function suorni_radio_cfg_post( $req ) {
 		'name'      => mb_substr( sanitize_text_field( (string) $req->get_param( 'name' ) ), 0, 60 ),
 		'showcount' => (bool) $req->get_param( 'showcount' ),
 		'welcome'   => (bool) $req->get_param( 'welcome' ),
+		'radads'    => (bool) $req->get_param( 'radads' ),
 		'greet_voices' => (bool) $req->get_param( 'greet_voices' ),
 		'chat'       => (bool) $req->get_param( 'chat' ),
 		'chat_ai'    => (bool) $req->get_param( 'chat_ai' ),
@@ -406,7 +409,7 @@ function suorni_radio_pool( $list, $ids = array(), $pid = '' ) {
 	return $out;
 }
 function suorni_radio_state_default() {
-	return array( 'recent' => array(), 'since' => 0, 'next' => 0, 'slot' => '', 'prog' => '', 'tipi' => 0, 'queue' => array(), 'news_at' => 0, 'sport_at' => 0, 'nhl_at' => 0 );
+	return array( 'recent' => array(), 'since' => 0, 'next' => 0, 'slot' => '', 'prog' => '', 'tipi' => 0, 'queue' => array(), 'news_at' => 0, 'sport_at' => 0, 'nhl_at' => 0, 'adn' => 0, 'adat' => 0, 'adi' => 0 );
 }
 function suorni_radio_log() {
 	$l = get_option( 'suorni_radio_log', array() );
@@ -460,7 +463,7 @@ function suorni_radio_dj_due( &$st, $prog, $ts ) {
 	if ( $st['since'] >= $st['next'] ) { suorni_radio_roll( $prog, $st ); return 'songs'; }
 	return '';
 }
-function suorni_radio_pick_track( &$st, $pool ) {
+function suorni_radio_pick_track( &$st, $pool, $fit = null ) {
 	$by = array();
 	foreach ( $pool as $t ) { $by[ $t['id'] ] = $t; }
 	foreach ( suorni_comm_tracks() as $t ) { $by[ $t['id'] ] = $t; }
@@ -478,7 +481,13 @@ function suorni_radio_pick_track( &$st, $pool ) {
 		$recent = array_slice( $st['recent'], -$keep );
 		foreach ( $pool as $t ) { if ( ! in_array( $t['id'], $recent, true ) ) { $cand[] = $t; } }
 		if ( ! $cand ) { $cand = $pool; }
-		$pick = $cand[ wp_rand( 0, count( $cand ) - 1 ) ];
+		if ( $fit && ! empty( $fit['R'] ) ) {
+			/* Tasalle sovitus: valitaan kappale, jonka jälkeen jäljellä oleva aika voidaan täyttää niin, että viimeinen kappale päättyy tasalle */
+			$pick = suorni_radio_fit_choose( $cand, $fit['R'] );
+			if ( ! $pick && count( $cand ) < count( $pool ) ) { $pick = suorni_radio_fit_choose( $pool, $fit['R'] ); }
+			if ( ! $pick ) { $pick = suorni_radio_fit_fallback( $cand, $fit['R'] ); }
+		}
+		if ( ! $pick ) { $pick = $cand[ wp_rand( 0, count( $cand ) - 1 ) ]; }
 	}
 	if ( empty( $st['sim'] ) && function_exists( 'suorni_req_mark_played' ) && ! isset( $pick['sub'] ) ) { suorni_req_mark_played( $pick['id'] ); }
 	$st['recent'][] = $pick['id'];
@@ -890,6 +899,7 @@ function suorni_radio_live_greets( &$log, $now ) {
 		foreach ( array_slice( $log['items'], $k + 1 ) as $later ) { $later['start'] += $d; $items[] = $later; }
 	}
 	$log['items'] = $items;
+	suorni_radio_realign( $log['items'], $now );
 	$all[ $idx ]['status'] = 'played';
 	update_option( 'suorni_greets', $all, false );
 }
@@ -902,20 +912,61 @@ function suorni_radio_extend( &$log, $now, $horizon ) {
 	if ( $end < $now - 2 ) { $end = $now; $st['queue'] = array(); }
 	$guard = 0;
 	while ( $end < $now + $horizon && $guard++ < 6 ) {
+		/* Tasa-aika: juonto alkaa tasatunnilta (tai puolelta); kappaleet sovitetaan päättymään siihen */
+		$anc = suorni_radio_anchor( $cfg, $end );
+		$R   = $anc ? $anc - $end : 0;
+		if ( $anc && $R <= 1 ) {
+			/* alle sekunnin aukko tasalle: edellinen kohde jatketaan tasalle, ettei jää hiljaisuutta */
+			$n = count( $log['items'] );
+			if ( $n && $R > 0 && 'track' === $log['items'][ $n - 1 ]['type'] ) { $log['items'][ $n - 1 ]['dur'] += $R; }
+			$end = $anc;
+			$anc = suorni_radio_anchor( $cfg, $end );
+			$R   = $anc ? $anc - $end : 0;
+		}
 		$prog = suorni_radio_prog_at( $cfg, (int) $end );
 		$pool = suorni_radio_pool( $prog['list'], $prog['ids'], $prog['id'] );
 		if ( ! $pool ) { break; }
-		$it = null;
-		$reason = ( $log['items'] || '' !== $st['prog'] ) ? suorni_radio_dj_due( $st, $prog, (int) $end ) : '';
+		$it     = null;
+		$early  = false;
+		$aprog  = $prog;
+		$apool  = $pool;
+		$ats    = (int) $end;
+		if ( $anc && $R > 1 && $R < min( 25, suorni_radio_min_dur( $pool ) - 6 ) ) {
+			/* Tasaan jää alle 25 s eikä kappale mahdu: juonto aloitetaan hieman etuajassa (ei pientä pätkää kappaletta) */
+			$early = true;
+			$ats   = $anc;
+			$aprog = suorni_radio_prog_at( $cfg, $anc );
+			$apool = suorni_radio_pool( $aprog['list'], $aprog['ids'], $aprog['id'] );
+			if ( ! $apool ) { $apool = $pool; $aprog = $prog; }
+		}
+		$reason = ( $log['items'] || '' !== $st['prog'] ) ? suorni_radio_dj_due( $st, $aprog, $ats ) : '';
 		if ( '' === $st['prog'] ) { $st['prog'] = $prog['id']; }
-		if ( '' !== $reason ) { $it = suorni_radio_make_dj( $cfg, $prog, (int) $end, $reason, $st, $pool ); }
-		if ( ! $it ) { $it = suorni_radio_pick_track( $st, $pool ); }
+		if ( '' !== $reason ) { $it = suorni_radio_make_dj( $cfg, $aprog, $ats, $reason, $st, $apool ); }
+		if ( $it ) {
+			if ( $early ) { $it['anc'] = $anc; }
+			elseif ( abs( $end - round( $end ) ) < 0.01 && 0 === (int) round( $end ) % 60 ) { $it['anc'] = (int) round( $end ); }
+		}
+		if ( ! $it ) { $it = suorni_radio_ad_item( $cfg, $st, $log['items'], $end, $anc ); }
+		if ( ! $it ) { $it = suorni_radio_pick_track( $st, $pool, ( $anc && $R > 1 && $R <= 1500 ) ? array( 'R' => $R ) : null ); }
+		if ( 'track' === $it['type'] ) { $st['adn'] = (int) $st['adn'] + 1; }
 		if ( ! empty( $it['sub'] ) ) { if ( ! isset( $st['cplayed'] ) || ! is_array( $st['cplayed'] ) ) { $st['cplayed'] = array(); } $st['cplayed'][ $it['sub'] ] = (int) $end; $st['cplayed'] = array_slice( $st['cplayed'], -50, null, true ); suorni_comm_played( $it['sub'] ); }
 		if ( ! empty( $it['boost'] ) ) { suorni_boost_played( $it['id'] ); }
 		$it['start'] = $end;
 		$it['prog']  = $prog['name'];
+		$cut = false;
+		if ( $anc && 'track' === $it['type'] && $end + $it['dur'] > $anc + 0.5 ) {
+			/* Kappale päättyy tasalla: leikataan ylitys pois ja häivytetään loppu */
+			$o = $end + $it['dur'] - $anc;
+			$it['full'] = $it['dur'];
+			$it['dur']  = round( $anc - $end, 3 );
+			$it['cut']  = 1;
+			$it['fade'] = $o <= 4 ? 3 : 6;
+			if ( $it['dur'] < 9 ) { $it['fade'] = max( 1, (int) floor( $it['dur'] / 3 ) ); }
+			$cut = true;
+		}
 		$log['items'][] = $it;
 		$end += $it['dur'];
+		if ( $cut ) { $end = $anc; }
 	}
 }
 
@@ -1103,6 +1154,7 @@ function suorni_radio_now( $req ) {
 				'text'   => isset( $it['text'] ) ? $it['text'] : '',
 				'from'   => isset( $it['from'] ) ? $it['from'] : 0,
 				'prog'   => isset( $it['prog'] ) ? $it['prog'] : '',
+				'fade'   => ! empty( $it['fade'] ) ? (int) $it['fade'] : 0,
 				'sub'    => ! empty( $it['sub'] ) ? (int) $it['sub'] : 0,
 				'tid'    => ( 'track' === $it['type'] && empty( $it['sub'] ) && isset( $it['id'] ) ) ? (int) $it['id'] : 0,
 			);
@@ -1134,6 +1186,7 @@ function suorni_radio_admin_get() {
 		'stats'  => suorni_radio_stats_get(),
 		'tracks' => $tracks,
 		'usable' => count( $pool ),
+		'adinfo' => ( function () { $a = suorni_ads(); $n = 0; foreach ( suorni_tracks() as $t ) { if ( ! empty( $t['ad'] ) && empty( $t['ann'] ) && $t['dur'] > 0 ) { $n++; } } return array( 'on' => (bool) $a['on'], 'min' => $a['min'], 'max' => $a['max'], 'n' => $n ); } )(),
 		'chat'   => array_reverse( array_slice( suorni_chat(), -30 ) ),
 		'djerr'  => (string) get_option( 'suorni_radio_djerr', '' ),
 		'skipped' => $skip,

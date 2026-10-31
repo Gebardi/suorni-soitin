@@ -260,6 +260,10 @@
 			elTitle.textContent = '🎙️ Juontaja';
 			elArtist.textContent = '';
 			if (!elCap.getAttribute('data-aux')) { elCap.textContent = it.text || ''; }
+		} else if (it.type === 'ad') {
+			elTitle.textContent = '📢 Mainos';
+			elArtist.textContent = it.title || '';
+			if (!elCap.getAttribute('data-aux')) { elCap.textContent = ''; }
 		} else {
 			elTitle.textContent = it.title;
 			elArtist.textContent = it.artist;
@@ -293,6 +297,12 @@
 			}
 		}
 		curKey = key;
+		clearTimeout(endT);
+		if (it.fade) {
+			/* Tasalle leikattu kappale: vaihto seuraavaan tasan oikealla hetkellä (ei vasta seuraavalla tarkistuksella) */
+			var endMs = (it.start + it.dur - srv()) * 1000 + 30;
+			if (endMs > 0 && endMs < 3600000) { endT = setTimeout(function () { if (playing) { sync(); } }, endMs); }
+		}
 		if (shopUrl && it.type === 'track') { shopTrackStart(); }
 		fixes = 0;
 		var tok = ++loadTok;
@@ -336,6 +346,17 @@
 		if (pr && pr.catch) { pr.catch(back); }
 		welMark();
 	}
+	/* Tasalle sovitetun kappaleen loppu häivytetään (it.fade = häivytyksen kesto sekunteina). iPhonessa selain ei salli äänenvoimakkuuden säätöä, jolloin kappale vain päättyy tasalla. */
+	var endT = 0, fadeOn = false;
+	setInterval(function () {
+		if (!playing) { return; }
+		var c = current(), base = Math.max(0, Math.min(1, (volEl ? volEl.value : 100) / 100));
+		if (c && c.it.fade && !au.paused) {
+			var rem = c.it.start + c.it.dur - srv();
+			if (rem < c.it.fade) { fadeOn = true; var m = Math.max(0, rem / c.it.fade); try { au.volume = base * m * m; } catch (e) {} return; }
+		}
+		if (fadeOn) { fadeOn = false; try { au.volume = base; } catch (e) {} }
+	}, 100);
 	/* Kun kappale päättyy, siirrytään heti seuraavaan ilman ajastinta (ajastimet hidastuvat, kun näyttö on sammutettu) */
 	function advance() {
 		if (!playing) { return; }

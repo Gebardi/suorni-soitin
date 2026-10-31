@@ -36,7 +36,7 @@ function suorni_shop_get( $req ) {
 		'sch'  => $sch['on'],
 		'next' => suorni_shop_next_open(),
 		'an'   => $an,
-		'ads'  => array( 'on' => $ads['on'] && $list, 'min' => $ads['min'], 'max' => $ads['max'], 'list' => $list ),
+		'ads'  => array( 'on' => $ads['on'] && $list && ! suorni_radio_cfg()['radads'], 'min' => $ads['min'], 'max' => $ads['max'], 'list' => $list ),
 	) );
 }
 add_action( 'rest_api_init', function () {
