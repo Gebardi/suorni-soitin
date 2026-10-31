@@ -134,7 +134,7 @@ function suorni_radio_fill_before( &$log, $i, $cfg ) {
 	for ( $j = $i + count( $new ); $j < count( $log['items'] ); $j++ ) { $log['items'][ $j ]['start'] += $delta; }
 }
 /* Mainos kappaleen jälkeen (jos radion mainokset on otettu käyttöön). Palauttaa aikajanan kohteen tai null. */
-function suorni_radio_ad_item( $cfg, &$st, $items, $end, $anc ) {
+function suorni_radio_ad_item( $cfg, &$st, $items, $end, $anc, $pool = null ) {
 	if ( empty( $cfg['radads'] ) ) { return null; }
 	$ads = suorni_ads();
 	if ( ! $ads['on'] ) { return null; }
@@ -147,6 +147,12 @@ function suorni_radio_ad_item( $cfg, &$st, $items, $end, $anc ) {
 	$t = $list[ (int) $st['adi'] % count( $list ) ];
 	/* Ei ahtauteta mainosta aivan tasan alle: sen jälkeen pitää jäädä tilaa kappaleelle */
 	if ( $anc && $anc - $end < (int) $t['dur'] + 150 ) { return null; }
+	/* Mainoksen jälkeen jäljelle jäävän ajan on pystyttävä täyttämään kappaleilla niin, että tasa-aika täsmää */
+	if ( $anc && $pool ) {
+		$Rr = (int) round( $anc - $end - (int) $t['dur'] );
+		$g  = suorni_radio_fit_table( $pool, $Rr );
+		if ( $Rr >= 2 && empty( $g[ $Rr ] ) ) { return null; }
+	}
 	$st['adi']  = (int) $st['adi'] + 1;
 	$st['adn']  = 0;
 	$st['adat'] = wp_rand( $ads['rmin'], max( $ads['rmin'], $ads['rmax'] ) );

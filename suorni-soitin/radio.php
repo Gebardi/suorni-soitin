@@ -986,7 +986,7 @@ function suorni_radio_extend( &$log, $now, $horizon ) {
 			if ( $early ) { $it['anc'] = $anc; }
 			elseif ( abs( $end - round( $end ) ) < 0.01 && 0 === (int) round( $end ) % 60 ) { $it['anc'] = (int) round( $end ); }
 		}
-		if ( ! $it ) { $it = suorni_radio_ad_item( $cfg, $st, $log['items'], $end, $anc ); }
+		if ( ! $it ) { $it = suorni_radio_ad_item( $cfg, $st, $log['items'], $end, $anc, $pool ); }
 		/* Juonnon loppu seuraavan kappaleen intron päälle: kappale sovitetaan alkamaan juonnon lopussa b sekuntia ennen sen päättymistä */
 		$pi = count( $log['items'] ) - 1;
 		$rb = ( $pi >= 0 && 'dj' === $log['items'][ $pi ]['type'] && ! empty( $log['items'][ $pi ]['rb'] ) ) ? (float) $log['items'][ $pi ]['rb'] : 0;
