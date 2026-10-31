@@ -2,11 +2,11 @@
 /**
  * Plugin Name: Suorni Soitin
  * Description: Soitin mediakirjaston äänitiedostoista. Lyhytkoodit: [suorni_soitin] (valinnaisesti lista="nimi") ja [suorni_kauko] (kauko-ohjain kirjautuneelle).
- * Version: 9.51
+ * Version: 9.52
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SUORNI_VER', '9.51' );
+define( 'SUORNI_VER', '9.52' );
 require_once plugin_dir_path( __FILE__ ) . 'radio.php';
 require_once plugin_dir_path( __FILE__ ) . 'update.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-cache.php';
@@ -96,29 +96,64 @@ foreach ( array( 'add_attachment', 'edit_attachment', 'delete_attachment', 'atta
 add_filter( 'wp_update_attachment_metadata', function ( $data ) { suorni_clear_tracks(); return $data; } );
 
 /* ---------- Mainokset ---------- */
+/* Kohde: 's' = myymälä, 'r' = julkinen radio, 'b' = molemmat. Ennen eriyttämistä kaikki mainokset olivat myymälän mainoksia ('s'). */
 function suorni_ads() {
 	$a = get_option( 'suorni_ads', array() );
 	if ( ! is_array( $a ) ) { $a = array(); }
-	$min = isset( $a['min'] ) ? max( 1, min( 20, (int) $a['min'] ) ) : 3;
-	$max = isset( $a['max'] ) ? max( $min, min( 20, (int) $a['max'] ) ) : $min;
+	$min  = isset( $a['min'] ) ? max( 1, min( 20, (int) $a['min'] ) ) : 3;
+	$max  = isset( $a['max'] ) ? max( $min, min( 20, (int) $a['max'] ) ) : $min;
+	$rmin = isset( $a['rmin'] ) ? max( 1, min( 40, (int) $a['rmin'] ) ) : 4;
+	$rmax = isset( $a['rmax'] ) ? max( $rmin, min( 40, (int) $a['rmax'] ) ) : max( $rmin, 6 );
+	$tg   = array();
+	if ( isset( $a['tg'] ) && is_array( $a['tg'] ) ) {
+		foreach ( $a['tg'] as $id => $v ) { if ( in_array( $v, array( 's', 'r', 'b' ), true ) ) { $tg[ (int) $id ] = $v; } }
+	}
 	return array(
-		'on'  => ! empty( $a['on'] ),
-		'min' => $min,
-		'max' => $max,
-		'ids' => ( isset( $a['ids'] ) && is_array( $a['ids'] ) ) ? array_values( array_map( 'intval', $a['ids'] ) ) : array(),
+		'on'   => ! empty( $a['on'] ),
+		'min'  => $min,
+		'max'  => $max,
+		'rmin' => $rmin,
+		'rmax' => $rmax,
+		'tg'   => $tg,
+		'ids'  => ( isset( $a['ids'] ) && is_array( $a['ids'] ) ) ? array_values( array_map( 'intval', $a['ids'] ) ) : array(),
 	);
 }
 function suorni_ads_public() {
 	$a = suorni_ads();
-	unset( $a['ids'] );
+	unset( $a['ids'], $a['tg'], $a['rmin'], $a['rmax'] );
 	return $a;
 }
+/* Mainoskappaleet kohteelle: 's' (myymälä) tai 'r' (julkinen radio) */
+function suorni_ads_for( $w ) {
+	$a   = suorni_ads();
+	$out = array();
+	foreach ( suorni_tracks() as $t ) {
+		if ( empty( $t['ad'] ) || ! empty( $t['ann'] ) || $t['dur'] <= 0 ) { continue; }
+		$g = isset( $a['tg'][ (int) $t['id'] ] ) ? $a['tg'][ (int) $t['id'] ] : 's';
+		if ( $g === $w || 'b' === $g ) { $out[] = $t; }
+	}
+	return $out;
+}
 function suorni_ads_post( $req ) {
+	$old = suorni_ads();
 	$min = max( 1, min( 20, absint( $req->get_param( 'min' ) ) ) );
 	$max = max( $min, min( 20, absint( $req->get_param( 'max' ) ) ) );
 	$ids = $req->get_param( 'ids' );
 	$ids = is_array( $ids ) ? array_values( array_unique( array_map( 'absint', $ids ) ) ) : array();
-	update_option( 'suorni_ads', array( 'on' => (bool) $req->get_param( 'on' ), 'min' => $min, 'max' => $max, 'ids' => $ids ), false );
+	$tg  = $old['tg'];
+	if ( is_array( $req->get_param( 'tg' ) ) ) {
+		$tg = array();
+		foreach ( $req->get_param( 'tg' ) as $id => $v ) { if ( in_array( $v, array( 's', 'r', 'b' ), true ) ) { $tg[ absint( $id ) ] = $v; } }
+	}
+	$rmin = null !== $req->get_param( 'rmin' ) ? max( 1, min( 40, absint( $req->get_param( 'rmin' ) ) ) ) : $old['rmin'];
+	$rmax = null !== $req->get_param( 'rmax' ) ? max( $rmin, min( 40, absint( $req->get_param( 'rmax' ) ) ) ) : max( $rmin, $old['rmax'] );
+	update_option( 'suorni_ads', array( 'on' => (bool) $req->get_param( 'on' ), 'min' => $min, 'max' => $max, 'rmin' => $rmin, 'rmax' => $rmax, 'tg' => $tg, 'ids' => $ids ), false );
+	if ( null !== $req->get_param( 'radads' ) ) {
+		$o = get_option( 'suorni_radio', array() );
+		if ( ! is_array( $o ) ) { $o = array(); }
+		$o['radads'] = (bool) $req->get_param( 'radads' );
+		update_option( 'suorni_radio', $o, false );
+	}
 	suorni_clear_tracks();
 	return suorni_json( array( 'ok' => true ) );
 }

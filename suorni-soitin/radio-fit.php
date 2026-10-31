@@ -137,16 +137,57 @@ function suorni_radio_ad_item( $cfg, &$st, $items, $end, $anc ) {
 	if ( ! $ads['on'] ) { return null; }
 	$last = $items ? $items[ count( $items ) - 1 ] : null;
 	if ( ! $last || 'track' !== $last['type'] ) { return null; }
-	$list = array();
-	foreach ( suorni_tracks() as $t ) { if ( ! empty( $t['ad'] ) && empty( $t['ann'] ) && $t['dur'] > 0 ) { $list[] = $t; } }
+	$list = suorni_ads_for( 'r' );
 	if ( ! $list ) { return null; }
-	if ( empty( $st['adat'] ) ) { $st['adat'] = wp_rand( $ads['min'], max( $ads['min'], $ads['max'] ) ); }
+	if ( empty( $st['adat'] ) ) { $st['adat'] = wp_rand( $ads['rmin'], max( $ads['rmin'], $ads['rmax'] ) ); }
 	if ( (int) $st['adn'] < (int) $st['adat'] ) { return null; }
 	$t = $list[ (int) $st['adi'] % count( $list ) ];
 	/* Ei ahtauteta mainosta aivan tasan alle: sen jälkeen pitää jäädä tilaa kappaleelle */
 	if ( $anc && $anc - $end < (int) $t['dur'] + 150 ) { return null; }
 	$st['adi']  = (int) $st['adi'] + 1;
 	$st['adn']  = 0;
-	$st['adat'] = wp_rand( $ads['min'], max( $ads['min'], $ads['max'] ) );
+	$st['adat'] = wp_rand( $ads['rmin'], max( $ads['rmin'], $ads['rmax'] ) );
 	return array( 'type' => 'ad', 'id' => (int) $t['id'], 'url' => $t['url'], 'dur' => (int) $t['dur'], 'title' => $t['title'], 'artist' => '' );
 }
+
+/* Mainosgeneraattori: teksti -> Azure-puhe -> mediakirjaston äänitiedosto, joka merkitään mainokseksi. */
+function suorni_radio_adgen_post( $req ) {
+	$text = trim( preg_replace( '/\s+/u', ' ', wp_strip_all_tags( (string) $req->get_param( 'text' ) ) ) );
+	if ( '' === $text || mb_strlen( $text ) > 400 ) { return new WP_Error( 'suorni_bad', 'Kirjoita mainosteksti (enintään 400 merkkiä).', array( 'status' => 400 ) ); }
+	$title = mb_substr( sanitize_text_field( (string) $req->get_param( 'title' ) ), 0, 80 );
+	if ( '' === $title ) { $title = 'Mainos: ' . mb_substr( $text, 0, 40 ); }
+	$tg    = (string) $req->get_param( 'tg' );
+	if ( ! in_array( $tg, array( 's', 'r', 'b' ), true ) ) { $tg = 'r'; }
+	$voice = trim( (string) $req->get_param( 'voice' ) );
+	$seg   = array( 't' => $text, 'l' => 'fi' );
+	if ( '' !== $voice && preg_match( '/^[A-Za-z]{2,3}-[A-Za-z]{2,4}-[A-Za-z0-9]+$/', $voice ) ) { $seg['v'] = $voice; }
+	$r = suorni_tts_synth( array( $seg ), 1.0, array() );
+	if ( is_wp_error( $r ) ) { return $r; }
+	$up  = wp_upload_dir();
+	$src = trailingslashit( $up['basedir'] ) . 'suorni-tts/' . basename( $r['url'] );
+	if ( ! file_exists( $src ) ) { return new WP_Error( 'suorni_tts', 'Puhetiedostoa ei löytynyt.', array( 'status' => 500 ) ); }
+	$dir = trailingslashit( $up['basedir'] ) . 'suorni-ads';
+	if ( ! wp_mkdir_p( $dir ) ) { return new WP_Error( 'suorni_tts', 'Tallennuskansiota ei voitu luoda.', array( 'status' => 500 ) ); }
+	$name = 'mainos-' . substr( md5( $text . $voice . microtime() ), 0, 10 ) . '.mp3';
+	$dest = $dir . '/' . $name;
+	if ( ! copy( $src, $dest ) ) { return new WP_Error( 'suorni_tts', 'Tiedoston tallennus epäonnistui.', array( 'status' => 500 ) ); }
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	$id = wp_insert_attachment( array( 'post_mime_type' => 'audio/mpeg', 'post_title' => $title, 'post_excerpt' => 'Mainos', 'post_content' => '', 'post_status' => 'inherit' ), $dest );
+	if ( is_wp_error( $id ) || ! $id ) { return new WP_Error( 'suorni_tts', 'Mediakirjastoon lisäys epäonnistui.', array( 'status' => 500 ) ); }
+	$m = wp_generate_attachment_metadata( $id, $dest );
+	if ( ! is_array( $m ) ) { $m = array(); }
+	if ( empty( $m['length'] ) ) { $m['length'] = max( 2, (int) ceil( filesize( $dest ) / 12000 ) ); }
+	wp_update_attachment_metadata( $id, $m );
+	$a   = suorni_ads();
+	$ids = $a['ids'];
+	if ( ! in_array( (int) $id, $ids, true ) ) { $ids[] = (int) $id; }
+	$a['tg'][ (int) $id ] = $tg;
+	update_option( 'suorni_ads', array( 'on' => $a['on'], 'min' => $a['min'], 'max' => $a['max'], 'rmin' => $a['rmin'], 'rmax' => $a['rmax'], 'tg' => $a['tg'], 'ids' => $ids ), false );
+	suorni_clear_tracks();
+	return suorni_json( array( 'ok' => true, 'id' => (int) $id, 'title' => $title, 'dur' => (int) $m['length'], 'tg' => $tg ) );
+}
+add_action( 'rest_api_init', function () {
+	register_rest_route( 'suorni/v1', '/radio/adgen', array( 'methods' => 'POST', 'callback' => 'suorni_radio_adgen_post', 'permission_callback' => 'suorni_can' ) );
+} );

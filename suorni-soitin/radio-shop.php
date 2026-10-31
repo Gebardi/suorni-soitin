@@ -25,7 +25,7 @@ function suorni_shop_get( $req ) {
 	if ( '' === $tid ) { $tt = suorni_targets(); $tid = $tt[0]['id']; }
 	$ads = suorni_ads();
 	$list = array();
-	foreach ( suorni_tracks() as $t ) { if ( ! empty( $t['ad'] ) && empty( $t['ann'] ) && $t['dur'] > 0 ) { $list[] = array( 'id' => $t['id'], 'url' => $t['url'], 'title' => $t['title'], 'artist' => $t['artist'] ); } }
+	foreach ( suorni_ads_for( 's' ) as $t ) { $list[] = array( 'id' => $t['id'], 'url' => $t['url'], 'title' => $t['title'], 'artist' => $t['artist'], 'dur' => (int) $t['dur'] ); }
 	$by = array();
 	foreach ( suorni_tracks() as $t ) { $by[ $t['id'] ] = $t; }
 	$an = array();
@@ -36,7 +36,7 @@ function suorni_shop_get( $req ) {
 		'sch'  => $sch['on'],
 		'next' => suorni_shop_next_open(),
 		'an'   => $an,
-		'ads'  => array( 'on' => $ads['on'] && $list && ! suorni_radio_cfg()['radads'], 'min' => $ads['min'], 'max' => $ads['max'], 'list' => $list ),
+		'ads'  => array( 'on' => $ads['on'] && $list, 'min' => $ads['min'], 'max' => $ads['max'], 'list' => $list ),
 	) );
 }
 add_action( 'rest_api_init', function () {

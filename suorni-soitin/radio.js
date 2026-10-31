@@ -33,14 +33,16 @@
 		return v;
 	})();
 	function q(u, p) { return u + (u.indexOf('?') < 0 ? '?' : '&') + p; }
-	function srv() { return Date.now() / 1000 + off; }
+	/* lag = myymälän mainoksen ajaksi kertynyt viive (s): myymälän kuuntelija on lähetyksestä jäljessä, kunnes seuraava juonto palauttaa hänet reaaliaikaan */
+	var lag = 0, shopAdHold = false, shopSeen = '';
+	function srv() { return Date.now() / 1000 + off - lag; }
 
 	var shift = null;
 	function fetchNow(listen) {
 		if (busy) { return; }
 		busy = true;
 		var t0 = Date.now();
-		fetch(q(U.now, 'r=' + t0 + (listen ? '&l=1&cid=' + cid + (srcLbl ? '&src=' + encodeURIComponent(srcLbl) : '') + (shopUrl ? '&shop=1' : '') : '')), { cache: 'no-store' })
+		fetch(q(U.now, 'r=' + t0 + (listen ? '&l=1&cid=' + cid + (srcLbl ? '&src=' + encodeURIComponent(srcLbl) : '') + (shopUrl ? '&shop=1' : '') : '') + (lag > 0 ? '&back=' + Math.ceil(lag + 5) : '')), { cache: 'no-store' })
 			.then(function (r) { return r.json(); })
 			.then(function (j) {
 				busy = false;
@@ -287,6 +289,7 @@
 		document.addEventListener('pointerdown', go, true);
 	}
 	function loadItem(it, pos, key) {
+		if (shopUrl && shopAdGate(it, key)) { return; }
 		/* Ensimmäinen kappale kuunneltu loppuun -> tervetuloa-tervehdys seuraavan kappaleen päälle */
 		if (welArm && !welState && curKey && curKey !== key) {
 			var pv = null;
@@ -303,7 +306,6 @@
 			var endMs = (it.start + it.dur - srv()) * 1000 + 30;
 			if (endMs > 0 && endMs < 3600000) { endT = setTimeout(function () { if (playing) { sync(); } }, endMs); }
 		}
-		if (shopUrl && it.type === 'track') { shopTrackStart(); }
 		fixes = 0;
 		var tok = ++loadTok;
 		au.src = it.url;
@@ -349,8 +351,14 @@
 	/* Tasalle sovitetun kappaleen loppu häivytetään (it.fade = häivytyksen kesto sekunteina). iPhonessa selain ei salli äänenvoimakkuuden säätöä, jolloin kappale vain päättyy tasalla. */
 	var endT = 0, fadeOn = false;
 	setInterval(function () {
-		if (!playing) { return; }
+		if (!playing || shopAdHold) { return; }
 		var c = current(), base = Math.max(0, Math.min(1, (volEl ? volEl.value : 100) / 100));
+		if (c && c.it.type !== 'dj' && lag > 0 && c.next && c.next.type === 'dj') {
+			/* Myymälän kuuntelija on jäljessä: juonto aloitetaan reaaliajassa tasan oikeaan aikaan, edellisen kappaleen loppu ohitetaan häivyttäen */
+			var cutAt = c.next.start - lag, rm = cutAt - srv();
+			if (rm <= 0) { lag = 0; fadeOn = false; try { au.volume = base; } catch (e) {} sync(); return; }
+			if (rm < 3) { fadeOn = true; var m2 = rm / 3; try { au.volume = base * m2 * m2; } catch (e) {} return; }
+		}
 		if (c && c.it.fade && !au.paused) {
 			var rem = c.it.start + c.it.dur - srv();
 			if (rem < c.it.fade) { fadeOn = true; var m = Math.max(0, rem / c.it.fade); try { au.volume = base * m * m; } catch (e) {} return; }
@@ -359,7 +367,7 @@
 	}, 100);
 	/* Kun kappale päättyy, siirrytään heti seuraavaan ilman ajastinta (ajastimet hidastuvat, kun näyttö on sammutettu) */
 	function advance() {
-		if (!playing) { return; }
+		if (!playing || shopAdHold) { return; }
 		var idx = -1;
 		for (var i = 0; i < items.length; i++) { if (items[i].url + '@' + items[i].start === curKey) { idx = i; break; } }
 		var nx = idx >= 0 ? items[idx + 1] : null;
@@ -369,6 +377,7 @@
 		loadItem(nx, (nx.from || 0) + late, nx.url + '@' + nx.start);
 	}
 	function sync() {
+		if (shopAdHold) { return; }
 		var c = current();
 		if (!c) { if (playing) { au.pause(); } fetchNow(playing); return; }
 		var key = c.it.url + '@' + c.it.start;
@@ -399,6 +408,7 @@
 		if (playing) { au.pause(); setUi(false); curKey = ''; if (shopUrl && !autoStop) { userStop = true; } return; }
 		setUi(true);
 		welPrepare();
+		lag = 0;
 		curKey = '';
 		lastPing = 0;
 		if (!items.length || !current()) { fetchNow(true); setTimeout(sync, 800); } else { sync(); fetchNow(true); }
@@ -488,15 +498,37 @@
 		var lo = Math.max(1, (shopData && shopData.ads.min) | 0), hi = Math.max(lo, (shopData && shopData.ads.max) | 0);
 		nextAt = lo + Math.floor(Math.random() * (hi - lo + 1)); songN = 0;
 	}
-	function shopTrackStart() {
-		if (!shopData || !shopData.ads || !shopData.ads.on || !shopData.ads.list.length || auxBusy) { return; }
+	/* Myymälän mainos soitetaan kappaleen jälkeen: seuraavan kappaleen lataus odottaa, mainos soi ja musiikki jatkuu sen jälkeen siitä, mihin lähetys olisi jäänyt (lag) */
+	function adPlay(url, label, done) {
+		auxBusy = true;
+		var a = new Audio(), fin = false, t0 = Date.now(); try { a.referrerPolicy = 'no-referrer'; } catch (e) {} a.src = url;
+		var end = function () { if (fin) { return; } fin = true; auxBusy = false; if (elCap.getAttribute('data-aux')) { elCap.textContent = ''; elCap.removeAttribute('data-aux'); } done((Date.now() - t0) / 1000); };
+		a.volume = Math.max(0, Math.min(1, ($('[data-vol]').value || 100) / 100));
+		a.addEventListener('ended', end); a.addEventListener('error', end);
+		setTimeout(end, 120000);
+		try { au.pause(); } catch (e) {}
+		elCap.textContent = label; elCap.setAttribute('data-aux', '1');
+		var p = a.play(); if (p && p.catch) { p.catch(end); }
+	}
+	function shopAdGate(it, key) {
+		if (it.type !== 'track' || shopSeen === key) { return false; }
+		shopSeen = key;
+		if (!shopData || !shopData.ads || !shopData.ads.on || !shopData.ads.list.length || auxBusy || !playing) { return false; }
 		if (!nextAt) { rollAd(); }
 		songN++;
-		if (songN >= nextAt) {
-			var ad = shopData.ads.list[adIdx % shopData.ads.list.length]; adIdx++;
-			rollAd();
-			auxPlay(ad.url, '📢 Mainos: ' + ad.title);
-		}
+		if (songN < nextAt) { return false; }
+		/* vain luonnollisessa kappalevaihdossa kappaleesta kappaleeseen */
+		var pv = null, idx = -1;
+		for (var wi = 0; wi < items.length; wi++) { if (items[wi].url + '@' + items[wi].start === curKey) { pv = items[wi]; } if (items[wi] === it) { idx = wi; } }
+		if (!pv || pv.type !== 'track' || it.start < pv.start + pv.dur - 2) { songN = nextAt; return false; }
+		var ad = shopData.ads.list[adIdx % shopData.ads.list.length], ad_d = ad.dur || 15;
+		/* viive ei saa kasvaa liikaa, eikä seuraavan juonnon edellä oleva kappale saa jäädä liian lyhyeksi */
+		var nx = idx >= 0 ? items[idx + 1] : null;
+		if (lag + ad_d > 240 || (nx && nx.type === 'dj' && it.dur < lag + ad_d + 30)) { songN = nextAt; return false; }
+		adIdx++; rollAd();
+		shopAdHold = true;
+		adPlay(ad.url, '📢 Mainos: ' + ad.title, function (el) { lag += el; shopAdHold = false; if (playing) { sync(); } });
+		return true;
 	}
 	var shopTimer = 0;
 	function shopPoll() {

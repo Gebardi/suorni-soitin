@@ -78,12 +78,11 @@
 		/* Asetukset */
 		var h = el('div');
 		var hA = el('div');
-		var adi = D.adinfo || {}, adTxt = !adi.n ? 'ei vielä mainoskappaleita: merkitse mainokset Kauko-ohjauksen Mainokset-kohdassa' : (adi.on ? 'mainoksia ' + adi.n + ' kpl, väli ' + adi.min + (adi.max > adi.min ? '–' + adi.max : '') + ' kappaletta' : 'mainoksia ' + adi.n + ' kpl, mutta Mainokset-kytkin on pois päältä Kauko-ohjauksessa');
 		hA.innerHTML = '<h3 style="margin:14px 0 6px">Kanava</h3>' +
 			'<label><input type="checkbox" data-on' + (c.on ? ' checked' : '') + '> Radio on käynnissä</label><br>' +
 			'<input style="' + st + '" data-name maxlength="60" placeholder="Kanavan nimi" value="' + esc(c.name) + '">' +
 			'<input style="' + st + '" data-cover placeholder="Oma kansikuva (kuvan osoite, tyhjä = oletus Suomi-maisema)" value="' + esc(c.cover) + '">' +
-			'<label><input type="checkbox" data-sc' + (c.showcount ? ' checked' : '') + '> Näytä kuuntelijamäärä sivulla</label><br><label><input type="checkbox" data-wel' + (c.welcome !== false ? ' checked' : '') + '> Juontaja toivottaa uuden kuuntelijan tervetulleeksi (kun ensimmäinen kappale on kuunneltu loppuun)</label><br><label><input type="checkbox" data-rads' + (c.radads ? ' checked' : '') + '> Soita mainokset radiossa kappaleen jälkeen (' + adTxt + ')</label><br><label><input type="checkbox" data-wxs' + (c.wx_show ? ' checked' : '') + '> Näytä sää sivulla (paikka ja koordinaatit: Juontaja-välilehti)</label>';
+			'<label><input type="checkbox" data-sc' + (c.showcount ? ' checked' : '') + '> Näytä kuuntelijamäärä sivulla</label><br><label><input type="checkbox" data-wel' + (c.welcome !== false ? ' checked' : '') + '> Juontaja toivottaa uuden kuuntelijan tervetulleeksi (kun ensimmäinen kappale on kuunneltu loppuun)</label><br><label><input type="checkbox" data-wxs' + (c.wx_show ? ' checked' : '') + '> Näytä sää sivulla (paikka ja koordinaatit: Juontaja-välilehti)</label>';
 		(function () {
 			var ci = hA.querySelector('[data-cover]'); if (!ci) { return; }
 			var row = el('div', { style: 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:2px 0 8px' });
@@ -275,7 +274,7 @@
 		var msg = el('p');
 		save.addEventListener('click', function () {
 			progs.forEach(function (p) { if (p.to === '00:00') { p.to = '24:00'; } });
-			api('POST', U.cfg, { on: box.querySelector('[data-on]').checked, name: box.querySelector('[data-name]').value, cover: box.querySelector('[data-cover]').value, greet_mode: box.querySelector('[data-gm]').value, greet_voices: box.querySelector('[data-gv]').checked, chat: box.querySelector('[data-chon]').checked, chat_ai: box.querySelector('[data-chai]').checked, chat_air: box.querySelector('[data-chair]').value, guests: box.querySelector('[data-gon]').checked, comm: box.querySelector('[data-cmon]').checked, comm_share: +box.querySelector('[data-cmsh]').value, comm_min_votes: +box.querySelector('[data-cmmv]').value || 10, comm_min_pct: +box.querySelector('[data-cmmp]').value || 40, comm_max_mb: +box.querySelector('[data-cmmb]').value || 15, guests_every: +box.querySelector('[data-gev]').value || 40, guests_off: +box.querySelector('[data-goff]').value || 0, guests_reply: +box.querySelector('[data-grp]').value, guests_max: +box.querySelector('[data-gmax]').value || 60, guests_list: box.querySelector('[data-glist]').value, chat_block: box.querySelector('[data-chbl]').value, chat_max: +box.querySelector('[data-chmx]').value || 60, news_feed: box.querySelector('[data-nf]').value, sport_feed: box.querySelector('[data-sf]').value, finns: box.querySelector('[data-fin]').value, dj_time: box.querySelector('[data-djt]').checked, dj_weather: box.querySelector('[data-djw]').checked, dj_where: box.querySelector('[data-djwh]').value, dj_lat: +box.querySelector('[data-djla]').value, dj_lon: +box.querySelector('[data-djlo]').value, dj_next: +box.querySelector('[data-djn]').value, dj_titles: box.querySelector('[data-djti]').value, dj_rate: +box.querySelector('[data-djr]').value || 1, greet_limit: +box.querySelector('[data-gl]').value || 0, showcount: box.querySelector('[data-sc]').checked, welcome: box.querySelector('[data-wel]').checked, radads: box.querySelector('[data-rads]').checked, wx_show: box.querySelector('[data-wxs]').checked, new_default: box.querySelector('[data-nd]').value, boost_on: box.querySelector('[data-bon]').checked, boost_days: +box.querySelector('[data-bdy]').value || 7, boost_share: +box.querySelector('[data-bsh]').value, tips: box.querySelector('[data-tips]').value, programs: progs })
+			api('POST', U.cfg, { on: box.querySelector('[data-on]').checked, name: box.querySelector('[data-name]').value, cover: box.querySelector('[data-cover]').value, greet_mode: box.querySelector('[data-gm]').value, greet_voices: box.querySelector('[data-gv]').checked, chat: box.querySelector('[data-chon]').checked, chat_ai: box.querySelector('[data-chai]').checked, chat_air: box.querySelector('[data-chair]').value, guests: box.querySelector('[data-gon]').checked, comm: box.querySelector('[data-cmon]').checked, comm_share: +box.querySelector('[data-cmsh]').value, comm_min_votes: +box.querySelector('[data-cmmv]').value || 10, comm_min_pct: +box.querySelector('[data-cmmp]').value || 40, comm_max_mb: +box.querySelector('[data-cmmb]').value || 15, guests_every: +box.querySelector('[data-gev]').value || 40, guests_off: +box.querySelector('[data-goff]').value || 0, guests_reply: +box.querySelector('[data-grp]').value, guests_max: +box.querySelector('[data-gmax]').value || 60, guests_list: box.querySelector('[data-glist]').value, chat_block: box.querySelector('[data-chbl]').value, chat_max: +box.querySelector('[data-chmx]').value || 60, news_feed: box.querySelector('[data-nf]').value, sport_feed: box.querySelector('[data-sf]').value, finns: box.querySelector('[data-fin]').value, dj_time: box.querySelector('[data-djt]').checked, dj_weather: box.querySelector('[data-djw]').checked, dj_where: box.querySelector('[data-djwh]').value, dj_lat: +box.querySelector('[data-djla]').value, dj_lon: +box.querySelector('[data-djlo]').value, dj_next: +box.querySelector('[data-djn]').value, dj_titles: box.querySelector('[data-djti]').value, dj_rate: +box.querySelector('[data-djr]').value || 1, greet_limit: +box.querySelector('[data-gl]').value || 0, showcount: box.querySelector('[data-sc]').checked, welcome: box.querySelector('[data-wel]').checked, wx_show: box.querySelector('[data-wxs]').checked, new_default: box.querySelector('[data-nd]').value, boost_on: box.querySelector('[data-bon]').checked, boost_days: +box.querySelector('[data-bdy]').value || 7, boost_share: +box.querySelector('[data-bsh]').value, tips: box.querySelector('[data-tips]').value, programs: progs })
 				.then(function () { msg.textContent = 'Tallennettu. Uusi ohjelmajono rakentuu seuraavan kuuntelijan myötä.'; })
 				.catch(function (e) { msg.textContent = 'Virhe: ' + e.message; });
 		});
@@ -513,7 +512,7 @@
 		var sc = document.querySelector('[data-sb-clock]');
 		if (sc) { if (window.__suorniClk) { clearInterval(window.__suorniClk); } var tickc = function () { var d = new Date(); sc.textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }; tickc(); window.__suorniClk = setInterval(tickc, 1000); }
 		var loose = [].slice.call(box.children);
-		var TABS = [['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista']];
+		var TABS = [['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista'], ['mainokset', '📢 Mainokset']];
 
 		/* Massalisäys + päivittäinen tarkistus */
 		var upw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922' });
@@ -625,7 +624,71 @@
 		drawWatch();
 		if (window.__suorniWatch) { clearInterval(window.__suorniWatch); }
 		window.__suorniWatch = setInterval(function () { if (!document.body.contains(wtw)) { return; } api('GET', D.urls.watch).then(function (j) { D.watch = j; drawWatch(); }).catch(function () {}); }, 60000);
-		var bucket = { yleinen: [wtw, info, sd, mw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, aw, fw], yhteiso: [hD, scw], lista: [upw, bw, tw] };
+		/* Mainokset: myymälä / radio / molemmat, omat välit, mainosgeneraattori */
+		var adw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922' });
+		(function () {
+			var A = D.ads || { list: [], cand: [], on: false, min: 3, max: 3, rmin: 4, rmax: 6, radads: false }, list = (A.list || []).map(function (x) { return { id: x.id, title: x.title, dur: x.dur, tg: x.tg || 's' }; });
+			var SCR = [
+				['Kuuntele Radio Suornia', 'Kuuntele Radio Suornia! Uutta musiikkia, uutiset ja sää joka päivä. Avaa suorni piste f i ja paina play.'],
+				['Mikä soi nyt', 'Etkö tiedä, mitä kuuntelisit? Radio Suorni soittaa omaa musiikkia, ja juontaja pitää seuraa. Osoite on suorni piste f i.'],
+				['Lähetä terveiset', 'Hei sinä! Radio Suorni soi juuri nyt. Paina play osoitteessa suorni piste f i ja lähetä terveisesi suoraan lähetykseen.'],
+				['Oma nettiradio', 'Radio Suorni, sinun oma nettiradiosi. Kuuntele, äänestä lempikappaleesi ja lähetä toive. Suorni piste f i.']
+			];
+			adw.innerHTML = '<h3 style="margin:0 0 6px">📢 Mainokset</h3>' +
+				'<p style="font-size:13px;opacity:.8;margin:0 0 8px">Jokaiselle mainokselle voi valita kohteen: <b>myymälä</b>, <b>radio</b> (julkinen) tai <b>molemmat</b>. Radiossa mainos tulee lähetykseen kappaleen jälkeen, ja musiikki jatkuu sen jälkeen. Myymälän radiossa mainos soi myös kappaleen jälkeen: myymälän kuuntelija jää mainoksen ajaksi hieman lähetyksestä jälkeen, ja seuraavan juonnon kohdalla viimeisen kappaleen loppu ohitetaan, jotta juonto kuuluu myymälässäkin tasalta.</p>' +
+				'<label><input type="checkbox" data-adon' + (A.on ? ' checked' : '') + '> Mainokset käytössä</label><br>' +
+				'<label><input type="checkbox" data-adrad' + (A.radads ? ' checked' : '') + '> Soita mainoksia julkisessa radiossa (ilman tätä mainokset kuuluvat vain myymälässä)</label>' +
+				'<div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0;align-items:center"><span>Myymälä: joka</span><input type="number" min="1" max="20" data-admin style="width:64px;' + st.replace('width:100%;', '') + '" value="' + A.min + '"><span>–</span><input type="number" min="1" max="20" data-admax style="width:64px;' + st.replace('width:100%;', '') + '" value="' + A.max + '"><span>kappale</span></div>' +
+				'<div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0;align-items:center"><span>Radio: joka</span><input type="number" min="1" max="40" data-adrmin style="width:64px;' + st.replace('width:100%;', '') + '" value="' + A.rmin + '"><span>–</span><input type="number" min="1" max="40" data-adrmax style="width:64px;' + st.replace('width:100%;', '') + '" value="' + A.rmax + '"><span>kappale</span></div>' +
+				'<div data-adlist style="margin:8px 0"></div>' +
+				'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0"><select data-adcand style="' + st.replace('width:100%;', 'flex:1;min-width:180px;') + '"><option value="">Lisää olemassa oleva kappale mainokseksi…</option>' + (A.cand || []).map(function (c) { return '<option value="' + c.id + '">' + esc(c.title) + '</option>'; }).join('') + '</select><button type="button" data-adaddb>Lisää</button></div>' +
+				'<button type="button" data-adsave style="margin:6px 0">💾 Tallenna mainosasetukset</button> <span data-adst style="font-size:13px"></span>' +
+				'<h3 style="margin:16px 0 6px">🎙️ Tee uusi mainos tekstistä</h3>' +
+				'<p style="font-size:13px;opacity:.8;margin:0 0 6px">Teksti muutetaan puheeksi Azure-äänellä ja tallennetaan mediakirjastoon mainoksena. 10 sekuntia on noin 25 sanaa. Yksi mainos kuluttaa vain muutaman sadan merkin puhesynteesin.' + (A.haskey ? '' : ' <b style="color:#ffb4b4">Azure-avainta ei ole tallennettu (Juontaja-välilehti), joten puhetta ei voi vielä tehdä.</b>') + '</p>' +
+				'<div data-adscr style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>' +
+				'<input style="' + st + '" data-adtitle maxlength="80" placeholder="Mainoksen nimi (esim. Kuuntele Radio Suornia)">' +
+				'<textarea style="' + st + ';min-height:90px" data-adtext maxlength="400" placeholder="Mainosteksti. Kirjoita osoite kuten se luetaan: suorni piste f i"></textarea>' +
+				'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><select data-advoice style="' + st.replace('width:100%;', 'flex:1;min-width:140px;') + '"><option value="">Ääni: oletus (' + esc(A.vfi || '') + ')</option><option value="fi-FI-NooraNeural">Noora</option><option value="fi-FI-SelmaNeural">Selma</option><option value="fi-FI-HarriNeural">Harri</option></select>' +
+				'<select data-adtg style="' + st.replace('width:100%;', 'flex:1;min-width:140px;') + '"><option value="r">Kohde: radio</option><option value="s">Kohde: myymälä</option><option value="b">Kohde: molemmat</option></select><button type="button" data-adgen>🎙️ Tee mainos</button></div><div data-adgst style="font-size:13px;margin-top:6px"></div>';
+			var $ = function (q) { return adw.querySelector(q); };
+			var lbox = $('[data-adlist]');
+			function rows() {
+				lbox.innerHTML = list.length ? '' : '<p style="font-size:13px;opacity:.7">Ei vielä mainoksia. Lisää kappale mainokseksi tai tee uusi alta.</p>';
+				list.forEach(function (a, i) {
+					var r = el('div', { style: 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px solid #2a303b' });
+					r.innerHTML = '<span style="flex:1;min-width:140px"><b>' + esc(a.title) + '</b> <span style="opacity:.6;font-size:12px">' + (a.dur || '?') + ' s</span></span>' +
+						'<select style="' + st.replace('width:100%;', 'width:auto;') + '">' + [['s', 'Myymälä'], ['r', 'Radio'], ['b', 'Molemmat']].map(function (o) { return '<option value="' + o[0] + '"' + (a.tg === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
+						'<button type="button" title="Poista mainoslistalta (kappale jää mediakirjastoon)">✕</button>';
+					r.querySelector('select').addEventListener('change', function (e) { a.tg = e.target.value; });
+					r.querySelector('button').addEventListener('click', function () { list.splice(i, 1); rows(); });
+					lbox.appendChild(r);
+				});
+			}
+			rows();
+			var sc = $('[data-adscr]');
+			SCR.forEach(function (x) { var b = el('button', { type: 'button' }, '✍️ ' + esc(x[0])); b.addEventListener('click', function () { $('[data-adtext]').value = x[1]; $('[data-adtitle]').value = x[0]; }); sc.appendChild(b); });
+			$('[data-adaddb]').addEventListener('click', function () {
+				var sel = $('[data-adcand]'), id = +sel.value; if (!id) { return; }
+				var c = (A.cand || []).filter(function (x) { return +x.id === id; })[0]; if (!c || list.some(function (x) { return +x.id === id; })) { return; }
+				list.push({ id: id, title: c.title, dur: 0, tg: 'r' }); sel.value = ''; rows();
+			});
+			$('[data-adsave]').addEventListener('click', function () {
+				var m = $('[data-adst]'), tg = {}; list.forEach(function (x) { tg[x.id] = x.tg; });
+				m.textContent = 'Tallennetaan…';
+				api('POST', D.urls.ads, { on: $('[data-adon]').checked, radads: $('[data-adrad]').checked, min: +$('[data-admin]').value || 3, max: +$('[data-admax]').value || 3, rmin: +$('[data-adrmin]').value || 4, rmax: +$('[data-adrmax]').value || 6, ids: list.map(function (x) { return x.id; }), tg: tg })
+					.then(function () { m.textContent = '✅ Tallennettu. Radion jono päivittyy seuraavan tasan jälkeen.'; }).catch(function (e) { m.textContent = '⚠️ ' + e.message; });
+			});
+			$('[data-adgen]').addEventListener('click', function () {
+				var g = $('[data-adgst]'), b = $('[data-adgen]'), txt = $('[data-adtext]').value.trim();
+				if (!txt) { g.textContent = 'Kirjoita ensin mainosteksti tai valitse valmis teksti.'; return; }
+				b.disabled = true; g.textContent = 'Tehdään puhetta…';
+				api('POST', D.urls.adgen, { text: txt, title: $('[data-adtitle]').value, voice: $('[data-advoice]').value, tg: $('[data-adtg]').value })
+					.then(function (j) { b.disabled = false; list.push({ id: j.id, title: j.title, dur: j.dur, tg: j.tg }); rows(); g.innerHTML = '✅ Valmis: <b>' + esc(j.title) + '</b> (' + j.dur + ' s)' + (j.dur > 13 ? ' <b style="color:#ffb347">– yli 13 s, lyhennä tekstiä jos haluat 10 sekunnin mainoksen</b>' : '') + '. Se on jo mainoslistalla; paina vielä Tallenna, jos muutit asetuksia.'; })
+					.catch(function (e) { b.disabled = false; g.textContent = '⚠️ ' + e.message; });
+			});
+		})();
+
+		var bucket = { yleinen: [wtw, info, sd, mw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, aw, fw], yhteiso: [hD, scw], lista: [upw, bw, tw], mainokset: [adw] };
 		var used = [];
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });
