@@ -21,6 +21,9 @@ function suorni_radio_anchor( $cfg, $end ) {
 			break;
 		}
 	}
+	/* kellonaikaan sidotut omat juonnot */
+	$st_ = function_exists( 'suorni_radio_script_next_time' ) ? suorni_radio_script_next_time( $e ) : 0;
+	if ( $st_ && ( ! $best || $st_ < $best ) ) { $best = $st_; }
 	return $best;
 }
 function suorni_radio_min_dur( $pool ) {

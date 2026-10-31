@@ -2,11 +2,11 @@
 /**
  * Plugin Name: Suorni Soitin
  * Description: Soitin mediakirjaston äänitiedostoista. Lyhytkoodit: [suorni_soitin] (valinnaisesti lista="nimi") ja [suorni_kauko] (kauko-ohjain kirjautuneelle).
- * Version: 9.53
+ * Version: 9.54
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SUORNI_VER', '9.53' );
+define( 'SUORNI_VER', '9.54' );
 require_once plugin_dir_path( __FILE__ ) . 'radio.php';
 require_once plugin_dir_path( __FILE__ ) . 'update.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-cache.php';
@@ -314,6 +314,33 @@ function suorni_tts_cfg_post( $req ) {
 	update_option( 'suorni_tts', $c, false );
 	return suorni_json( suorni_tts_public() );
 }
+/* SSML: puhe pilkotaan lauseisiin, joiden nopeus ja sävelkorkeus vaihtelevat hiukan (vakaasti tekstin mukaan, jotta välimuisti toimii) ja tauot seuraavat välimerkkejä */
+function suorni_tts_ssml( $items, $plain, $c = array() ) {
+	$body = '';
+	foreach ( $items as $it ) {
+		list( $voice, $sp, $pitch, $t, $haspitch ) = $it;
+		$ml = false !== stripos( $voice, 'Multilingual' );
+		if ( $ml && $plain ) { $voice = ! empty( $c['vfi'] ) && false === stripos( $c['vfi'], 'Multilingual' ) ? $c['vfi'] : 'fi-FI-NooraNeural'; $ml = false; }
+		$sents = ( mb_strlen( $t ) > 70 ) ? preg_split( '/(?<=[.!?…])\s+/u', $t, -1, PREG_SPLIT_NO_EMPTY ) : array( $t );
+		$inner = '';
+		$last  = count( $sents ) - 1;
+		foreach ( $sents as $k => $sn ) {
+			$h  = crc32( $sn );
+			$dr = ( count( $sents ) > 1 ) ? ( ( $h % 7 ) - 3 ) : 0;
+			$dp = ( count( $sents ) > 1 ) ? ( ( ( $h >> 4 ) % 5 ) - 2 ) : 0;
+			$r2 = max( -50, min( 50, $sp + $dr ) );
+			$p2 = $pitch + $dp;
+			$pa = ( $haspitch || $dp ) ? " pitch='" . ( $p2 >= 0 ? '+' : '' ) . max( -50, min( 50, $p2 ) ) . "%'" : '';
+			$end = mb_substr( $sn, -1 );
+			$br  = ( '?' === $end ) ? 380 : ( ( '!' === $end ) ? 320 : ( ( '.' === $end || '…' === $end ) ? 420 : 250 ) );
+			if ( $k === $last ) { $br = 250; }
+			$inner .= "<prosody rate='" . ( $r2 >= 0 ? '+' : '' ) . $r2 . "%'" . $pa . '>' . htmlspecialchars( $sn, ENT_XML1 | ENT_QUOTES, 'UTF-8' ) . "</prosody><break time='" . $br . "ms'/>";
+		}
+		if ( $ml ) { $inner = "<lang xml:lang='fi-FI'>" . $inner . '</lang>'; }
+		$body .= "<voice name='" . esc_attr( $voice ) . "'>" . $inner . '</voice>';
+	}
+	return "<speak version='1.0' xml:lang='fi-FI' xmlns='http://www.w3.org/2001/10/synthesis'>" . $body . '</speak>';
+}
 /* segs: [ {t: teksti, l: 'fi'|'en'} ] -> mp3-tiedoston osoite (välimuistissa) */
 function suorni_tts_synth( $segs, $rate, $voices = array() ) {
 	$c = suorni_tts_cfg();
@@ -323,7 +350,7 @@ function suorni_tts_synth( $segs, $rate, $voices = array() ) {
 	if ( '' === $c['key'] ) { return new WP_Error( 'suorni_tts', 'Azure-avainta ei ole tallennettu.', array( 'status' => 400 ) ); }
 	if ( ! is_array( $segs ) || ! $segs ) { return new WP_Error( 'suorni_tts', 'Ei tekstiä.', array( 'status' => 400 ) ); }
 	$pct   = (int) round( ( max( 0.6, min( 1.4, (float) $rate ) ) - 1 ) * 100 );
-	$body  = '';
+	$items = array();
 	$total = 0;
 	$count = 0;
 	foreach ( $segs as $g ) {
@@ -337,10 +364,10 @@ function suorni_tts_synth( $segs, $rate, $voices = array() ) {
 		if ( ! empty( $g['v'] ) && preg_match( '/^[A-Za-z]{2,3}-[A-Za-z]{2,4}-[A-Za-z0-9]+$/', $g['v'] ) ) { $voice = $g['v']; }
 		$sp = isset( $g['r'] ) ? (int) round( ( max( 0.5, min( 1.5, (float) $g['r'] ) ) - 1 ) * 100 ) : $pct;
 		$pi = isset( $g['p'] ) ? ' pitch=\'' . ( (int) $g['p'] >= 0 ? '+' : '' ) . max( -50, min( 50, (int) $g['p'] ) ) . "%'" : '';
-		$body .= "<voice name='" . esc_attr( $voice ) . "'><prosody rate='" . ( $sp >= 0 ? '+' : '' ) . $sp . "%'" . $pi . ">" . htmlspecialchars( $t, ENT_XML1 | ENT_QUOTES, 'UTF-8' ) . "</prosody><break time='250ms'/></voice>";
+		$items[] = array( $voice, $sp, isset( $g['p'] ) ? (int) $g['p'] : 0, $t, isset( $g['p'] ) );
 	}
-	if ( '' === $body ) { return new WP_Error( 'suorni_tts', 'Ei tekstiä.', array( 'status' => 400 ) ); }
-	$ssml = "<speak version='1.0' xml:lang='fi-FI' xmlns='http://www.w3.org/2001/10/synthesis'>" . $body . '</speak>';
+	if ( ! $items ) { return new WP_Error( 'suorni_tts', 'Ei tekstiä.', array( 'status' => 400 ) ); }
+	$ssml = suorni_tts_ssml( $items, false );
 	$up   = wp_upload_dir();
 	$dir  = trailingslashit( $up['basedir'] ) . 'suorni-tts';
 	$hash = md5( $ssml );
@@ -350,16 +377,23 @@ function suorni_tts_synth( $segs, $rate, $voices = array() ) {
 	/* Suoja liialliselta kulutukselta: enintään 250 uutta puhetta tunnissa (muutettavissa: asetus suorni_tts_max) */
 	$n = (int) get_transient( 'suorni_tts_n' );
 	if ( $n >= (int) get_option( 'suorni_tts_max', 250 ) ) { return new WP_Error( 'suorni_tts', 'Liian monta uutta puhetta tunnissa.', array( 'status' => 429 ) ); }
-	$r = wp_remote_post( 'https://' . $c['region'] . '.tts.speech.microsoft.com/cognitiveservices/v1', array(
-		'timeout' => 20,
-		'headers' => array(
-			'Ocp-Apim-Subscription-Key' => $c['key'],
-			'Content-Type'              => 'application/ssml+xml',
-			'X-Microsoft-OutputFormat'  => 'audio-24khz-96kbitrate-mono-mp3',
-			'User-Agent'                => 'SuorniSoitin',
-		),
-		'body'    => $ssml,
-	) );
+	$post = function ( $body ) use ( $c ) {
+		return wp_remote_post( 'https://' . $c['region'] . '.tts.speech.microsoft.com/cognitiveservices/v1', array(
+			'timeout' => 20,
+			'headers' => array(
+				'Ocp-Apim-Subscription-Key' => $c['key'],
+				'Content-Type'              => 'application/ssml+xml',
+				'X-Microsoft-OutputFormat'  => 'audio-24khz-96kbitrate-mono-mp3',
+				'User-Agent'                => 'SuorniSoitin',
+			),
+			'body'    => $body,
+		) );
+	};
+	$r = $post( $ssml );
+	if ( ! is_wp_error( $r ) && in_array( (int) wp_remote_retrieve_response_code( $r ), array( 400, 404 ), true ) && false !== stripos( $ssml, 'Multilingual' ) ) {
+		/* Monikielistä ääntä ei tueta tällä alueella: yritetään uudelleen tavallisilla äänillä */
+		$r = $post( suorni_tts_ssml( $items, true, $c ) );
+	}
 	if ( is_wp_error( $r ) ) { return new WP_Error( 'suorni_tts', 'Yhteys Azureen epäonnistui: ' . $r->get_error_message(), array( 'status' => 502 ) ); }
 	$code = (int) wp_remote_retrieve_response_code( $r );
 	$data = wp_remote_retrieve_body( $r );

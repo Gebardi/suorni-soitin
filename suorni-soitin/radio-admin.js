@@ -227,7 +227,7 @@
 					'<div data-songs style="display:' + (p.every === 'songs' ? 'flex' : 'none') + ';gap:8px;align-items:center">Kappaleväli <input style="' + st + '" type="number" min="1" max="20" data-f="min" value="' + p.min + '"> – <input style="' + st + '" type="number" min="1" max="20" data-f="max" value="' + p.max + '"></div>' +
 					'<input style="' + st + '" data-f="host" maxlength="30" placeholder="Juontajan nimi (valinnainen, esim. Aino)" value="' + esc(p.host) + '">' +
 					'<textarea style="' + st + '" rows="3" maxlength="600" data-f="persona" placeholder="Tämän ohjelman juontajan persoona (tyhjä = yhteinen persoona)">' + esc(p.persona) + '</textarea>' +
-					'<p style="margin:6px 0 2px">Juontajan ääni (suomi)</p><select style="' + st + '" data-f="vfi">' + vopt(['', 'fi-FI-NooraNeural', 'fi-FI-SelmaNeural', 'fi-FI-HarriNeural'], p.vfi, ['Oletus (yhteinen)', 'Noora (nainen)', 'Selma (nainen)', 'Harri (mies)']) + '</select>' +
+					'<p style="margin:6px 0 2px">Juontajan ääni (suomi)</p><select style="' + st + '" data-f="vfi">' + vopt(['', 'fi-FI-NooraNeural', 'fi-FI-SelmaNeural', 'fi-FI-HarriNeural', 'en-US-AvaMultilingualNeural', 'en-US-EmmaMultilingualNeural', 'en-US-AndrewMultilingualNeural', 'en-US-BrianMultilingualNeural'], p.vfi, ['Oletus (yhteinen)', 'Noora (nainen)', 'Selma (nainen)', 'Harri (mies)', 'Ava – monikielinen, luonnollisempi (nainen, kokeellinen)', 'Emma – monikielinen (nainen, kokeellinen)', 'Andrew – monikielinen (mies, kokeellinen)', 'Brian – monikielinen (mies, kokeellinen)']) + '</select>' +
 					'<p style="margin:6px 0 2px">Englanninkielisten nimien ääni</p><select style="' + st + '" data-f="ven">' + vopt(['', 'en-US-JennyNeural', 'en-US-AriaNeural', 'en-US-GuyNeural', 'en-GB-SoniaNeural', 'en-GB-RyanNeural'], p.ven, ['Oletus (yhteinen)', 'Jenny (nainen, US)', 'Aria (nainen, US)', 'Guy (mies, US)', 'Sonia (nainen, UK)', 'Ryan (mies, UK)']) + '</select>' +
 					'<p style="margin:6px 0 2px">Puhenopeus tälle ohjelmalle (tyhjä/0 = radion oletus)</p><input style="' + st + '" type="number" min="0" max="1.4" step="0.05" data-f="rate" value="' + (p.rate || 0) + '">' +
 					'<div style="margin:6px 0">' + cb('weather', 'Sää') + cb('tip', 'Päivän juttu') + cb('intro', 'Kappaleen esittely') + cb('greet', 'Terveiset') + cb('ann', 'Ohjelman aloitus') + cb('ai', 'Tekoäly') + cb('news', 'Uutiset') + cb('sports', 'Urheilu/Liiga') + cb('nhl', 'NHL ja suomalaiset') + '</div>' +
@@ -515,7 +515,7 @@
 		var TABS = [['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista'], ['mainokset', '📢 Mainokset']];
 
 		/* Massalisäys + päivittäinen tarkistus */
-		var upw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922' });
+		var upw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
 		upw.innerHTML = '<h3 style="margin:0 0 6px">📥 Lisää kappaleita tiedostoina</h3><p style="font-size:13px;opacity:.75;margin:0 0 8px">Valitse tai vedä tähän mp3-, m4a-, wav-, ogg-, aac- tai flac-tiedostoja. Nimi ja esittäjä luetaan tiedoston tiedoista tai nimestä muodossa <b>Esittäjä - Kappale.mp3</b>. Suurin sallittu tiedosto: ' + Math.round((D.maxup || 0) / 1048576) + ' Mt.</p>';
 		var dz = el('div', { style: 'border:2px dashed #5a6577;border-radius:10px;padding:16px;text-align:center;cursor:pointer' }, '⬆️ Valitse tiedostot tai vedä ne tähän');
 		var fi = el('input', { type: 'file', multiple: 'multiple', accept: '.mp3,.m4a,.wav,.ogg,.aac,.flac,audio/*', style: 'display:none' });
@@ -583,7 +583,7 @@
 		drawReq();
 
 		/* Valvonta: tila, hälytykset ja käytön yhteenveto */
-		var wtw = el('div', { 'class': 'st-watch', style: 'margin:6px 0 14px;padding:12px;border:1px solid #363d4a;border-radius:12px;background:#151922' });
+		var wtw = el('div', { 'class': 'st-watch', style: 'margin:6px 0 14px;padding:12px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
 		function drawWatch() {
 			var W = D.watch; if (!W) { wtw.style.display = 'none'; return; }
 			var col = { ok: '#3ddc84', warn: '#ffb347', bad: '#ff5c5c' }, ico = { ok: '✅', warn: '⚠️', bad: '🛑' };
@@ -624,8 +624,73 @@
 		drawWatch();
 		if (window.__suorniWatch) { clearInterval(window.__suorniWatch); }
 		window.__suorniWatch = setInterval(function () { if (!document.body.contains(wtw)) { return; } api('GET', D.urls.watch).then(function (j) { D.watch = j; drawWatch(); }).catch(function () {}); }, 60000);
+		/* Omat käsikirjoitetut juonnot */
+		var ow = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
+		(function () {
+			var L = (D.scripts || []).map(function (x) { return JSON.parse(JSON.stringify(x)); }), progs = (D.cfg && D.cfg.programs) || [];
+			var DAYS = ['Ma', 'Ti', 'Ke', 'To', 'Pe', 'La', 'Su'];
+			ow.innerHTML = '<h3 style="margin:0 0 6px">✍️ Omat juonnot</h3><p style="font-size:13px;opacity:.8;margin:0 0 8px">Kirjoita teksti, jonka juontaja lukee radiossa <b>sanasta sanaan</b> (tekoäly ei muuta sitä). Ajoitus: <b>seuraavassa juontotauossa</b> (kerran), <b>kierrossa</b> (joka n:nnessä tauossa) tai <b>kellonaikaan</b> (juonto alkaa tasan silloin ja musiikki häipyy sen tieltä). <b>Soita heti</b> lisää juonnon nykyisen kappaleen jälkeen. Tekstissä voi käyttää merkintöjä {kello} ja {paiva}. Kappaleen nimen voi kirjoittaa merkkien « » sisään, jolloin se luetaan oikealla kielellä.</p><div data-owl></div><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" data-own>＋ Uusi oma juonto</button><button type="button" data-ows>💾 Tallenna juonnot</button><span data-owst style="font-size:13px"></span></div>';
+			var box2 = ow.querySelector('[data-owl]'), stt = ow.querySelector('[data-owst]'), sm = st.replace('width:100%;', 'width:auto;');
+			function fdate(t) { if (!t) { return ''; } var d = new Date(t * 1000); return d.getDate() + '.' + (d.getMonth() + 1) + '. ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+			function saveAll(msg) {
+				var send = L.filter(function (x) { return (x.text || '').trim(); });
+				stt.textContent = 'Tallennetaan…';
+				return api('POST', D.urls.scripts, { scripts: send }).then(function (j) {
+					var k = 0; L.forEach(function (x) { if ((x.text || '').trim()) { var n = j.scripts[k++]; if (n) { for (var f in n) { x[f] = n[f]; } } } });
+					stt.textContent = msg || '✅ Tallennettu.'; draw2(); return j;
+				}).catch(function (e) { stt.textContent = '⚠️ ' + e.message; throw e; });
+			}
+			function draw2() {
+				box2.innerHTML = L.length ? '' : '<p style="font-size:13px;opacity:.7">Ei vielä omia juontoja.</p>';
+				L.forEach(function (x, i) {
+					var c = el('div', { style: 'padding:10px;margin:8px 0;border:1px solid #2a303b;border-radius:10px;background:#101319' });
+					var progOpts = '<option value="">Juontaja: vuorossa oleva</option>' + progs.map(function (p) { return '<option value="' + esc(p.id) + '"' + (x.prog === p.id ? ' selected' : '') + '>' + esc(p.name) + (p.host ? ' (' + esc(p.host) + ')' : '') + '</option>'; }).join('');
+					var dayBoxes = DAYS.map(function (d, k) { return '<label style="margin-right:6px"><input type="checkbox" data-d="' + (k + 1) + '"' + ((x.days || []).indexOf(k + 1) >= 0 ? ' checked' : '') + '> ' + d + '</label>'; }).join('');
+					var status = x.mode === 'next' ? (x.done ? '✅ Puhuttu ' + fdate(x.done) + ' <button type="button" data-redo>Käytä uudelleen</button>' : '⏳ Odottaa seuraavaa juontotaukoa') : (x.mode === 'time' ? (x.lastday ? 'Viimeksi puhuttu: ' + fdate(x.last) : 'Ei vielä puhuttu') : (x.last ? 'Viimeksi puhuttu: ' + fdate(x.last) : 'Ei vielä puhuttu'));
+					c.innerHTML = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input style="' + st.replace('width:100%;', 'flex:1;min-width:160px;') + '" data-t maxlength="60" placeholder="Nimi (vain sinulle)" value="' + esc(x.title) + '"><label><input type="checkbox" data-on' + (x.on ? ' checked' : '') + '> käytössä</label></div>' +
+						'<textarea style="' + st + ';min-height:110px" data-x maxlength="1200" placeholder="Kirjoita juontoteksti sellaisena kuin haluat juontajan sanovan">' + esc(x.text) + '</textarea><div data-cnt style="font-size:12px;opacity:.65"></div>' +
+						'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px"><select style="' + sm + '" data-m>' + [['next', 'Seuraavassa juontotauossa (kerran)'], ['rot', 'Kierrossa'], ['time', 'Kellonaikaan']].map(function (o) { return '<option value="' + o[0] + '"' + (x.mode === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
+						'<span data-rot' + (x.mode === 'rot' ? '' : ' hidden') + '>joka <input type="number" min="1" max="10" data-n style="width:56px;' + sm.replace('width:auto;', '') + '" value="' + x.n + '">. tauko</span>' +
+						'<span data-tm' + (x.mode === 'time' ? '' : ' hidden') + '><input type="time" data-time style="' + sm + '" value="' + esc(x.time) + '"> ' + dayBoxes + ' <label><input type="checkbox" data-rep' + (x.replace ? ' checked' : '') + '> korvaa tavallinen juonto</label></span>' +
+						'<select style="' + sm + '" data-p>' + progOpts + '</select></div>' +
+						'<div style="font-size:13px;margin-top:6px" data-stt>' + status + '</div>' +
+						'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button type="button" data-pv>▶ Esikuuntele</button><button type="button" data-nw>📢 Soita heti</button><button type="button" data-rm>🗑 Poista</button> <span data-ms style="font-size:13px"></span></div>';
+					var q = function (s2) { return c.querySelector(s2); };
+					function cnt() { var n = q('[data-x]').value.length; q('[data-cnt]').textContent = n + ' merkkiä, noin ' + Math.max(1, Math.round(n / 14)) + ' s puhetta'; }
+					function pull() {
+						x.title = q('[data-t]').value; x.on = q('[data-on]').checked; x.text = q('[data-x]').value; x.mode = q('[data-m]').value; x.n = +q('[data-n]').value || 3; x.time = q('[data-time]').value || '12:00'; x.prog = q('[data-p]').value; x.replace = q('[data-rep]').checked;
+						x.days = [].slice.call(c.querySelectorAll('[data-d]')).filter(function (b) { return b.checked; }).map(function (b) { return +b.getAttribute('data-d'); });
+					}
+					cnt();
+					q('[data-x]').addEventListener('input', function () { x.text = q('[data-x]').value; cnt(); });
+					['[data-t]', '[data-on]', '[data-n]', '[data-time]', '[data-p]', '[data-rep]'].forEach(function (k) { q(k).addEventListener('change', pull); });
+					c.querySelectorAll('[data-d]').forEach(function (b) { b.addEventListener('change', pull); });
+					q('[data-m]').addEventListener('change', function () { pull(); q('[data-rot]').hidden = x.mode !== 'rot'; q('[data-tm]').hidden = x.mode !== 'time'; });
+					var rd = q('[data-redo]'); if (rd) { rd.addEventListener('click', function () { pull(); x.done = 0; saveAll('✅ Juonto on taas odottamassa seuraavaa taukoa.'); }); }
+					q('[data-pv]').addEventListener('click', function () {
+						pull(); var m = q('[data-ms]'); if (!x.text.trim()) { m.textContent = 'Kirjoita ensin teksti.'; return; }
+						m.textContent = 'Tehdään puhetta…';
+						api('POST', D.urls.scriptprev, { text: x.text, prog: x.prog }).then(function (j) { m.textContent = 'Soi (' + j.dur + ' s)'; var a = new Audio(j.url); a.play().catch(function () { m.textContent = 'Selain esti toiston: ' + j.url; }); }).catch(function (e) { m.textContent = '⚠️ ' + e.message; });
+					});
+					q('[data-nw]').addEventListener('click', function () {
+						pull(); var m = q('[data-ms]'); if (!x.text.trim()) { m.textContent = 'Kirjoita ensin teksti.'; return; }
+						if (!confirm('Soitetaanko juonto radiossa heti nykyisen kappaleen jälkeen?')) { return; }
+						m.textContent = 'Tallennetaan ja tehdään puhetta…';
+						var pos = L.filter(function (y) { return (y.text || '').trim(); }).indexOf(x);
+						saveAll('✅ Tallennettu.').then(function (j) { var id = j.scripts[pos] && j.scripts[pos].id; return api('POST', D.urls.scriptnow, { id: id }); })
+							.then(function () { stt.textContent = '✅ Juonto lisätty lähetykseen nykyisen kappaleen jälkeen.'; draw2(); }).catch(function (e) { stt.textContent = '⚠️ ' + e.message; });
+					});
+					q('[data-rm]').addEventListener('click', function () { if (confirm('Poistetaanko tämä juonto? Poisto tulee voimaan, kun painat Tallenna juonnot.')) { L.splice(i, 1); draw2(); } });
+					box2.appendChild(c);
+				});
+			}
+			draw2();
+			ow.querySelector('[data-own]').addEventListener('click', function () { L.push({ id: '', title: '', text: '', mode: 'next', time: '12:00', days: [1, 2, 3, 4, 5, 6, 7], n: 3, prog: '', on: true, replace: false, done: 0, last: 0, lastday: '' }); draw2(); });
+			ow.querySelector('[data-ows]').addEventListener('click', function () { saveAll().catch(function () {}); });
+		})();
+
 		/* Mainokset: myymälä / radio / molemmat, omat välit, mainosgeneraattori */
-		var adw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922' });
+		var adw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
 		(function () {
 			var A = D.ads || { list: [], cand: [], on: false, min: 3, max: 3, rmin: 4, rmax: 6, radads: false }, list = (A.list || []).map(function (x) { return { id: x.id, title: x.title, dur: x.dur, tg: x.tg || 's' }; });
 			var SCR = [
@@ -648,7 +713,7 @@
 				'<div data-adscr style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>' +
 				'<input style="' + st + '" data-adtitle maxlength="80" placeholder="Mainoksen nimi (esim. Kuuntele Radio Suornia)">' +
 				'<textarea style="' + st + ';min-height:90px" data-adtext maxlength="400" placeholder="Mainosteksti. Kirjoita osoite kuten se luetaan: suorni piste f i"></textarea>' +
-				'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><select data-advoice style="' + st.replace('width:100%;', 'flex:1;min-width:140px;') + '"><option value="">Ääni: oletus (' + esc(A.vfi || '') + ')</option><option value="fi-FI-NooraNeural">Noora</option><option value="fi-FI-SelmaNeural">Selma</option><option value="fi-FI-HarriNeural">Harri</option></select>' +
+				'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><select data-advoice style="' + st.replace('width:100%;', 'flex:1;min-width:140px;') + '"><option value="">Ääni: oletus (' + esc(A.vfi || '') + ')</option><option value="fi-FI-NooraNeural">Noora</option><option value="fi-FI-SelmaNeural">Selma</option><option value="fi-FI-HarriNeural">Harri</option><option value="en-US-AvaMultilingualNeural">Ava (monikielinen, kokeellinen)</option><option value="en-US-AndrewMultilingualNeural">Andrew (monikielinen, kokeellinen)</option></select>' +
 				'<select data-adtg style="' + st.replace('width:100%;', 'flex:1;min-width:140px;') + '"><option value="r">Kohde: radio</option><option value="s">Kohde: myymälä</option><option value="b">Kohde: molemmat</option></select><button type="button" data-adgen>🎙️ Tee mainos</button></div><div data-adgst style="font-size:13px;margin-top:6px"></div>';
 			var $ = function (q) { return adw.querySelector(q); };
 			var lbox = $('[data-adlist]');
@@ -688,7 +753,7 @@
 			});
 		})();
 
-		var bucket = { yleinen: [wtw, info, sd, mw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, aw, fw], yhteiso: [hD, scw], lista: [upw, bw, tw], mainokset: [adw] };
+		var bucket = { yleinen: [wtw, info, sd, mw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, bw, tw], mainokset: [adw] };
 		var used = [];
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });
