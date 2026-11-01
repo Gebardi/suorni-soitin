@@ -110,8 +110,12 @@
 		chn.innerHTML = '';
 		chs.forEach(function (c) {
 			var b = document.createElement('button');
-			b.type = 'button'; b.className = 'rg' + (c.id === ch ? ' on' : ''); b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', c.id === ch ? 'true' : 'false');
-			b.textContent = (c.icon ? c.icon + ' ' : '') + c.name;
+			b.type = 'button'; b.className = 'rg rcc' + (c.id === ch ? ' on' : ''); b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', c.id === ch ? 'true' : 'false');
+			var ta = c.th && hex2rgb(c.th.a), tg = c.th && hex2rgb(c.th.bg);
+			if (ta) { b.style.setProperty('--ca', ta.join(',')); }
+			if (tg) { b.style.setProperty('--cb', mixc(tg, [0, 0, 0], 0.15).join(',')); }
+			if (c.icon) { var ci = document.createElement('span'); ci.className = 'ci'; ci.setAttribute('aria-hidden', 'true'); ci.textContent = c.icon; b.appendChild(ci); b.appendChild(document.createTextNode(' ')); }
+			var cn = document.createElement('span'); cn.className = 'cn'; cn.textContent = c.name; b.appendChild(cn);
 			b.addEventListener('click', function () { setCh(c.id); });
 			chn.appendChild(b);
 		});
@@ -358,6 +362,56 @@
 		for (var i = from; i < items.length; i++) { if (items[i] && items[i].type === 'track') { return items[i]; } }
 		return null;
 	}
+	/* Automaattinen kansikuva ja pysyvä soitinpalkki */
+	var elArt = $('[data-art]'), artKey = '', barEl = null, rbBox = root.querySelector('.rb'), rbSeen = true;
+	function hue(str) { var h = 0; str = String(str || ''); for (var i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) % 360; } return h; }
+	function hostImg(prog) {
+		var cards = document.querySelectorAll('.sr .hc[data-pn]');
+		for (var i = 0; i < cards.length; i++) { if (cards[i].getAttribute('data-pn') === prog) { var im = cards[i].querySelector('.gav img'); return im ? im.getAttribute('src') : ''; } }
+		return '';
+	}
+	function paintArt(it) {
+		var key = it.type + '|' + (it.title || '') + '|' + (it.artist || '') + '|' + (it.prog || '');
+		if (key === artKey) { return; }
+		artKey = key;
+		var bg = '', html = '', gl = '';
+		if (it.type === 'dj') {
+			var src = hostImg(it.prog);
+			bg = 'linear-gradient(135deg,hsl(' + hue(it.prog) + ',55%,40%),hsl(' + ((hue(it.prog) + 40) % 360) + ',55%,24%))';
+			if (src && /^(https?:)?\/\//i.test(src)) { html = '<img' + (/\/pwa\/hosts\//.test(src) ? ' class="gdf"' : '') + ' alt="" src="' + src.replace(/"/g, '&quot;') + '">'; } else { gl = '🎙️'; }
+		} else if (it.type === 'ad') { bg = 'linear-gradient(135deg,#ffb347,#e8590c)'; gl = '📢'; }
+		else {
+			var h = hue((it.title || '') + (it.artist || ''));
+			bg = 'radial-gradient(circle at 50% 50%,rgba(0,0,0,.35) 0 9%,transparent 10%),repeating-radial-gradient(circle at 50% 50%,rgba(0,0,0,.14) 0 1px,transparent 1px 5px),linear-gradient(135deg,hsl(' + h + ',68%,50%),hsl(' + ((h + 55) % 360) + ',68%,26%))';
+			gl = (String(it.title || '♪').replace(/^[^A-Za-zÅÄÖåäö0-9]+/, '').charAt(0) || '♪').toUpperCase();
+		}
+		if (elArt) { elArt.style.background = bg; elArt.innerHTML = html; if (gl) { elArt.appendChild(document.createTextNode(gl)); } }
+		if (barEl) { var ba = barEl.querySelector('.ba'); ba.style.background = bg; ba.innerHTML = html; if (gl) { ba.appendChild(document.createTextNode(gl)); } }
+	}
+	function barText() {
+		if (!barEl) { return; }
+		barEl.querySelector('.bt b').textContent = elTitle.textContent;
+		barEl.querySelector('.bt span').textContent = elArtist.textContent;
+	}
+	function barShow() {
+		if (!barEl) { return; }
+		var on = playing && !rbSeen;
+		barEl.hidden = !on;
+		document.documentElement.classList.toggle('srbar-on', on);
+		barEl.querySelector('.bp').textContent = playing ? '⏸' : '▶';
+		barEl.querySelector('.bp').setAttribute('aria-label', playing ? 'Pysäytä' : 'Kuuntele');
+	}
+	if (!shopUrl && rbBox) {
+		barEl = document.createElement('div');
+		barEl.className = 'srbar'; barEl.hidden = true; barEl.setAttribute('role', 'region'); barEl.setAttribute('aria-label', 'Soitin');
+		barEl.innerHTML = '<span class="ba" aria-hidden="true"></span><button type="button" class="bt" aria-label="Siirry soittimeen"><b></b><span></span></button><button type="button" class="bp" aria-label="Pysäytä">⏸</button>';
+		document.body.appendChild(barEl);
+		barEl.querySelector('.bp').addEventListener('click', function () { elPlay.click(); });
+		barEl.querySelector('.bt').addEventListener('click', function () { try { rbBox.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { rbBox.scrollIntoView(); } });
+		if ('IntersectionObserver' in window) {
+			new IntersectionObserver(function (es) { rbSeen = es[es.length - 1].isIntersecting; barShow(); }, { threshold: 0.05 }).observe(rbBox);
+		}
+	}
 	function render() {
 		var c = current();
 		if (!c) { return; }
@@ -379,6 +433,7 @@
 			elArtist.textContent = it.artist;
 			if (!elCap.getAttribute('data-aux')) { elCap.textContent = ''; }
 		}
+		paintArt(it); barText();
 		drawComm(it.type === 'track' ? it.sub : 0, it.type === 'track' ? it.tid : 0);
 		var idx = items.indexOf(it);
 		var nt = nextTrack(idx + 1);
@@ -549,6 +604,7 @@
 		elPlay.setAttribute('aria-label', on ? 'Pysäytä' : 'Kuuntele');
 		if (on) { var h2 = root.querySelector('[data-hint]'); if (h2) { h2.textContent = ''; } elPlay.style.boxShadow = ''; }
 		if (!on) { elCap.textContent = ''; }
+		barShow();
 	}
 	elPlay.addEventListener('click', function () {
 		if (shopUrl && !playing && shopOpen === false) { return; }

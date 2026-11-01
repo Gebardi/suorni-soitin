@@ -88,7 +88,7 @@ function suorni_station_hosts() {
 	$h = '<section class="rsec" id="sr-juontajat" aria-labelledby="sr-ju"><h3 id="sr-ju">🎙️ Juontajat</h3><div class="rhs">';
 	foreach ( suorni_station_progs() as $p ) {
 		if ( '' === $p['host'] && '' === $p['img'] ) { continue; }
-		$h .= '<article class="hc" data-gp data-from="' . esc_attr( $p['from'] ) . '" data-to="' . esc_attr( $p['to'] ) . '" data-days="' . esc_attr( implode( ',', $p['days'] ) ) . '">';
+		$h .= '<article class="hc" data-pn="' . esc_attr( $p['name'] ) . '" data-gp data-from="' . esc_attr( $p['from'] ) . '" data-to="' . esc_attr( $p['to'] ) . '" data-days="' . esc_attr( implode( ',', $p['days'] ) ) . '">';
 		$h .= suorni_station_avatar( $p );
 		$h .= '<div class="hb"><h4>' . esc_html( '' !== $p['host'] ? $p['host'] : $p['name'] ) . ' <span class="gnow" hidden>● Nyt</span></h4>';
 		$h .= '<p class="hp">' . esc_html( $p['name'] ) . ' · klo ' . esc_html( suorni_station_time( $p['from'] ) . '–' . suorni_station_time( $p['to'] ) ) . ' · ' . esc_html( suorni_station_days( $p['days'] ) ) . '</p>';
