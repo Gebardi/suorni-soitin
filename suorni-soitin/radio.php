@@ -18,6 +18,7 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-push.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-tags.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-seo.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-backup.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-station.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-req.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-watch.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-welcome.php';
@@ -55,6 +56,8 @@ function suorni_radio_prog( $p ) {
 		'sports'  => ! empty( $p['sports'] ),
 		'nhl'     => ! empty( $p['nhl'] ),
 		'host'    => isset( $p['host'] ) ? mb_substr( sanitize_text_field( $p['host'] ), 0, 30 ) : '',
+		'img'     => isset( $p['img'] ) ? esc_url_raw( (string) $p['img'], array( 'http', 'https' ) ) : '',
+		'blurb'   => isset( $p['blurb'] ) ? mb_substr( sanitize_textarea_field( $p['blurb'] ), 0, 300 ) : '',
 		'persona' => isset( $p['persona'] ) ? mb_substr( sanitize_textarea_field( $p['persona'] ), 0, 600 ) : '',
 		'vfi'     => ( isset( $p['vfi'] ) && preg_match( '/^[A-Za-z]{2,3}-[A-Za-z]{2,4}-[A-Za-z0-9]+$/', $p['vfi'] ) ) ? $p['vfi'] : '',
 		'ven'     => ( isset( $p['ven'] ) && preg_match( '/^[A-Za-z]{2,3}-[A-Za-z]{2,4}-[A-Za-z0-9]+$/', $p['ven'] ) ) ? $p['ven'] : '',
@@ -1415,6 +1418,16 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 .sr .rshr{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:rgba(var(--ar),.12);border:1px solid rgba(var(--ar),.45)}.sr .rshr b{display:block;font-size:13px;color:var(--a)}.sr .rshr span{display:block;margin:2px 0 6px;font-weight:600}.sr .rshr audio{width:100%;height:36px}.sr .rshr small{display:block;opacity:.7;margin-top:4px;font-size:12px}
 .sr .rsh{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0 0}.sr .rsh button.rg{margin:0;padding:8px 12px;font-size:13px}.sr .rsh span{font-size:13px;opacity:.85}
 .sr .rsoc{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 0;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)}.sr .rsoc .rsl{font-size:13px;opacity:.75}.sr .rsoc a.rg{display:inline-block;margin:0;padding:8px 12px;font-size:13px;text-decoration:none}.sr .rsoc a.rpro{flex-basis:100%;display:block;margin-top:4px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:700;text-align:center;text-decoration:none;color:#14161a;background:linear-gradient(180deg,var(--a),var(--b))}
+.sr .rnav{display:flex;gap:6px;overflow-x:auto;margin:14px 0 4px;padding:0 0 6px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}.sr .rnav a{flex:none;padding:7px 12px;border-radius:999px;border:1px solid rgba(var(--ar),.35);background:rgba(var(--ar),.08);color:#efe8d8;text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap}.sr .rnav a:hover,.sr .rnav a:focus-visible{background:rgba(var(--ar),.22);outline:none}
+.sr .rsec{margin:26px 0 0;scroll-margin-top:14px}.sr .rsec h3,.sr .rft h3{margin:0 0 10px;font-size:18px;letter-spacing:1px;color:#e9e1cf}
+.sr .rgd{list-style:none;margin:0;padding:0;display:grid;gap:8px}.sr .gp{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}.sr .gp.on{background:rgba(var(--ar),.14);border-color:rgba(var(--ar),.6)}
+.sr .gt{flex:none;min-width:104px;font:600 14px ui-monospace,Menlo,Consolas,monospace;color:var(--a)}.sr .gn{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline}.sr .gn b{font-size:15px}.sr .gwho{opacity:.85}.sr .gn small{flex-basis:100%;opacity:.65;font-size:12px}
+.sr .gnow{flex:none;font-size:12px;font-weight:700;color:#ff5c5c;letter-spacing:.5px}.sr .gnow[hidden]{display:none}
+.sr .rhs{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}.sr .hc{display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}.sr .hc.on{border-color:rgba(var(--ar),.6);background:rgba(var(--ar),.1)}
+.sr .gav{position:relative;flex:none;width:76px;height:76px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,hsl(var(--h),62%,46%),hsl(calc(var(--h) + 40),60%,26%));box-shadow:0 0 0 2px rgba(var(--ar),.5),0 4px 10px rgba(0,0,0,.45)}.sr .gav b{font-size:32px;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.4)}.sr .gav img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sr .hb{min-width:0}.sr .hb h4{margin:0;font-size:17px;color:#fff}.sr .hp{margin:2px 0 6px;font-size:12px;opacity:.7}.sr .hd{margin:0 0 6px;font-size:14px;line-height:1.45}.sr .hai{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.08);opacity:.85}
+.sr .rft{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:18px 28px;margin:30px 0 0;padding:20px 0 0;border-top:1px solid rgba(255,255,255,.1);scroll-margin-top:14px}.sr .rft p{margin:0;font-size:14px;line-height:1.55;opacity:.85}.sr .rft h4{margin:0 0 8px;font-size:14px;letter-spacing:1px;text-transform:uppercase;opacity:.75}.sr .rft ul{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:14px}.sr .rft a{color:var(--a);text-decoration:none}.sr .rft a:hover{text-decoration:underline}.sr .rfc{grid-column:1/-1;text-align:center;font-size:13px;color:#8b8472;letter-spacing:1px;padding-top:6px}.sr .rfc small{letter-spacing:0;opacity:.8}
+@media(max-width:640px){.sr .rft{grid-template-columns:1fr}.sr .gt{min-width:0}.sr .gp{flex-wrap:wrap}.sr .gav{width:64px;height:64px}}
 .sr.shop .rsoc,.sr.shop .rsh,.sr.shop .rshr{display:none}
 .sr .rchn{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.sr .rchn button.rg{margin:0;padding:8px 13px;font-size:13px;line-height:1.2;white-space:nowrap}.sr .rchn button.on{border-color:var(--a);color:var(--a);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 0 0 2px rgba(var(--ar),.55),0 0 12px rgba(var(--ar),.45)}
 .sr .rhxt{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.sr .rhxt button.rg{margin:0;padding:8px 10px;font-size:13px}.sr .rhxt button.on{border-color:var(--a);color:var(--a)}
@@ -1466,10 +1479,11 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 		<g transform="translate(86 36)" opacity=".95"><rect width="54" height="33" fill="#fff" rx="2"/><rect x="15" width="9" height="33" fill="#003580"/><rect y="12" width="54" height="9" fill="#003580"/></g>
 	</svg>
 	<div class="rin">
+	<?php if ( ! $shop ) { echo suorni_station_nav( $cfg ); } ?>
 	<h2><?php echo esc_html( $cfg['name'] ); ?></h2>
 	<p class="rs" data-prog>Suora lähetys</p>
 	<?php if ( $cfg['wx_show'] ) : ?><div class="rwx" data-wxbox hidden></div><?php endif; ?>
-	<div class="rgrid">
+	<div class="rgrid" id="sr-kuuntele">
 	<aside class="rcol1">
 	<?php $rq = suorni_reqcfg(); ?>
 	<div class="rhx" data-hx hidden data-hist="<?php echo suorni_ep( 'radio/hist' ); ?>" data-reqlist="<?php echo suorni_ep( 'radio/reqlist' ); ?>" data-req="<?php echo suorni_ep( 'radio/req' ); ?>" data-reqon="<?php echo $rq['on'] ? '1' : '0'; ?>">
@@ -1506,7 +1520,7 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 	</div>
 	<aside class="rcol3">
 	<?php if ( $cfg['chat'] ) : ?>
-	<div class="rch" data-chat data-chaturl="<?php echo suorni_ep( 'radio/chat' ); ?>">
+	<div class="rch" id="sr-chat" data-chat data-chaturl="<?php echo suorni_ep( 'radio/chat' ); ?>">
 		<b>💬 Kuuntelijoiden chat</b>
 		<div class="rcl" data-chatlist aria-live="polite"><span class="rs">Ei viestejä vielä. Kirjoita ensimmäinen!</span></div>
 		<div class="rcty" data-typing hidden></div>
@@ -1521,6 +1535,7 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 	</aside>
 	</div>
 	<p class="rs" data-count></p>
+	<?php if ( ! $shop ) { echo suorni_station_guide(); echo suorni_station_hosts(); } ?>
 	<?php if ( $cfg['comm'] ) : ?>
 	<details>
 		<summary>🎵 Lähetä oma kappaleesi radioon</summary>
@@ -1550,7 +1565,7 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 		<p class="rs">Terveiset luetaan radiossa vasta, kun ne on hyväksytty.</p>
 	</details>
 	<div class="ri" data-inst hidden><b>📲 Asenna radio puhelimeen</b><span data-insttxt></span><button type="button" class="rg" data-instbtn hidden>Asenna</button></div>
-	<div class="rf">🇫🇮 Suorni Radio – musiikkia Suomesta, Suomen yössä</div>
+	<?php if ( $shop ) : ?><div class="rf">🇫🇮 Suorni Radio – musiikkia Suomesta, Suomen yössä</div><?php else : echo suorni_station_footer( $cfg ); endif; ?>
 	</div>
 </div>
 	<?php

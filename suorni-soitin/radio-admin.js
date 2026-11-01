@@ -229,6 +229,8 @@
 					'<p style="margin:6px 0 2px">Juontajan tiheys (kappaleväli näkyy vain valinnalla "Joka n:s kappale")</p><select style="' + st + '" data-f="every">' + ev + '</select>' +
 					'<div data-songs style="display:' + (p.every === 'songs' ? 'flex' : 'none') + ';gap:8px;align-items:center">Kappaleväli <input style="' + st + '" type="number" min="1" max="20" data-f="min" value="' + p.min + '"> – <input style="' + st + '" type="number" min="1" max="20" data-f="max" value="' + p.max + '"></div>' +
 					'<input style="' + st + '" data-f="host" maxlength="30" placeholder="Juontajan nimi (valinnainen, esim. Aino)" value="' + esc(p.host) + '">' +
+					'<p style="margin:6px 0 2px">Juontajan kuva (näkyy sivun Juontajat-osiossa; tyhjä = värikortti nimikirjaimella)</p><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input style="' + st + 'flex:1;min-width:180px;width:auto" data-f="img" maxlength="300" placeholder="Kuvan osoite" value="' + esc(p.img || '') + '"><button type="button" data-pu style="flex:none">⬆️ Lataa kuva</button><input type="file" accept="image/*" data-pf style="display:none"><span data-pm style="font-size:13px"></span></div>' +
+					'<textarea style="' + st + '" rows="2" maxlength="300" data-f="blurb" placeholder="Julkinen esittely, joka näkyy sivulla (esim. Aino herättää aamun energisellä otteella). Tämä ei ole tekoälyn ohje.">' + esc(p.blurb || '') + '</textarea>' +
 					'<textarea style="' + st + '" rows="3" maxlength="600" data-f="persona" placeholder="Tämän ohjelman juontajan persoona (tyhjä = yhteinen persoona)">' + esc(p.persona) + '</textarea>' +
 					'<p style="margin:6px 0 2px">Juontajan ääni (suomi)</p><select style="' + st + '" data-f="vfi">' + vopt(['', 'fi-FI-NooraNeural', 'fi-FI-SelmaNeural', 'fi-FI-HarriNeural', 'en-US-AvaMultilingualNeural', 'en-US-EmmaMultilingualNeural', 'en-US-AndrewMultilingualNeural', 'en-US-BrianMultilingualNeural'], p.vfi, ['Oletus (yhteinen)', 'Noora (nainen)', 'Selma (nainen)', 'Harri (mies)', 'Ava – monikielinen, luonnollisempi (nainen, kokeellinen)', 'Emma – monikielinen (nainen, kokeellinen)', 'Andrew – monikielinen (mies, kokeellinen)', 'Brian – monikielinen (mies, kokeellinen)']) + '</select>' +
 					'<p style="margin:6px 0 2px">Englanninkielisten nimien ääni</p><select style="' + st + '" data-f="ven">' + vopt(['', 'en-US-JennyNeural', 'en-US-AriaNeural', 'en-US-GuyNeural', 'en-GB-SoniaNeural', 'en-GB-RyanNeural'], p.ven, ['Oletus (yhteinen)', 'Jenny (nainen, US)', 'Aria (nainen, US)', 'Guy (mies, US)', 'Sonia (nainen, UK)', 'Ryan (mies, UK)']) + '</select>' +
@@ -236,6 +238,15 @@
 					'<div style="margin:6px 0">' + cb('weather', 'Sää') + cb('tip', 'Päivän juttu') + cb('intro', 'Kappaleen esittely') + cb('greet', 'Terveiset') + cb('ann', 'Ohjelman aloitus') + cb('ai', 'Tekoäly') + cb('news', 'Uutiset') + cb('sports', 'Urheilu/Liiga') + cb('nhl', 'NHL ja suomalaiset') + '</div>' +
 					'<button type="button" data-del style="flex:none">Poista ohjelma</button>';
 				w.addEventListener('input', sync(i, w)); w.addEventListener('change', sync(i, w));
+				w.querySelector('[data-pu]').addEventListener('click', function () { w.querySelector('[data-pf]').click(); });
+				w.querySelector('[data-pf]').addEventListener('change', function (e) {
+					var f = e.target.files && e.target.files[0]; if (!f) { return; }
+					var mg = w.querySelector('[data-pm]'), bu = w.querySelector('[data-pu]'); mg.textContent = '⏳ Ladataan…'; bu.disabled = true;
+					var fd = new FormData(); fd.append('file', f);
+					fetch(D.urls.coverup, { method: 'POST', credentials: 'same-origin', headers: { 'X-WP-Nonce': nonce }, body: fd }).then(function (r) { return r.json().then(function (j) { if (!r.ok) { throw new Error(j.message || 'Virhe'); } return j; }); }).then(function (j) {
+						var inp = w.querySelector('[data-f="img"]'); inp.value = j.url; inp.dispatchEvent(new Event('input', { bubbles: true })); mg.textContent = '✅ Kuva ladattu. Paina lopuksi tallennuspainiketta.'; bu.disabled = false; e.target.value = '';
+					}).catch(function (er) { mg.textContent = '❌ ' + er.message; bu.disabled = false; });
+				});
 				w.querySelector('[data-del]').addEventListener('click', function () { if (progs.length > 1) { progs.splice(i, 1); drawProgs(); } });
 				plist.appendChild(w);
 			});
@@ -1016,10 +1027,12 @@
 					f('Teksti (enintään 80 merkkiä)', 'promo_text', 'Mainospaikka vapaana – ota haltuun!') + f('Mihin nauha vie', 'promo_url', 'mailto:admin@suorni.fi', 'Sähköposti muodossa mailto:osoite@esimerkki.fi tai www-osoite.') +
 					'<h4 style="margin:14px 0 2px">🔗 Jaettavan linkin esikatselu</h4><p style="font-size:12px;opacity:.7;margin:0">Kun radion, kanavan tai kappaleen linkki jaetaan (WhatsApp, Facebook, Instagram, Messenger), näkyy tämä kuva ja kuvaus.</p>' +
 					f('Kuvan osoite (tyhjä = oletuskuva)', 'og_img', 'https://…/kuva.jpg', 'Sopiva koko 1200 × 630.') + f('Lyhyt kuvaus', 'desc', 'Suorni – suomalaista radiota ympäri vuorokauden') +
+					'<h4 style="margin:14px 0 2px">🏁 Sivun alatunniste</h4><p style="font-size:12px;opacity:.7;margin:0">Näkyy soittimen alla Yhteystiedot-osiossa yhdessä some-linkkien kanssa.</p>' +
+					f('Tietoa asemasta (enintään 600 merkkiä)', 'about', 'Suorni on suomalainen nettiradio…') + f('Yhteystietona näkyvä sähköposti', 'contact', 'admin@suorni.fi') +
 					'<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" data-sosv>💾 Tallenna</button><span data-somsg style="font-size:13px">' + (msg || '') + '</span></div>' +
 					'<h4 style="margin:16px 0 4px">🔎 Hakukoneet</h4><div style="font-size:14px">' + (S.seo && S.seo.public === false ? '🛑 Hakukoneet on estetty (WordPressin asetus). <button type="button" data-soidx>Salli hakukoneet</button>' : '✅ Hakukoneet saavat indeksoida sivuston.') + '</div>';
 				var g = function (k) { return sow.querySelector(k); };
-				function body() { var b = { promo_on: g('[data-so-on]').checked }; ['ig', 'tt', 'promo_text', 'promo_url', 'og_img', 'desc'].forEach(function (k) { b[k] = g('[data-so="' + k + '"]').value; }); return b; }
+				function body() { var b = { promo_on: g('[data-so-on]').checked }; ['ig', 'tt', 'promo_text', 'promo_url', 'og_img', 'desc', 'about', 'contact'].forEach(function (k) { b[k] = g('[data-so="' + k + '"]').value; }); return b; }
 				function send(extra) {
 					var b = body(); Object.keys(extra || {}).forEach(function (k) { b[k] = extra[k]; });
 					g('[data-somsg]').textContent = 'Tallennetaan…';

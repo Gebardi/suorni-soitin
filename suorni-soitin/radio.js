@@ -581,6 +581,31 @@
 			elPlay.addEventListener('click', function () { if (playing) { try { shr.pause(); } catch (e) {} } });
 		}
 	})();
+	/* Asemasivu: ohjelmaoppaan "Nyt"-merkintä (Suomen aika) ja valikon Top 10 */
+	(function () {
+		var rows = document.querySelectorAll('.sr [data-gp]');
+		function hel() {
+			try {
+				var f = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Helsinki', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date()), o = {};
+				f.forEach(function (x) { o[x.type] = x.value; });
+				return { d: { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }[o.weekday] || 1, m: (+o.hour % 24) * 60 + (+o.minute) };
+			} catch (e) { var n = new Date(); return { d: n.getDay() || 7, m: n.getHours() * 60 + n.getMinutes() }; }
+		}
+		function mins(t) { var p = String(t).split(':'); return (+p[0]) * 60 + (+p[1] || 0); }
+		function mark() {
+			if (!rows.length) { return; }
+			var n = hel(), prev = n.d === 1 ? 7 : n.d - 1;
+			[].forEach.call(rows, function (r) {
+				var days = (r.getAttribute('data-days') || '').split(',').map(Number), a = mins(r.getAttribute('data-from')), b = mins(r.getAttribute('data-to'));
+				var on = a < b ? (days.indexOf(n.d) >= 0 && n.m >= a && n.m < b) : ((days.indexOf(n.d) >= 0 && n.m >= a) || (days.indexOf(prev) >= 0 && n.m < b));
+				r.classList.toggle('on', on);
+				var g = r.querySelector('.gnow'); if (g) { g.hidden = !on; }
+			});
+		}
+		mark(); setInterval(mark, 60000);
+		var top = document.querySelector('.sr [data-navtop]');
+		if (top) { top.addEventListener('click', function () { var b = document.querySelector('.sr [data-hxt="top"]'); if (b) { setTimeout(function () { b.click(); }, 60); } }); }
+	})();
 	$('[data-vol]').addEventListener('input', function (e) { au.volume = Math.max(0, Math.min(1, e.target.value / 100)) * (duckOn ? duckCur : 1); });
 	var badSent = {};
 	au.addEventListener('error', function () {

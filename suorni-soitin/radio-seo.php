@@ -25,6 +25,8 @@ function suorni_social_cfg() {
 		'promo_url'  => ( isset( $c['promo_url'] ) && '' !== trim( $c['promo_url'] ) ) ? $ok( $c['promo_url'], true ) : 'mailto:admin@suorni.fi',
 		'og_img'     => isset( $c['og_img'] ) ? $ok( $c['og_img'] ) : '',
 		'desc'       => ( isset( $c['desc'] ) && '' !== trim( $c['desc'] ) ) ? mb_substr( sanitize_text_field( $c['desc'] ), 0, 200 ) : 'Suomalaista musiikkia suorana: oma tekoälyjuontaja, kanavat, terveiset ja toiveet. Paina play ja kuuntele.',
+		'about'      => ( isset( $c['about'] ) && '' !== trim( $c['about'] ) ) ? mb_substr( sanitize_textarea_field( $c['about'] ), 0, 600 ) : 'Suorni on suomalainen nettiradio, jossa soi oma musiikki ympäri vuorokauden. Ohjelmia juontavat tekoälyjuontajat, ja kuuntelijat voivat lähettää terveisiä, toivoa kappaleita ja keskustella chatissa.',
+		'contact'    => isset( $c['contact'] ) ? sanitize_email( (string) $c['contact'] ) : 'admin@suorni.fi',
 	);
 }
 function suorni_seo_status() {
@@ -132,7 +134,7 @@ function suorni_social_state() {
 function suorni_social_post( $req ) {
 	$cur = get_option( 'suorni_social', array() );
 	if ( ! is_array( $cur ) ) { $cur = array(); }
-	foreach ( array( 'ig', 'tt', 'promo_text', 'promo_url', 'og_img', 'desc' ) as $k ) {
+	foreach ( array( 'ig', 'tt', 'promo_text', 'promo_url', 'og_img', 'desc', 'about', 'contact' ) as $k ) {
 		if ( null !== $req->get_param( $k ) ) { $cur[ $k ] = trim( (string) $req->get_param( $k ) ); }
 	}
 	if ( null !== $req->get_param( 'promo_on' ) ) { $cur['promo_on'] = (bool) $req->get_param( 'promo_on' ); }
