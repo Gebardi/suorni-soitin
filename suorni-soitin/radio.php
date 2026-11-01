@@ -1449,7 +1449,7 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 .srbar .bp{flex:none;width:46px;height:46px;border-radius:50%;border:2px solid #15171b;background:conic-gradient(from 20deg,#e9ecf0,#8d939c,#f4f6f8,#6f757e,#dfe3e8,#8d939c,#e9ecf0);color:#15171b;font-size:18px;cursor:pointer;box-shadow:0 0 0 3px rgba(var(--sch-ar,77,163,255),.55)}
 html.srbar-on body{padding-bottom:72px}
 /* ---------- 9.67 yhtenäinen kuvakesarja ja viimeistely ---------- */
-.sr .ic{width:1.15em;height:1.15em;flex:none;vertical-align:-.2em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.sr .ic,.sra .ic{width:1.15em;height:1.15em;flex:none;vertical-align:-.2em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
 .sr .rp .ic{width:30px;height:30px;vertical-align:middle;stroke-width:1.4}.sr .rteject .ic{width:22px;height:22px;vertical-align:middle}
 .sr .rp .ic,.sr .rteject .ic{display:block;margin:auto}.sr .rp .ic{margin-left:calc(50% - 13px)}
 .sr .rsec>h3 .ic,.sr .rft h4 .ic{color:rgb(var(--ar))}.sr .rnav a .ic{color:rgb(var(--ar));margin-right:2px}
@@ -1713,6 +1713,7 @@ add_shortcode( 'suorni_radio_admin', function () {
 .sra .ibchip{cursor:pointer;border-color:var(--am) !important;color:var(--am);font-weight:700;animation:sraoa 1.6s ease-in-out infinite}.sra .stname{font-size:18px;font-weight:700;letter-spacing:.01em}
 .sra .stchips{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;align-items:center}
 .sra .chip{padding:5px 11px;border-radius:999px;background:#0b0d11;border:1px solid var(--ln);font-size:13px;color:#cfd4de;white-space:nowrap}.sra .chip b{color:var(--am);font-weight:700}
+.sra .ic{width:1.15em;height:1.15em;flex:none;vertical-align:-.2em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;overflow:visible}.sra .stname .ic,.sra .chip .ic{color:var(--am)}
 .sra .stclock{font:700 17px ui-monospace,Menlo,Consolas,monospace;color:var(--am);text-shadow:0 0 10px rgba(255,179,71,.4)}
 .sra [data-radio-box]{display:grid;grid-template-columns:210px minmax(0,1fr);gap:0 18px;padding:16px 18px 0;align-items:start}
 .sra [data-radio-box]>*{grid-column:2;min-width:0}
@@ -1753,6 +1754,7 @@ add_shortcode( 'suorni_radio_admin', function () {
 @media(max-width:1000px){.sra .st-topgrid{grid-template-columns:1fr}}
 @media(max-width:860px){.sra [data-radio-box]{grid-template-columns:1fr;padding:12px}.sra [data-radio-box]>*{grid-column:1}.sra [data-radio-box]>.st-nav{grid-row:auto;position:sticky;top:0;z-index:6;flex-direction:row;overflow-x:auto;background:var(--bg);padding:6px 0;margin-bottom:8px}.sra .st-nav button{width:auto;white-space:nowrap;flex:none}.sra .stchips{margin-left:0}}
 </style>
+<?php echo suorni_icon_sprite(); ?>
 <div class="sra">
 	<div class="stbar">
 		<span class="onair" data-sb-air><i></i>ON AIR</span>
@@ -1979,6 +1981,10 @@ function suorni_radio_is_page() {
 	global $post;
 	return is_singular() && $post && has_shortcode( $post->post_content, 'suorni_radio' );
 }
+/* Etusivulta pois teeman mainospaikka-kortit ja sivun sisältöön upotettu asiakaskortti (9.68) */
+add_action( 'wp_head', function () {
+	if ( is_front_page() && suorni_radio_on() ) { echo '<style id="suorni-fp-clean">.mk-par,body.home .entry .sa{display:none !important}</style>' . "\n"; }
+}, 5 );
 add_action( 'wp_head', function () {
 	if ( ! suorni_radio_is_page() ) { return; }
 	$cfg = suorni_radio_cfg();
