@@ -29,6 +29,18 @@ function suorni_station_progs() {
 	usort( $p, function ( $a, $b ) { return strcmp( $a['from'], $b['from'] ); } );
 	return $p;
 }
+/* Lisäosan mukana tulevat oletuskuvakkeet (Aino, Sanni, Eino, Unto): ensin juontajan nimen, sitten ohjelman tunnuksen mukaan */
+function suorni_station_default_art( $p ) {
+	$map  = array( 'aino' => 'aino', 'sanni' => 'sanni', 'eino' => 'eino', 'unto' => 'unto', 'aamu' => 'aino', 'paiva' => 'sanni', 'ilta' => 'eino', 'yo' => 'unto' );
+	$keys = array( sanitize_key( suorni_station_plain( (string) $p['host'] ) ), sanitize_key( (string) $p['id'] ) );
+	foreach ( $keys as $k ) {
+		if ( '' !== $k && isset( $map[ $k ] ) ) { return plugins_url( 'pwa/hosts/' . $map[ $k ] . '.svg', __FILE__ ); }
+	}
+	return '';
+}
+function suorni_station_plain( $s ) {
+	return function_exists( 'remove_accents' ) ? remove_accents( $s ) : $s;
+}
 /* Kuva tai värikortti, jossa nimikirjain. Rikkinäinen kuva poistuu ja kortti jää. */
 function suorni_station_avatar( $p, $cls = 'gav' ) {
 	$name = '' !== $p['host'] ? $p['host'] : $p['name'];
@@ -36,6 +48,10 @@ function suorni_station_avatar( $p, $cls = 'gav' ) {
 	$ini  = mb_strtoupper( mb_substr( $name, 0, 1 ) );
 	$out  = '<span class="' . esc_attr( $cls ) . '" style="--h:' . (int) $h . '" aria-hidden="true"><b>' . esc_html( $ini ) . '</b>';
 	if ( '' !== $p['img'] ) { $out .= '<img src="' . esc_url( $p['img'] ) . '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">'; }
+	else {
+		$d = suorni_station_default_art( $p );
+		if ( '' !== $d ) { $out .= '<img class="gdf" src="' . esc_url( $d ) . '" alt="" loading="lazy" onerror="this.remove()">'; }
+	}
 	return $out . '</span>';
 }
 function suorni_station_nav( $cfg ) {
@@ -77,7 +93,6 @@ function suorni_station_hosts() {
 		$h .= '<div class="hb"><h4>' . esc_html( '' !== $p['host'] ? $p['host'] : $p['name'] ) . ' <span class="gnow" hidden>● Nyt</span></h4>';
 		$h .= '<p class="hp">' . esc_html( $p['name'] ) . ' · klo ' . esc_html( suorni_station_time( $p['from'] ) . '–' . suorni_station_time( $p['to'] ) ) . ' · ' . esc_html( suorni_station_days( $p['days'] ) ) . '</p>';
 		if ( '' !== $p['blurb'] ) { $h .= '<p class="hd">' . esc_html( $p['blurb'] ) . '</p>'; }
-		if ( ! empty( $p['ai'] ) ) { $h .= '<span class="hai">🤖 Tekoälyjuontaja</span>'; }
 		$h .= '</div></article>';
 	}
 	return $h . '</div></section>';

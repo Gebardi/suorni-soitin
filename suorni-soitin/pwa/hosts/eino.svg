@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Eino, iltajuontaja"><defs><linearGradient id="e" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b3070"/><stop offset="1" stop-color="#e0804d"/></linearGradient></defs>
+<rect width="256" height="256" fill="url(#e)"/><circle cx="46" cy="60" r="40" fill="#ffd77a" opacity=".3"/><circle cx="46" cy="60" r="20" fill="#ffd77a" opacity=".45"/>
+<path d="M30 256C30 212 76 190 128 190C180 190 226 212 226 256Z" fill="#8b4a2b"/><path d="M104 190L128 236L152 190Z" fill="#f6efe0"/><path d="M92 192L128 240L116 192Z" fill="#e7dcc6"/><path d="M164 192L128 240L140 192Z" fill="#e7dcc6"/>
+<g fill="#4e2a15"><circle cx="128" cy="232" r="4"/><circle cx="128" cy="250" r="4"/></g><path d="M128 206V256" stroke="#6e3a20" stroke-width="3"/>
+<rect x="110" y="160" width="36" height="40" rx="12" fill="#d9a07c"/>
+<ellipse cx="128" cy="118" rx="56" ry="62" fill="#ebb894"/><ellipse cx="72" cy="126" rx="9" ry="15" fill="#e2ab87"/><ellipse cx="184" cy="126" rx="9" ry="15" fill="#e2ab87"/>
+<path d="M76 100C66 112 68 140 78 150C82 134 84 116 86 98Z" fill="#cfd2d6"/><path d="M180 100C190 112 188 140 178 150C174 134 172 116 170 98Z" fill="#cfd2d6"/>
+<ellipse cx="116" cy="70" rx="22" ry="9" fill="#fff" opacity=".35"/>
+<g stroke="#aeb2b8" stroke-width="9" stroke-linecap="round"><path d="M88 98Q104 88 122 96"/><path d="M134 96Q152 88 168 98"/></g>
+<g fill="#fff" opacity=".25"><circle cx="106" cy="122" r="17"/><circle cx="150" cy="122" r="17"/></g>
+<g fill="none" stroke="#6b3b22" stroke-width="4"><circle cx="106" cy="122" r="17"/><circle cx="150" cy="122" r="17"/><path d="M123 120Q128 116 133 120"/><path d="M89 120L76 116M167 120L180 116"/></g>
+<circle cx="106" cy="124" r="4.5" fill="#2a2a30"/><circle cx="150" cy="124" r="4.5" fill="#2a2a30"/>
+<ellipse cx="128" cy="142" rx="12" ry="9" fill="#dca07e"/>
+<circle cx="90" cy="148" r="9" fill="#e9877d" opacity=".4"/><circle cx="166" cy="148" r="9" fill="#e9877d" opacity=".4"/>
+<path d="M114 176Q128 184 142 176" fill="none" stroke="#8a4b3a" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M88 158Q108 140 128 152Q148 140 168 158Q150 174 128 164Q106 174 88 158Z" fill="#cfd2d6" stroke="#9da1a8" stroke-width="2"/></svg>

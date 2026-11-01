@@ -22,11 +22,11 @@ function suorni_social_cfg() {
 		'tt'         => isset( $c['tt'] ) ? $ok( $c['tt'] ) : '',
 		'promo_on'   => ! isset( $c['promo_on'] ) || ! empty( $c['promo_on'] ),
 		'promo_text' => ( isset( $c['promo_text'] ) && '' !== trim( $c['promo_text'] ) ) ? mb_substr( sanitize_text_field( $c['promo_text'] ), 0, 80 ) : 'Mainospaikka vapaana – ota haltuun!',
-		'promo_url'  => ( isset( $c['promo_url'] ) && '' !== trim( $c['promo_url'] ) ) ? $ok( $c['promo_url'], true ) : 'mailto:admin@suorni.fi',
+		'promo_url'  => ( isset( $c['promo_url'] ) && '' !== trim( $c['promo_url'] ) ) ? $ok( $c['promo_url'], true ) : 'mailto:noreply@suorni.fi',
 		'og_img'     => isset( $c['og_img'] ) ? $ok( $c['og_img'] ) : '',
-		'desc'       => ( isset( $c['desc'] ) && '' !== trim( $c['desc'] ) ) ? mb_substr( sanitize_text_field( $c['desc'] ), 0, 200 ) : 'Suomalaista musiikkia suorana: oma tekoälyjuontaja, kanavat, terveiset ja toiveet. Paina play ja kuuntele.',
-		'about'      => ( isset( $c['about'] ) && '' !== trim( $c['about'] ) ) ? mb_substr( sanitize_textarea_field( $c['about'] ), 0, 600 ) : 'Suorni on suomalainen nettiradio, jossa soi oma musiikki ympäri vuorokauden. Ohjelmia juontavat tekoälyjuontajat, ja kuuntelijat voivat lähettää terveisiä, toivoa kappaleita ja keskustella chatissa.',
-		'contact'    => isset( $c['contact'] ) ? sanitize_email( (string) $c['contact'] ) : 'admin@suorni.fi',
+		'desc'       => ( isset( $c['desc'] ) && '' !== trim( $c['desc'] ) ) ? mb_substr( sanitize_text_field( $c['desc'] ), 0, 200 ) : 'Suomalaista musiikkia suorana: juontajat, kanavat, terveiset ja toiveet. Paina play ja kuuntele.',
+		'about'      => ( isset( $c['about'] ) && '' !== trim( $c['about'] ) ) ? mb_substr( sanitize_textarea_field( $c['about'] ), 0, 600 ) : 'Suorni on suomalainen nettiradio, jossa soi oma musiikki ympäri vuorokauden. Ohjelmia juontavat Aino, Sanni, Eino ja Unto, ja kuuntelijat voivat lähettää terveisiä, toivoa kappaleita ja keskustella chatissa.',
+		'contact'    => isset( $c['contact'] ) ? sanitize_email( (string) $c['contact'] ) : 'noreply@suorni.fi',
 	);
 }
 function suorni_seo_status() {
