@@ -2,11 +2,11 @@
 /**
  * Plugin Name: Suorni Soitin
  * Description: Soitin mediakirjaston äänitiedostoista. Lyhytkoodit: [suorni_soitin] (valinnaisesti lista="nimi") ja [suorni_kauko] (kauko-ohjain kirjautuneelle).
- * Version: 9.66
+ * Version: 9.67
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SUORNI_VER', '9.66' );
+define( 'SUORNI_VER', '9.67' );
 require_once plugin_dir_path( __FILE__ ) . 'radio.php';
 require_once plugin_dir_path( __FILE__ ) . 'update.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-cache.php';
@@ -238,6 +238,7 @@ function suorni_dj() {
 		'weather' => ! isset( $d['weather'] ) || ! empty( $d['weather'] ),
 		'next'    => isset( $d['next'] ) ? max( 0, min( 3, (int) $d['next'] ) ) : 1,
 		'where'   => ( isset( $d['where'] ) && '' !== $d['where'] ) ? (string) $d['where'] : 'Lohjalla',
+		'wxmode'  => ( isset( $d['wxmode'] ) && 'local' === $d['wxmode'] ) ? 'local' : 'fi',
 		'lat'     => isset( $d['lat'] ) ? (float) $d['lat'] : 60.2514,
 		'lon'     => isset( $d['lon'] ) ? (float) $d['lon'] : 24.0667,
 		'rate'    => isset( $d['rate'] ) ? max( 0.6, min( 1.4, (float) $d['rate'] ) ) : 1.0,

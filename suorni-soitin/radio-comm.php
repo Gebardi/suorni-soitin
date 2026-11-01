@@ -114,6 +114,25 @@ function suorni_tvote_get( $id ) {
 	$m = get_option( 'suorni_tvotes', array() );
 	return ( is_array( $m ) && isset( $m[ (int) $id ] ) ) ? array( 'u' => (int) $m[ (int) $id ]['u'], 'd' => (int) $m[ (int) $id ]['d'] ) : array( 'u' => 0, 'd' => 0 );
 }
+/* Peukutuksen vaikutus soittoon (kohtuullinen): paljon peukkuja = soi useammin, alapeukut = harvemmin. Ei koskaan nollaa. */
+function suorni_vote_weight( $id ) {
+	static $m = null;
+	if ( null === $m ) { $m = get_option( 'suorni_tvotes', array() ); if ( ! is_array( $m ) ) { $m = array(); } }
+	$net = isset( $m[ (int) $id ] ) ? ( (int) $m[ (int) $id ]['u'] - (int) $m[ (int) $id ]['d'] ) : 0;
+	$w   = max( 0.4, min( 3.0, 1 + 0.3 * $net ) );
+	return function_exists( 'apply_filters' ) ? (float) apply_filters( 'suorni_vote_weight', $w, (int) $id ) : $w;
+}
+/* Painotettu arvonta listasta kappaleita */
+function suorni_vote_pick( $list ) {
+	if ( ! $list ) { return null; }
+	$list = array_values( $list );
+	$ws = array(); $sum = 0;
+	foreach ( $list as $t ) { $w = (int) round( suorni_vote_weight( $t['id'] ) * 100 ); $ws[] = $w; $sum += $w; }
+	if ( $sum < 1 ) { return $list[ wp_rand( 0, count( $list ) - 1 ) ]; }
+	$r = wp_rand( 1, $sum );
+	foreach ( $list as $i => $t ) { $r -= $ws[ $i ]; if ( $r <= 0 ) { return $t; } }
+	return $list[ count( $list ) - 1 ];
+}
 function suorni_tvotes_public( $items ) {
 	$out = array();
 	foreach ( $items as $it ) { if ( ! empty( $it['tid'] ) ) { $out[ (string) $it['tid'] ] = suorni_tvote_get( $it['tid'] ); } }

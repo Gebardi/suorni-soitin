@@ -61,7 +61,7 @@ function suorni_radio_fit_choose( $cand, $R ) {
 		$x = $Ri - $d;
 		if ( suorni_radio_fit_end( $x ) || ( $x > 1 && ! empty( $good[ $x ] ) ) ) { $ok[] = $t; }
 	}
-	return $ok ? $ok[ wp_rand( 0, count( $ok ) - 1 ) ] : null;
+	return $ok ? ( function_exists( 'suorni_vote_pick' ) ? suorni_vote_pick( $ok ) : $ok[ wp_rand( 0, count( $ok ) - 1 ) ] ) : null;
 }
 /* Varavalinta kun sopivaa yhdistelmää ei löydy: pienin ylitys (kappale häivytetään tasalla), muuten pisin kappale */
 function suorni_radio_fit_fallback( $cand, $R ) {

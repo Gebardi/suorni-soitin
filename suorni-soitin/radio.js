@@ -34,6 +34,9 @@
 	}
 	rg.addEventListener('error', function () { if (rgKey && rgUrl) { rgBad = true; rgKey = ''; curKey = ''; tailEnd = 0; if (playing) { sync(); } } });
 	var fixes = 0, lastFix = 0, loadTok = 0, cid = Math.random().toString(36).slice(2, 12), hasOff = false, warm = (function () { var w = new Audio(); try { w.referrerPolicy = 'no-referrer'; } catch (e) {} return w; })(), warmUrl = '', items = [], off = 0, playing = false, curKey = '', lastPing = 0, lastFetch = 0, busy = false;
+	function ic(n) { return '<svg class="ic" aria-hidden="true" focusable="false"><use href="#si-' + n + '"/></svg>'; }
+	var WXI = { '☀': 'sun', '🌤': 'partly', '⛅': 'partly', '🌥': 'cloud', '☁': 'cloud', '🌫': 'fog', '🌦': 'rain', '🌧': 'rain', '🌨': 'snow', '❄': 'snow', '⛈': 'storm', '🌩': 'storm' };
+	function wxIc(e) { var k = String(e || '').replace(/\uFE0F/g, ''); for (var z in WXI) { if (k.indexOf(z) === 0) { return ic(WXI[z]); } } return ic('cloud'); }
 	var elPlay = $('[data-play]'), elTitle = $('[data-title]'), elArtist = $('[data-artist]'), elNext = $('[data-next]');
 	var elCap = $('[data-cap]'), elCount = $('[data-count]'), elProg = $('[data-prog]');
 
@@ -160,7 +163,7 @@
 				shift = j.shift || null;
 				if (j.chat) { drawChat(j.chat); setTyping(j.typing || ''); if (j.typing) { fastPoll(); } var gn = chatEl && chatEl.querySelector('[data-gnote]'); if (gn) { gn.hidden = !j.guests; } }
 				if (j.name) { var h = root.querySelector('h2'); if (h) { h.textContent = j.name; } }
-				if (typeof j.listeners === 'number') { elCount.textContent = j.listeners > 0 ? '👥 ' + j.listeners + (j.listeners === 1 ? ' kuuntelija nyt' : ' kuuntelijaa nyt') : ''; }
+				if (typeof j.listeners === 'number') { elCount.innerHTML = j.listeners > 0 ? ic('users') + ' ' + j.listeners + (j.listeners === 1 ? ' kuuntelija nyt' : ' kuuntelijaa nyt') : ''; }
 				if (j.idle) { elTitle.textContent = 'Paina play, niin radio käynnistyy'; elArtist.textContent = ''; }
 				if (j.empty) { elTitle.textContent = 'Lähetys alkaa pian'; elArtist.textContent = 'Radiolla ei ole vielä soitettavia kappaleita'; }
 				render();
@@ -168,24 +171,60 @@
 			})
 			.catch(function () { busy = false; });
 	}
-	var wxEl = $('[data-wxbox]');
-	function drawWx() {
+	var wxEl = $('[data-wxbox]'), wxData = { regions: [], place: null }, wxSel = 'etela', wxQ = '', wxBuilt = false, wxErr = '';
+	try { var ws = localStorage.getItem('suorni_wxsel') || ''; if (ws.indexOf('q:') === 0) { wxQ = ws.slice(2).slice(0, 40); wxSel = 'oma'; } else if (ws) { wxSel = ws; } } catch (e) {}
+	function wxSg(n) { return (n > 0 ? '+' : '') + n; }
+	function wxEsc(t) { return String(t == null ? '' : t).replace(/[<>&"]/g, ''); }
+	function wxPaint() {
 		if (!wxEl) { return; }
-		fetch(q(root.getAttribute('data-wx'), 'r=' + Date.now()), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
-			var w = j && j.wx;
-			if (!w) { wxEl.hidden = true; return; }
-			var sg = function (n) { return (n > 0 ? '+' : '') + n; };
-			var parts = ['<span><b>' + w.ic + ' ' + sg(w.t) + ' °C</b></span>'];
-			if (w.txt) { parts.push('<span>' + w.txt + '</span>'); }
-			if (w.w !== null) { parts.push('<span>💨 ' + w.w + ' m/s' + (w.wd ? ' ' + w.wd : '') + (w.g !== null && w.g > w.w + 2 ? ', puuskat ' + w.g + ' m/s' : '') + '</span>'); }
-			if (w.fl !== null && Math.abs(w.fl - w.t) >= 2) { parts.push('<span>tuntuu ' + sg(w.fl) + ' °C</span>'); }
-			if (w.h !== null) { parts.push('<span>💧 ' + w.h + ' %</span>'); }
-			if (w.p) { parts.push('<span>🌧 ' + w.p + ' mm</span>'); }
-			if (w.hi !== null) { parts.push('<span>ylin ' + sg(w.hi) + ' / alin ' + sg(w.lo) + ' °C</span>'); }
-			wxEl.innerHTML = '<div style="opacity:.7;font-size:11px;letter-spacing:1px">SÄÄ · ' + String(w.place || '').toUpperCase().replace(/[<>&]/g, '') + ' · klo ' + w.at + '</div>' + parts.join('');
-			wxEl.hidden = false;
+		var rg = wxData.regions || [], pl = wxData.place;
+		if (!rg.length && !pl) { wxEl.hidden = true; return; }
+		if (!wxBuilt) {
+			wxEl.innerHTML = '<div class="wxh"></div><div class="wxt" role="tablist" aria-label="Sää alueittain"></div><div class="wxd" aria-live="polite"></div><form class="wxs"><input class="rt" maxlength="40" placeholder="Hae paikkakunnan sää" aria-label="Hae paikkakunnan sää"><button type="submit" class="rg">Hae</button></form><div class="wxe" aria-live="polite"></div>';
+			wxEl.querySelector('form').addEventListener('submit', function (ev) {
+				ev.preventDefault();
+				var v = wxEl.querySelector('input').value.trim();
+				if (v.length < 2) { return; }
+				wxQ = v; wxSel = 'oma'; wxLoad();
+			});
+			wxEl.querySelector('.wxt').addEventListener('click', function (ev) {
+				var b = ev.target.closest('button[data-wx]'); if (!b) { return; }
+				wxSel = b.getAttribute('data-wx'); try { localStorage.setItem('suorni_wxsel', wxSel === 'oma' ? 'q:' + wxQ : wxSel); } catch (e) {}
+				wxPaint();
+			});
+			wxBuilt = true;
+		}
+		var all = rg.slice(); if (pl) { all.push(pl); }
+		var cur = null; all.forEach(function (x) { if (x.id === wxSel) { cur = x; } });
+		if (!cur) { cur = all[0]; wxSel = cur.id; }
+		var at = (all[0] && all[0].at) || '';
+		wxEl.querySelector('.wxh').textContent = 'SÄÄ SUOMESSA' + (at ? ' · KLO ' + at : '');
+		wxEl.querySelector('.wxt').innerHTML = all.map(function (x) {
+			return '<button type="button" role="tab" data-wx="' + wxEsc(x.id) + '" aria-selected="' + (x.id === wxSel) + '" class="' + (x.id === wxSel ? 'on' : '') + '"><small>' + wxEsc(x.id === 'oma' ? x.place : x.name) + '</small><b>' + wxIc(x.ic) + ' ' + wxSg(x.t) + '°</b></button>';
+		}).join('');
+		var w = cur, parts = ['<span class="wxp">' + wxEsc(cur.id === 'oma' ? cur.place : (cur.name + ' · ' + cur.place)) + '</span>'];
+		if (w.txt) { parts.push('<span>' + wxEsc(w.txt) + '</span>'); }
+		if (w.w !== null) { parts.push('<span>' + ic('wind') + ' ' + w.w + ' m/s' + (w.wd ? ' ' + wxEsc(w.wd) : '') + (w.g !== null && w.g > w.w + 2 ? ', puuskat ' + w.g + ' m/s' : '') + '</span>'); }
+		if (w.fl !== null && Math.abs(w.fl - w.t) >= 2) { parts.push('<span>tuntuu ' + wxSg(w.fl) + ' °C</span>'); }
+		if (w.h !== null) { parts.push('<span>' + ic('drop') + ' ' + w.h + ' %</span>'); }
+		if (w.p) { parts.push('<span>' + ic('rain') + ' ' + w.p + ' mm</span>'); }
+		if (w.hi !== null) { parts.push('<span>ylin ' + wxSg(w.hi) + ' / alin ' + wxSg(w.lo) + ' °C</span>'); }
+		wxEl.querySelector('.wxd').innerHTML = parts.join('');
+		wxEl.querySelector('.wxe').textContent = wxErr;
+		wxEl.hidden = false;
+	}
+	function wxLoad() {
+		if (!wxEl) { return; }
+		var extra = 'r=' + Date.now() + (wxQ ? '&q=' + encodeURIComponent(wxQ) : '');
+		fetch(q(root.getAttribute('data-wx'), extra), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+			if (!j) { return; }
+			wxData.regions = j.regions || []; wxData.place = j.place || null; wxErr = j.err || '';
+			if (wxQ && j.place) { try { localStorage.setItem('suorni_wxsel', 'q:' + wxQ); } catch (e) {} wxSel = 'oma'; }
+			else if (wxQ && j.err) { wxQ = ''; wxSel = (wxData.regions[0] || {}).id || 'etela'; }
+			wxPaint();
 		}).catch(function () {});
 	}
+	function drawWx() { wxLoad(); }
 	drawWx(); setInterval(drawWx, 600000);
 	var comm = null, vbox = $('[data-votebox]'), mine = {};
 	try { mine = JSON.parse(localStorage.getItem('suorni_votes') || '{}') || {}; } catch (e) {}
@@ -196,7 +235,8 @@
 		var key = sub ? 's' + sub : (tid ? 't' + tid : ''), d = sub ? cv[sub] : (tid ? (tv[tid] || { u: 0, d: 0 }) : null);
 		if (key && d) {
 			vbox.hidden = false; vbox.setAttribute('data-key', key);
-			var lb = $('[data-vlabel]'); if (lb) { lb.textContent = sub ? '🎵 Uuden artistin kappale' : 'Pidätkö tästä kappaleesta?'; }
+			var lb = $('[data-vlabel]'); if (lb) { lb.innerHTML = sub ? ic('note') + ' Uuden artistin kappale' : 'Pidätkö tästä kappaleesta?'; }
+			var vx = $('[data-vx]'); if (vx) { vx.textContent = sub ? 'Uusi artisti: peukkujen perusteella kappale jää kiertoon tai putoaa pois.' : 'Sinun peukkusi ohjaa soittolistaa.'; }
 			$('[data-vu]').textContent = d.u; $('[data-vd]').textContent = d.d;
 			$('[data-vup]').className = 'rg' + (mine[key] === 1 ? ' on' : '');
 			$('[data-vdn]').className = 'rg' + (mine[key] === -1 ? ' on' : '');
@@ -209,7 +249,7 @@
 			qq.forEach(function (x) {
 				var d = document.createElement('div'); d.className = 'cqr';
 				var a = document.createElement('span'); a.textContent = x.a + ' – ' + x.t;
-				var b = document.createElement('span'); b.textContent = '👍 ' + x.u + '  👎 ' + x.d;
+				var b = document.createElement('span'); b.innerHTML = ic('thumbup') + ' ' + (+x.u || 0) + ' &nbsp; ' + ic('thumbdown') + ' ' + (+x.d || 0);
 				d.appendChild(a); d.appendChild(b); lst.appendChild(d);
 			});
 		}
@@ -237,7 +277,7 @@
 			var ci = root.querySelector('[data-cmsg]');
 			if (!ci) { return; }
 			var c = current(), t = c && c.it.type === 'track' ? c.it.title : '';
-			if (t && ci.value.indexOf('🎵') !== 0) { ci.value = '🎵 ' + t + ': ' + ci.value; }
+			if (t && ci.value.indexOf('♪') !== 0) { ci.value = '♪ ' + t + ': ' + ci.value; }
 			try { ci.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
 			ci.focus();
 		});
@@ -269,7 +309,7 @@
 		if (!list.length) { var e = document.createElement('span'); e.className = 'rs'; e.textContent = 'Ei viestejä vielä. Kirjoita ensimmäinen!'; box.appendChild(e); return; }
 		list.forEach(function (m) {
 			var d = document.createElement('div'); d.className = 'rcm' + (m.dj ? ' dj' : '');
-			var b = document.createElement('b'); b.textContent = (m.dj ? '🎙️ ' : '') + (m.b ? '🤖 ' : '') + m.n + ': ';
+			var b = document.createElement('b'); b.innerHTML = (m.dj ? ic('mic') + ' ' : '') + (m.b ? ic('robot') + ' ' : ''); b.appendChild(document.createTextNode(m.n + ': '));
 			d.appendChild(b); d.appendChild(document.createTextNode(m.m)); box.appendChild(d);
 		});
 	}
@@ -277,7 +317,7 @@
 	function setTyping(w) {
 		if (!chatEl) { return; }
 		var t = chatEl.querySelector('[data-typing]');
-		if (w) { t.textContent = '✍️ ' + w + ' kirjoittaa…'; t.hidden = false; fastUntil = Math.max(fastUntil, Date.now() + 8000); } else { t.hidden = true; }
+		if (w) { t.textContent = w + ' kirjoittaa…'; t.hidden = false; fastUntil = Math.max(fastUntil, Date.now() + 8000); } else { t.hidden = true; }
 	}
 	function fastPoll() {
 		if (fastTimer) { return; }
@@ -323,7 +363,7 @@
 		var tps = root.querySelectorAll('.tp');
 		if (tps.length > 1) { var s1 = 22 + 16 * (1 - pr), s2 = 22 + 16 * pr; tps[0].style.width = tps[0].style.height = s1 + 'px'; tps[1].style.width = tps[1].style.height = s2 + 'px'; }
 		var key = c ? c.it.url + '@' + c.it.start : '';
-		var tt = c ? (c.it.type === 'dj' ? '🎙 Juontaja' : (c.it.artist ? c.it.artist + ' – ' : '') + c.it.title) : (root.getAttribute('data-name') || 'Suorni Radio');
+		var tt = c ? (c.it.type === 'dj' ? 'Juontaja' : (c.it.artist ? c.it.artist + ' – ' : '') + c.it.title) : (root.getAttribute('data-name') || 'Suorni Radio');
 		if (key !== tapeKey && c) { swapTape(tt, c.it); tapeKey = key; }
 	}
 	var tapeKey = '';
@@ -378,8 +418,8 @@
 		if (it.type === 'dj') {
 			var src = hostImg(it.prog);
 			bg = 'linear-gradient(135deg,hsl(' + hue(it.prog) + ',55%,40%),hsl(' + ((hue(it.prog) + 40) % 360) + ',55%,24%))';
-			if (src && /^(https?:)?\/\//i.test(src)) { html = '<img' + (/\/pwa\/hosts\//.test(src) ? ' class="gdf"' : '') + ' alt="" src="' + src.replace(/"/g, '&quot;') + '">'; } else { gl = '🎙️'; }
-		} else if (it.type === 'ad') { bg = 'linear-gradient(135deg,#ffb347,#e8590c)'; gl = '📢'; }
+			if (src && /^(https?:)?\/\//i.test(src)) { html = '<img' + (/\/pwa\/hosts\//.test(src) ? ' class="gdf"' : '') + ' alt="" src="' + src.replace(/"/g, '&quot;') + '">'; } else { html = ic('mic'); }
+		} else if (it.type === 'ad') { bg = 'linear-gradient(135deg,#4da3ff,#2f6bff)'; html = ic('megaphone'); }
 		else {
 			var h = hue((it.title || '') + (it.artist || ''));
 			bg = 'radial-gradient(circle at 50% 50%,rgba(0,0,0,.35) 0 9%,transparent 10%),repeating-radial-gradient(circle at 50% 50%,rgba(0,0,0,.14) 0 1px,transparent 1px 5px),linear-gradient(135deg,hsl(' + h + ',68%,50%),hsl(' + ((h + 55) % 360) + ',68%,26%))';
@@ -398,13 +438,13 @@
 		var on = playing && !rbSeen;
 		barEl.hidden = !on;
 		document.documentElement.classList.toggle('srbar-on', on);
-		barEl.querySelector('.bp').textContent = playing ? '⏸' : '▶';
+		barEl.querySelector('.bp').innerHTML = ic(playing ? 'pause' : 'play');
 		barEl.querySelector('.bp').setAttribute('aria-label', playing ? 'Pysäytä' : 'Kuuntele');
 	}
 	if (!shopUrl && rbBox) {
 		barEl = document.createElement('div');
 		barEl.className = 'srbar'; barEl.hidden = true; barEl.setAttribute('role', 'region'); barEl.setAttribute('aria-label', 'Soitin');
-		barEl.innerHTML = '<span class="ba" aria-hidden="true"></span><button type="button" class="bt" aria-label="Siirry soittimeen"><b></b><span></span></button><button type="button" class="bp" aria-label="Pysäytä">⏸</button>';
+		barEl.innerHTML = '<span class="ba" aria-hidden="true"></span><button type="button" class="bt" aria-label="Siirry soittimeen"><b></b><span></span></button><button type="button" class="bp" aria-label="Pysäytä">' + ic('pause') + '</button>';
 		document.body.appendChild(barEl);
 		barEl.querySelector('.bp').addEventListener('click', function () { elPlay.click(); });
 		barEl.querySelector('.bt').addEventListener('click', function () { try { rbBox.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { rbBox.scrollIntoView(); } });
@@ -417,15 +457,15 @@
 		if (!c) { return; }
 		var it = c.it;
 		var pe = function (x) { var d = document.createElement('div'); d.textContent = x == null ? '' : x; return d.innerHTML; };
-		var ph = shift && shift.host && (!it.prog || it.prog === shift.name) ? ' · 🎙️ ' + pe(shift.host) : '';
-		var pn = shift && shift.next ? '<span class="rnx">Seuraavaksi ' + (shift.next.day ? pe(shift.next.day) + ' ' : '') + 'klo ' + pe(shift.next.clock) + ': ' + pe(shift.next.name) + (shift.next.host ? ' · 🎙️ ' + pe(shift.next.host) : '') + '</span>' : '';
+		var ph = shift && shift.host && (!it.prog || it.prog === shift.name) ? ' · ' + ic('mic') + ' ' + pe(shift.host) : '';
+		var pn = shift && shift.next ? '<span class="rnx">Seuraavaksi ' + (shift.next.day ? pe(shift.next.day) + ' ' : '') + 'klo ' + pe(shift.next.clock) + ': ' + pe(shift.next.name) + (shift.next.host ? ' · ' + ic('mic') + ' ' + pe(shift.next.host) : '') + '</span>' : '';
 		elProg.innerHTML = '<span class="rl">LIVE</span>' + pe(it.prog ? it.prog : 'Suora lähetys') + ph + pn;
 		if (it.type === 'dj') {
-			elTitle.textContent = '🎙️ Juontaja';
+			elTitle.textContent = 'Juontaja';
 			elArtist.textContent = '';
 			if (!elCap.getAttribute('data-aux')) { elCap.textContent = it.text || ''; }
 		} else if (it.type === 'ad') {
-			elTitle.textContent = '📢 Mainos';
+			elTitle.textContent = 'Mainos';
 			elArtist.textContent = it.title || '';
 			if (!elCap.getAttribute('data-aux')) { elCap.textContent = ''; }
 		} else {
@@ -444,7 +484,7 @@
 	function blocked() {
 		var hn = root.querySelector('[data-hint]');
 		if (!hn) { hn = document.createElement('div'); hn.setAttribute('data-hint', ''); hn.className = 'rc'; hn.style.color = 'var(--a)'; elCap.parentNode.insertBefore(hn, elCap); }
-		hn.textContent = '👆 Napauta mihin tahansa aloittaaksesi radion (selain vaatii napautuksen).';
+		hn.textContent = 'Napauta mihin tahansa aloittaaksesi radion (selain vaatii napautuksen).';
 		elPlay.style.boxShadow = '0 0 0 8px rgba(var(--ar),.7)';
 		if (tapArmed) { return; }
 		tapArmed = true;
@@ -600,7 +640,7 @@
 	function setUi(on) {
 		playing = on;
 		root.classList.toggle('rplay', on);
-		elPlay.textContent = on ? '⏸' : '▶';
+		elPlay.innerHTML = ic(on ? 'pause' : 'play');
 		elPlay.setAttribute('aria-label', on ? 'Pysäytä' : 'Kuuntele');
 		if (on) { var h2 = root.querySelector('[data-hint]'); if (h2) { h2.textContent = ''; } elPlay.style.boxShadow = ''; }
 		if (!on) { elCap.textContent = ''; }
@@ -629,7 +669,7 @@
 				var u = location.origin + location.pathname + '?biisi=' + it.id + '&src=jako';
 				var data = { title: (it.title || '') + (it.artist ? ' – ' + it.artist : ''), text: 'Kuuntele Radio Suornissa: ' + (it.title || ''), url: u };
 				if (navigator.share) { navigator.share(data).catch(function () {}); return; }
-				if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(u).then(function () { say('✅ Linkki kopioitu'); }, function () { say(u); }); } else { say(u); }
+				if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(u).then(function () { say('Linkki kopioitu'); }, function () { say(u); }); } else { say(u); }
 			});
 		}
 		if (shr) {
@@ -659,6 +699,10 @@
 			});
 		}
 		mark(); setInterval(mark, 60000);
+		/* Valikon ankkurit avaavat pudotusvalikon */
+		function openDd(id) { var t = id ? document.getElementById(id) : null; if (t && t.tagName === 'DETAILS' && !t.open) { t.open = true; } }
+		document.querySelectorAll('.sr .rnav a[href^="#sr-"]').forEach(function (l) { l.addEventListener('click', function () { openDd(l.getAttribute('href').slice(1)); }); });
+		openDd(location.hash.slice(1));
 		var top = document.querySelector('.sr [data-navtop]');
 		if (top) { top.addEventListener('click', function () { var b = document.querySelector('.sr [data-hxt="top"]'); if (b) { setTimeout(function () { b.click(); }, 60); } }); }
 	})();
@@ -777,7 +821,7 @@
 		if (lag + ad_d > 240 || (nx && nx.type === 'dj' && it.dur < lag + ad_d + 30)) { songN = nextAt; return false; }
 		adIdx++; rollAd();
 		shopAdHold = true;
-		adPlay(ad.url, '📢 Mainos: ' + ad.title, function (el) { lag += el; shopAdHold = false; if (playing) { sync(); } });
+		adPlay(ad.url, 'Mainos: ' + ad.title, function (el) { lag += el; shopAdHold = false; if (playing) { sync(); } });
 		return true;
 	}
 	var shopTimer = 0;
@@ -789,7 +833,7 @@
 			var hint = root.querySelector('[data-shophint]');
 			if (!hint) { hint = document.createElement('div'); hint.setAttribute('data-shophint', ''); hint.className = 'rc'; hint.style.cssText = 'color:var(--a);font-weight:700'; elCap.parentNode.insertBefore(hint, elCap); }
 			if (!d.open) {
-				hint.textContent = '🔒 Myymälä on suljettu' + (d.next ? '. Musiikki alkaa ' + d.next + '.' : '.');
+				hint.textContent = 'Myymälä on suljettu' + (d.next ? '. Musiikki alkaa ' + d.next + '.' : '.');
 				if (playing) { autoStop = true; elPlay.click(); autoStop = false; }
 				userStop = false;
 			} else {
@@ -802,7 +846,7 @@
 				doneAnn[x.k] = Date.now();
 				var keys = Object.keys(doneAnn); if (keys.length > 60) { delete doneAnn[keys[0]]; }
 				try { localStorage.setItem('suorni_shop_ann', JSON.stringify(doneAnn)); } catch (e) {}
-				if (d.open) { auxPlay(x.url, '📣 Kuulutus: ' + x.title); }
+				if (d.open) { auxPlay(x.url, 'Kuulutus: ' + x.title); }
 			});
 		}).catch(function () {});
 	}
@@ -843,6 +887,7 @@
 	function curCh() { return root.getAttribute('data-curch') || ''; }
 	function chq() { var c = curCh(); return c ? '&ch=' + encodeURIComponent(c) : ''; }
 	function q(u, p) { return u + (u.indexOf('?') < 0 ? '?' : '&') + p; }
+	function ic(n) { return '<svg class="ic" aria-hidden="true" focusable="false"><use href="#si-' + n + '"/></svg>'; }
 	function mk(t, c, tx) { var e = document.createElement(t); if (c) { e.className = c; } if (tx != null) { e.textContent = tx; } return e; }
 	function hm(ts) { var d = new Date(ts * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
 	function shareUrl(id) { try { var u = new URL(location.href); u.hash = ''; u.searchParams.set('biisi', id); return u.toString(); } catch (e) { return location.href; } }
@@ -852,10 +897,11 @@
 		var done = function () { var o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1500); };
 		try { navigator.clipboard.writeText(txt + ' ' + url).then(done); } catch (e) { window.prompt('Kopioi linkki', url); }
 	}
-	function row(x, lead) {
+	function row(x, lead, votes) {
 		var r = mk('div', 'rhr'); r.appendChild(mk('span', 'tm', lead));
 		r.appendChild(mk('span', 'tx', (x.a ? x.a + ' – ' : '') + x.t));
-		var b = mk('button', 'sh', '📤'); b.type = 'button'; b.setAttribute('aria-label', 'Jaa kappale'); b.addEventListener('click', function () { share(x, b); }); r.appendChild(b);
+		if (votes != null) { var vn = mk('span', 'vn'); vn.innerHTML = ic('thumbup') + ' ' + (+votes || 0); r.appendChild(vn); }
+		var b = mk('button', 'sh'); b.innerHTML = ic('share'); b.type = 'button'; b.setAttribute('aria-label', 'Jaa kappale'); b.addEventListener('click', function () { share(x, b); }); r.appendChild(b);
 		return r;
 	}
 	function drawRecent() {
@@ -874,7 +920,7 @@
 		if (!H) { body.appendChild(mk('div', 'rs', 'Ladataan…')); return; }
 		body.appendChild(mk('div', 'rs', H.toplabel + ' (peukkujen mukaan)'));
 		if (!H.top.length) { body.appendChild(mk('div', 'rs', 'Ei vielä äänestettyjä kappaleita. Anna peukku soivalle kappaleelle!')); return; }
-		H.top.forEach(function (x, i) { body.appendChild(row(x, '#' + (i + 1) + ' 👍' + x.n)); });
+		H.top.forEach(function (x, i) { body.appendChild(row(x, '#' + (i + 1), x.n)); });
 	}
 	function drawReq() {
 		var w = mk('div', 'rhq');
@@ -913,7 +959,7 @@
 		fetch(q(hx.getAttribute('data-hist'), 'r=' + Math.floor(Date.now() / 60000) + one + chq()), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
 			if (j.off) { return; }
 			H = j; hx.hidden = false; if (tab !== 'req') { draw(); } else { drawRecent(); }
-			if (j.one) { var n = mk('div', 'rbn', '🎧 Sinulle suositeltu: ' + (j.one.a ? j.one.a + ' – ' : '') + j.one.t + '. Paina play, niin kuulet radion tunnelman.'); root.insertBefore(n, root.firstChild); }
+			if (j.one) { var n = mk('div', 'rbn', 'Sinulle suositeltu: ' + (j.one.a ? j.one.a + ' – ' : '') + j.one.t + '. Paina play, niin kuulet radion tunnelman.'); root.insertBefore(n, root.firstChild); }
 		}).catch(function () {});
 	}
 	load(true);

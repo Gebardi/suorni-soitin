@@ -25,7 +25,7 @@ function suorni_social_cfg() {
 		'promo_url'  => ( isset( $c['promo_url'] ) && '' !== trim( $c['promo_url'] ) ) ? $ok( $c['promo_url'], true ) : 'mailto:noreply@suorni.fi',
 		'og_img'     => isset( $c['og_img'] ) ? $ok( $c['og_img'] ) : '',
 		'desc'       => ( isset( $c['desc'] ) && '' !== trim( $c['desc'] ) ) ? mb_substr( sanitize_text_field( $c['desc'] ), 0, 200 ) : 'Suomalaista musiikkia suorana: juontajat, kanavat, terveiset ja toiveet. Paina play ja kuuntele.',
-		'about'      => ( isset( $c['about'] ) && '' !== trim( $c['about'] ) ) ? mb_substr( sanitize_textarea_field( $c['about'] ), 0, 600 ) : 'Suorni on suomalainen nettiradio, jossa soi oma musiikki ympäri vuorokauden. Ohjelmia juontavat Aino, Sanni, Eino ja Unto, ja kuuntelijat voivat lähettää terveisiä, toivoa kappaleita ja keskustella chatissa.',
+		'about'      => ( isset( $c['about'] ) && '' !== trim( $c['about'] ) ) ? mb_substr( sanitize_textarea_field( $c['about'] ), 0, 600 ) : 'Suorni on suomalainen nettiradio, jossa soi oma musiikki ympäri vuorokauden. Ohjelmia juontavat Aino, Sanni, Eino ja Unto, ja kuuntelijat voivat toivoa kappaleita, peukuttaa suosikkejaan ja keskustella chatissa.',
 		'contact'    => isset( $c['contact'] ) ? sanitize_email( (string) $c['contact'] ) : 'noreply@suorni.fi',
 	);
 }
@@ -103,14 +103,19 @@ add_action( 'wp_head', function () {
 add_filter( 'pre_get_document_title', function ( $t ) {
 	if ( ! function_exists( 'suorni_radio_is_page' ) || ! suorni_radio_is_page() ) { return $t; }
 	$i = suorni_seo_info();
-	return $i['custom'] ? $i['title'] : $t;
+	if ( $i['custom'] ) { return $i['title']; }
+	if ( '' === trim( (string) get_bloginfo( 'name' ) ) ) {
+		$c = function_exists( 'suorni_radio_cfg' ) ? suorni_radio_cfg() : array();
+		return ( ! empty( $c['name'] ) ? $c['name'] : 'Suorni Radio' ) . ' – musiikkia Suomesta';
+	}
+	return $t;
 }, 20 );
 
 /* Jaettu kappale -kortti soittimen yläpuolelle */
 function suorni_share_card_html() {
 	$t = suorni_share_track();
 	if ( ! $t ) { return ''; }
-	return '<div class="rshr" data-shr><b>🎵 Sinulle jaettu kappale</b><span>' . esc_html( $t['title'] ) . ' – ' . esc_html( $t['artist'] ) . '</span><audio controls preload="none" src="' . esc_url( $t['url'] ) . '" aria-label="Jaettu kappale"></audio><small>Radio jatkuu, kun painat play yläpuolelta.</small></div>';
+	return '<div class="rshr" data-shr><b>' . suorni_ic( 'note' ) . ' Sinulle jaettu kappale</b><span>' . esc_html( $t['title'] ) . ' – ' . esc_html( $t['artist'] ) . '</span><audio controls preload="none" src="' . esc_url( $t['url'] ) . '" aria-label="Jaettu kappale"></audio><small>Radio jatkuu, kun painat play yläpuolelta.</small></div>';
 }
 /* Some-palkki soittimen alle */
 function suorni_social_html() {
@@ -119,11 +124,11 @@ function suorni_social_html() {
 	$h = '<div class="rsoc" data-soc>';
 	if ( '' !== $s['ig'] || '' !== $s['tt'] ) {
 		$h .= '<span class="rsl">Seuraa meitä:</span>';
-		if ( '' !== $s['ig'] ) { $h .= '<a class="rg" href="' . esc_url( $s['ig'] ) . '" target="_blank" rel="noopener" aria-label="Radio Suorni Instagramissa">📸 Instagram</a>'; }
-		if ( '' !== $s['tt'] ) { $h .= '<a class="rg" href="' . esc_url( $s['tt'] ) . '" target="_blank" rel="noopener" aria-label="Radio Suorni TikTokissa">🎵 TikTok</a>'; }
+		if ( '' !== $s['ig'] ) { $h .= '<a class="rg" href="' . esc_url( $s['ig'] ) . '" target="_blank" rel="noopener" aria-label="Radio Suorni Instagramissa">' . suorni_ic( 'instagram' ) . ' Instagram</a>'; }
+		if ( '' !== $s['tt'] ) { $h .= '<a class="rg" href="' . esc_url( $s['tt'] ) . '" target="_blank" rel="noopener" aria-label="Radio Suorni TikTokissa">' . suorni_ic( 'tiktok' ) . ' TikTok</a>'; }
 	}
 	if ( $s['promo_on'] && '' !== $s['promo_url'] ) {
-		$h .= '<a class="rpro" href="' . esc_url( $s['promo_url'], array( 'http', 'https', 'mailto' ) ) . '"' . ( 0 === strpos( $s['promo_url'], 'http' ) ? ' target="_blank" rel="noopener"' : '' ) . '>📢 ' . esc_html( $s['promo_text'] ) . '</a>';
+		$h .= '<a class="rpro" href="' . esc_url( $s['promo_url'], array( 'http', 'https', 'mailto' ) ) . '"' . ( 0 === strpos( $s['promo_url'], 'http' ) ? ' target="_blank" rel="noopener"' : '' ) . '>' . suorni_ic( 'megaphone' ) . ' ' . esc_html( $s['promo_text'] ) . '</a>';
 	}
 	return $h . '</div>';
 }

@@ -56,12 +56,12 @@ function suorni_station_avatar( $p, $cls = 'gav' ) {
 }
 function suorni_station_nav( $cfg ) {
 	$h  = '<nav class="rnav" aria-label="Sivun osiot">';
-	$h .= '<a href="#sr-kuuntele">📻 Kuuntele</a>';
-	$h .= '<a href="#sr-kuuntele" data-navtop>🏆 Top 10</a>';
-	$h .= '<a href="#sr-ohjelmat">🗓️ Ohjelmat</a>';
-	if ( suorni_station_has_hosts() ) { $h .= '<a href="#sr-juontajat">🎙️ Juontajat</a>'; }
-	if ( ! empty( $cfg['chat'] ) ) { $h .= '<a href="#sr-chat">💬 Chat</a>'; }
-	$h .= '<a href="#sr-yhteys">✉️ Yhteystiedot</a>';
+	$h .= '<a href="#sr-kuuntele">' . suorni_ic( 'radio' ) . ' Kuuntele</a>';
+	$h .= '<a href="#sr-kuuntele" data-navtop>' . suorni_ic( 'trophy' ) . ' Top 10</a>';
+	$h .= '<a href="#sr-ohjelmat">' . suorni_ic( 'calendar' ) . ' Ohjelmat</a>';
+	if ( suorni_station_has_hosts() ) { $h .= '<a href="#sr-juontajat">' . suorni_ic( 'mic' ) . ' Juontajat</a>'; }
+	if ( ! empty( $cfg['chat'] ) ) { $h .= '<a href="#sr-chat">' . suorni_ic( 'chat' ) . ' Chat</a>'; }
+	$h .= '<a href="#sr-yhteys">' . suorni_ic( 'mail' ) . ' Yhteystiedot</a>';
 	return $h . '</nav>';
 }
 function suorni_station_has_hosts() {
@@ -72,7 +72,7 @@ function suorni_station_has_hosts() {
 }
 /* Ohjelmaopas */
 function suorni_station_guide() {
-	$h  = '<section class="rsec" id="sr-ohjelmat" aria-labelledby="sr-oh"><h3 id="sr-oh">🗓️ Ohjelmaopas</h3><ul class="rgd">';
+	$h  = '<details class="rsec rdd" id="sr-ohjelmat"><summary><h3 id="sr-oh">' . suorni_ic( 'calendar' ) . ' Ohjelmaopas</h3></summary><ul class="rgd">';
 	foreach ( suorni_station_progs() as $p ) {
 		$who = '' !== $p['host'] ? ' <span class="gwho">· ' . esc_html( $p['host'] ) . '</span>' : '';
 		$h  .= '<li class="gp" data-gp data-from="' . esc_attr( $p['from'] ) . '" data-to="' . esc_attr( $p['to'] ) . '" data-days="' . esc_attr( implode( ',', $p['days'] ) ) . '">';
@@ -80,12 +80,12 @@ function suorni_station_guide() {
 		$h  .= '<span class="gn"><b>' . esc_html( $p['name'] ) . '</b>' . $who . '<small>' . esc_html( suorni_station_days( $p['days'] ) ) . '</small></span>';
 		$h  .= '<span class="gnow" hidden>● Nyt</span></li>';
 	}
-	return $h . '</ul></section>';
+	return $h . '</ul></details>';
 }
 /* Juontajakortit */
 function suorni_station_hosts() {
 	if ( ! suorni_station_has_hosts() ) { return ''; }
-	$h = '<section class="rsec" id="sr-juontajat" aria-labelledby="sr-ju"><h3 id="sr-ju">🎙️ Juontajat</h3><div class="rhs">';
+	$h = '<details class="rsec rdd" id="sr-juontajat"><summary><h3 id="sr-ju">' . suorni_ic( 'mic' ) . ' Juontajat</h3></summary><div class="rhs">';
 	foreach ( suorni_station_progs() as $p ) {
 		if ( '' === $p['host'] && '' === $p['img'] ) { continue; }
 		$h .= '<article class="hc" data-pn="' . esc_attr( $p['name'] ) . '" data-gp data-from="' . esc_attr( $p['from'] ) . '" data-to="' . esc_attr( $p['to'] ) . '" data-days="' . esc_attr( implode( ',', $p['days'] ) ) . '">';
@@ -95,19 +95,22 @@ function suorni_station_hosts() {
 		if ( '' !== $p['blurb'] ) { $h .= '<p class="hd">' . esc_html( $p['blurb'] ) . '</p>'; }
 		$h .= '</div></article>';
 	}
-	return $h . '</div></section>';
+	return $h . '</div></details>';
 }
 /* Alatunniste */
+function suorni_flag() {
+	return '<svg class="flag" viewBox="0 0 18 11" aria-hidden="true" focusable="false"><rect width="18" height="11" fill="#fff"/><path d="M5 0h3v11H5zM0 4h18v3H0z" fill="#003580"/></svg>';
+}
 function suorni_station_footer( $cfg ) {
 	$s  = suorni_social_cfg();
 	$h  = '<footer class="rft" id="sr-yhteys"><div class="rfa"><h3>' . esc_html( $cfg['name'] ) . '</h3><p>' . esc_html( $s['about'] ) . '</p></div>';
 	$h .= '<div class="rfb"><h4>Yhteystiedot</h4><ul>';
-	if ( '' !== $s['contact'] ) { $h .= '<li><a href="mailto:' . esc_attr( $s['contact'] ) . '">✉️ ' . esc_html( $s['contact'] ) . '</a></li>'; }
-	if ( '' !== $s['ig'] ) { $h .= '<li><a href="' . esc_url( $s['ig'] ) . '" target="_blank" rel="noopener">📸 Instagram</a></li>'; }
-	if ( '' !== $s['tt'] ) { $h .= '<li><a href="' . esc_url( $s['tt'] ) . '" target="_blank" rel="noopener">🎵 TikTok</a></li>'; }
-	if ( $s['promo_on'] && '' !== $s['promo_url'] ) { $h .= '<li><a href="' . esc_url( $s['promo_url'], array( 'http', 'https', 'mailto' ) ) . '">📢 Mainosta radiossa</a></li>'; }
+	if ( '' !== $s['contact'] ) { $h .= '<li><a href="mailto:' . esc_attr( $s['contact'] ) . '">' . suorni_ic( 'mail' ) . ' ' . esc_html( $s['contact'] ) . '</a></li>'; }
+	if ( '' !== $s['ig'] ) { $h .= '<li><a href="' . esc_url( $s['ig'] ) . '" target="_blank" rel="noopener">' . suorni_ic( 'instagram' ) . ' Instagram</a></li>'; }
+	if ( '' !== $s['tt'] ) { $h .= '<li><a href="' . esc_url( $s['tt'] ) . '" target="_blank" rel="noopener">' . suorni_ic( 'tiktok' ) . ' TikTok</a></li>'; }
+	if ( $s['promo_on'] && '' !== $s['promo_url'] ) { $h .= '<li><a href="' . esc_url( $s['promo_url'], array( 'http', 'https', 'mailto' ) ) . '">' . suorni_ic( 'megaphone' ) . ' Mainosta radiossa</a></li>'; }
 	$pp = function_exists( 'get_privacy_policy_url' ) ? get_privacy_policy_url() : '';
-	if ( '' !== $pp ) { $h .= '<li><a href="' . esc_url( $pp ) . '">🔒 Tietosuoja</a></li>'; }
-	$h .= '</ul></div><div class="rfc">🇫🇮 ' . esc_html( $cfg['name'] ) . ' – musiikkia Suomesta, Suomen yössä<br><small>© ' . esc_html( wp_date( 'Y' ) ) . ' ' . esc_html( $cfg['name'] ) . '</small></div></footer>';
+	if ( '' !== $pp ) { $h .= '<li><a href="' . esc_url( $pp ) . '">' . suorni_ic( 'lock' ) . ' Tietosuoja</a></li>'; }
+	$h .= '</ul></div><div class="rfc">' . suorni_flag() . ' ' . esc_html( $cfg['name'] ) . ' – musiikkia Suomesta, Suomen yössä<br><small>© ' . esc_html( wp_date( 'Y' ) ) . ' ' . esc_html( $cfg['name'] ) . '</small></div></footer>';
 	return $h;
 }

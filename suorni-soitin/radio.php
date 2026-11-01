@@ -18,6 +18,7 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-push.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-tags.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-seo.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-backup.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-icons.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-station.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-req.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-watch.php';
@@ -112,7 +113,7 @@ function suorni_radio_cfg() {
 		'finns'      => isset( $c['finns'] ) ? (string) $c['finns'] : suorni_radio_default_finns(),
 		'cover'     => isset( $c['cover'] ) ? esc_url_raw( (string) $c['cover'] ) : '',
 		'tips'      => isset( $c['tips'] ) ? (string) $c['tips'] : suorni_radio_default_tips(),
-		'dj'        => array_intersect_key( suorni_radio_dj(), array_flip( array( 'time', 'weather', 'next', 'titles', 'where', 'lat', 'lon', 'rate', 'talk', 'talks', 'talki', 'duck' ) ) ),
+		'dj'        => array_intersect_key( suorni_radio_dj(), array_flip( array( 'time', 'weather', 'next', 'titles', 'where', 'wxmode', 'lat', 'lon', 'rate', 'talk', 'talks', 'talki', 'duck' ) ) ),
 		'programs'  => $progs,
 	);
 }
@@ -126,6 +127,7 @@ function suorni_radio_dj() {
 	if ( isset( $r['next'] ) ) { $d['next'] = max( 0, min( 3, (int) $r['next'] ) ); }
 	if ( isset( $r['titles'] ) && in_array( $r['titles'], array( 'auto', 'fi', 'off' ), true ) ) { $d['titles'] = $r['titles']; }
 	if ( isset( $r['where'] ) && '' !== trim( $r['where'] ) ) { $d['where'] = (string) $r['where']; }
+	if ( isset( $r['wxmode'] ) ) { $d['wxmode'] = ( 'local' === $r['wxmode'] ) ? 'local' : 'fi'; }
 	if ( isset( $r['lat'] ) ) { $d['lat'] = max( -90, min( 90, (float) $r['lat'] ) ); }
 	if ( isset( $r['lon'] ) ) { $d['lon'] = max( -180, min( 180, (float) $r['lon'] ) ); }
 	if ( isset( $r['rate'] ) ) { $d['rate'] = max( 0.6, min( 1.4, (float) $r['rate'] ) ); }
@@ -212,6 +214,7 @@ function suorni_radio_cfg_post( $req ) {
 			'next'    => max( 0, min( 3, (int) $req->get_param( 'dj_next' ) ) ),
 			'titles'  => in_array( $req->get_param( 'dj_titles' ), array( 'auto', 'fi', 'off' ), true ) ? $req->get_param( 'dj_titles' ) : 'auto',
 			'where'   => mb_substr( sanitize_text_field( (string) $req->get_param( 'dj_where' ) ), 0, 40 ),
+			'wxmode'  => ( 'local' === $req->get_param( 'dj_wxmode' ) ) ? 'local' : 'fi',
 			'lat'     => (float) $req->get_param( 'dj_lat' ),
 			'lon'     => (float) $req->get_param( 'dj_lon' ),
 			'rate'    => (float) $req->get_param( 'dj_rate' ),
@@ -519,7 +522,7 @@ function suorni_radio_pick_track( &$st, $pool, $fit = null ) {
 			if ( ! $pick && count( $cand ) < count( $pool ) ) { $pick = suorni_radio_fit_choose( $pool, $fit['R'] ); }
 			if ( ! $pick ) { $pick = suorni_radio_fit_fallback( $cand, $fit['R'] ); }
 		}
-		if ( ! $pick ) { $pick = $cand[ wp_rand( 0, count( $cand ) - 1 ) ]; }
+		if ( ! $pick ) { $pick = function_exists( 'suorni_vote_pick' ) ? suorni_vote_pick( $cand ) : $cand[ wp_rand( 0, count( $cand ) - 1 ) ]; }
 	}
 	if ( empty( $st['sim'] ) && function_exists( 'suorni_req_mark_played' ) && ! isset( $pick['sub'] ) ) { suorni_req_mark_played( $pick['id'] ); }
 	$st['recent'][] = $pick['id'];
@@ -798,7 +801,17 @@ function suorni_radio_dj_segs( $cfg, $prog, $ts, $reason, $next_ids, $pool, &$st
 	$facts = array();
 	if ( $dj['time'] ) { $f( suorni_fin_time( $h, $mi ) ); $facts[] = 'Kellonaika: ' . sprintf( '%d.%02d', $h, $mi ) . '. Sano kellonaika puhekielellä juuri näin: "kello on ' . suorni_fin_clock( $h, $mi ) . '". Älä lue minuutteja numeroina peräkkäin (esim. "neljä kolmekymmentäkaksi") äläkä lisää vuorokaudenaikaa kellonajan perään.'; }
 	if ( $prog['weather'] && $dj['weather'] ) {
-		$wx = suorni_wx();
+		$rg = ( 'local' === $dj['wxmode'] ) ? array() : suorni_wx_regions();
+		if ( $rg ) {
+			$bits = array(); $say = array();
+			foreach ( $rg as $x ) {
+				$bits[] = $x['in'] . ' (' . $x['place'] . ') ' . round( $x['t'] ) . ' °C' . ( $x['txt'] ? ', ' . $x['txt'] : '' );
+				$say[]  = $x['in'] . ' on ' . suorni_fin_degs( $x['t'] ) . ( $x['txt'] ? ' ja ' . $x['txt'] : '' );
+			}
+			$facts[] = 'Sää eri puolilla Suomea: ' . implode( '; ', $bits ) . '. Kerro sää koko Suomen näkökulmasta (etelä, länsi, itä, pohjoinen), älä pelkästään yhdestä paikasta.';
+			$f( 'Sää eri puolilla Suomea: ' . implode( ', ', $say ) . '.' );
+		}
+		$wx = $rg ? null : suorni_wx();
 		if ( $wx ) {
 			$w = suorni_wx_text( $wx['c'] );
 			$facts[] = 'Sää paikassa ' . $dj['where'] . ': lämpötila nyt ' . round( $wx['t'] ) . ' °C' . ( $w ? ', ' . $w : '' ) . ', päivän ylin ' . round( $wx['hi'] ) . ' °C.';
@@ -1360,7 +1373,7 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 	ob_start();
 	?>
 <style>
-.sr{--a:#ffb347;--b:#ff8a1f;--ar:255,179,71;position:relative;overflow:hidden;color:#efe8d8;border-radius:22px;padding:0 0 22px;max-width:680px;margin:20px auto;font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;background:repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px),linear-gradient(180deg,#34373e 0%,#1d1f24 40%,#121316 100%);border:1px solid #4a4e57;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -2px 0 rgba(0,0,0,.6),0 14px 44px rgba(0,0,0,.55)}
+.sr{--a:#4da3ff;--b:#2f6bff;--ar:77,163,255;position:relative;overflow:hidden;color:#efe8d8;border-radius:22px;padding:0 0 22px;max-width:680px;margin:20px auto;font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;background:repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px),linear-gradient(180deg,#34373e 0%,#1d1f24 40%,#121316 100%);border:1px solid #4a4e57;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -2px 0 rgba(0,0,0,.6),0 14px 44px rgba(0,0,0,.55)}
 .sr *{box-sizing:border-box}
 .sr .rcv{display:block;width:100%;height:auto;aspect-ratio:16/7;object-fit:cover}
 .sr .rin{padding:0 22px}
@@ -1430,14 +1443,24 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 @media(max-width:640px){.sr .rft{grid-template-columns:1fr}.sr .gt{min-width:0}.sr .gp{flex-wrap:wrap}.sr .gav{width:64px;height:64px}}
 .sr .rart{flex:none;width:72px;height:72px;border-radius:10px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:32px;font-weight:700;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.45);background:#2a2c32;box-shadow:0 0 0 2px #15171b,0 4px 8px rgba(0,0,0,.55)}.sr .rart:empty{display:none}.sr .rart img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.sr .rart img.gdf{transform:scale(1.4);transform-origin:50% 42%}.sr .rart small{position:absolute;right:5px;bottom:2px;font-size:13px;opacity:.7}
 @media(max-width:480px){.sr .rart{width:56px;height:56px;font-size:26px}.sr .rp{width:60px;height:60px;font-size:24px}}
-.srbar{position:fixed;left:0;right:0;bottom:0;z-index:99990;display:flex;align-items:center;gap:12px;padding:8px 14px calc(8px + env(safe-area-inset-bottom));background:rgba(18,19,22,.96);border-top:1px solid rgba(var(--sch-ar,255,179,71),.5);box-shadow:0 -6px 20px rgba(0,0,0,.45);color:#efe8d8;font:14px/1.3 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}.srbar[hidden]{display:none}
+.srbar{position:fixed;left:0;right:0;bottom:0;z-index:99990;display:flex;align-items:center;gap:12px;padding:8px 14px calc(8px + env(safe-area-inset-bottom));background:rgba(18,19,22,.96);border-top:1px solid rgba(var(--sch-ar,77,163,255),.5);box-shadow:0 -6px 20px rgba(0,0,0,.45);color:#efe8d8;font:14px/1.3 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}.srbar[hidden]{display:none}
 .srbar .ba{flex:none;width:44px;height:44px;border-radius:8px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;background:#2a2c32}.srbar .ba img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.srbar .ba img.gdf{transform:scale(1.4);transform-origin:50% 42%}
-.srbar .bt{flex:1;min-width:0;cursor:pointer;background:none;border:0;color:inherit;text-align:left;padding:0;font:inherit}.srbar .bt b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--sch-a,#ffb347);font-size:14px}.srbar .bt span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.75;font-size:12px}
-.srbar .bp{flex:none;width:46px;height:46px;border-radius:50%;border:2px solid #15171b;background:conic-gradient(from 20deg,#e9ecf0,#8d939c,#f4f6f8,#6f757e,#dfe3e8,#8d939c,#e9ecf0);color:#15171b;font-size:18px;cursor:pointer;box-shadow:0 0 0 3px rgba(var(--sch-ar,255,179,71),.55)}
+.srbar .bt{flex:1;min-width:0;cursor:pointer;background:none;border:0;color:inherit;text-align:left;padding:0;font:inherit}.srbar .bt b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--sch-a,#4da3ff);font-size:14px}.srbar .bt span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.75;font-size:12px}
+.srbar .bp{flex:none;width:46px;height:46px;border-radius:50%;border:2px solid #15171b;background:conic-gradient(from 20deg,#e9ecf0,#8d939c,#f4f6f8,#6f757e,#dfe3e8,#8d939c,#e9ecf0);color:#15171b;font-size:18px;cursor:pointer;box-shadow:0 0 0 3px rgba(var(--sch-ar,77,163,255),.55)}
 html.srbar-on body{padding-bottom:72px}
+/* ---------- 9.67 yhtenäinen kuvakesarja ja viimeistely ---------- */
+.sr .ic{width:1.15em;height:1.15em;flex:none;vertical-align:-.2em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.sr .rp .ic{width:30px;height:30px;vertical-align:middle;stroke-width:1.4}.sr .rteject .ic{width:22px;height:22px;vertical-align:middle}
+.sr .rp .ic,.sr .rteject .ic{display:block;margin:auto}.sr .rp .ic{margin-left:calc(50% - 13px)}
+.sr .rsec>h3 .ic,.sr .rft h4 .ic{color:rgb(var(--ar))}.sr .rnav a .ic{color:rgb(var(--ar));margin-right:2px}
+.sr .rnav{scrollbar-width:none}.sr .rnav::-webkit-scrollbar{display:none}
+.sr .rft a .ic{color:rgb(var(--ar));margin-right:3px}.sr .flag{width:18px;height:11px;border-radius:2px;vertical-align:-1px;box-shadow:0 0 0 1px rgba(255,255,255,.2)}
+.sr .vn{margin-left:auto;color:rgb(var(--ar));font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sr img.emoji{height:1.1em;width:1.1em}
+@media(max-width:480px){.sr .rp .ic{width:26px;height:26px;margin-left:calc(50% - 11px)}}
 .sr.shop .rsoc,.sr.shop .rsh,.sr.shop .rshr,.sr.shop .rart{display:none}
 .sr .rchn{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.sr .rchn button.rg{margin:0;padding:8px 13px;font-size:13px;line-height:1.2;white-space:nowrap}.sr .rchn button.on{border-color:var(--a);color:var(--a);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 0 0 2px rgba(var(--ar),.55),0 0 12px rgba(var(--ar),.45)}
-.sr .rchn{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.sr .rchn button.rcc{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:62px;padding:9px 12px;text-align:left;white-space:normal;background:linear-gradient(135deg,rgba(var(--cb,43,46,54),.95),rgba(var(--ca,255,179,71),.32)),#2a2c32;border:1px solid rgba(var(--ca,255,179,71),.45);color:#f2ead7}.sr .rchn button.rcc .ci{font-size:22px;line-height:1}.sr .rchn button.rcc .cn{font-size:13px;font-weight:700;line-height:1.2}.sr .rchn button.rcc.on{border-color:rgba(var(--ca,255,179,71),1);box-shadow:0 0 0 2px rgba(var(--ca,255,179,71),.6),0 0 14px rgba(var(--ca,255,179,71),.5)}.sr .rchn button.rcc.on::after{content:"● valittu";font-size:10px;letter-spacing:.5px;opacity:.85;color:rgb(var(--ca,255,179,71))}
+.sr .rchn{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.sr .rchn button.rcc{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:62px;padding:9px 12px;text-align:left;white-space:normal;background:linear-gradient(135deg,rgba(var(--cb,23,30,48),.95),rgba(var(--ca,77,163,255),.32)),#2a2c32;border:1px solid rgba(var(--ca,77,163,255),.45);color:#f2ead7}.sr .rchn button.rcc .ci{font-size:22px;line-height:1}.sr .rchn button.rcc .cn{font-size:13px;font-weight:700;line-height:1.2}.sr .rchn button.rcc.on{border-color:rgba(var(--ca,77,163,255),1);box-shadow:0 0 0 2px rgba(var(--ca,77,163,255),.6),0 0 14px rgba(var(--ca,77,163,255),.5)}.sr .rchn button.rcc.on::after{content:"● valittu";font-size:10px;letter-spacing:.5px;opacity:.85;color:rgb(var(--ca,77,163,255))}
 .sr .rhxt{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.sr .rhxt button.rg{margin:0;padding:8px 10px;font-size:13px}.sr .rhxt button.on{border-color:var(--a);color:var(--a)}
 .sr .rhr{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid rgba(255,255,255,.1);font-size:14px}.sr .rhr:first-child{border-top:0}
 .sr .rhr .tm{flex:none;min-width:44px;font:12px ui-monospace,Menlo,Consolas,monospace;color:#c98a2d}.sr .rhr .tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sr .rhr .sh{flex:none;background:none;border:0;color:#cfd6e4;font-size:16px;cursor:pointer;padding:4px}
@@ -1455,6 +1478,78 @@ html.srbar-on body{padding-bottom:72px}
 .sr .rf{text-align:center;font-size:13px;color:#8b8472;margin-top:14px;letter-spacing:1px}
 @media(prefers-reduced-motion:no-preference){.sr .au{animation:sra 9s ease-in-out infinite alternate}.sr .au2{animation:sra 13s ease-in-out infinite alternate-reverse}}
 @keyframes sra{from{transform:translateX(-14px);opacity:.55}to{transform:translateX(14px);opacity:1}}
+/* ---------- 9.67 moderni tumma ulkoasu: litteät pinnat, yksi korostusväri (kasetti säilyy) ---------- */
+.sr{color:#e8edf5;border-radius:24px;border:1px solid rgba(255,255,255,.08);background:radial-gradient(120% 60% at 50% 0%,rgba(var(--ar),.10),transparent 60%),linear-gradient(180deg,#101624 0%,#0b0f19 55%,#080b12 100%);box-shadow:0 20px 60px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.06)}
+.sr h2{color:#fff;text-shadow:none;letter-spacing:3px}.sr .rs{color:#8f9bb0}
+.sr .rb{background:linear-gradient(180deg,#171e30,#121828);border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06)}
+.sr .rp{border:0;background:linear-gradient(135deg,var(--a),var(--b));color:#fff;box-shadow:0 8px 22px rgba(var(--ar),.45),inset 0 1px 0 rgba(255,255,255,.35);transition:transform .15s,box-shadow .15s}.sr .rp:hover{transform:scale(1.04);box-shadow:0 10px 28px rgba(var(--ar),.6),inset 0 1px 0 rgba(255,255,255,.35)}
+.sr .rn{background:#0a0f1a;border:1px solid rgba(255,255,255,.08);border-radius:12px;box-shadow:none;font-family:inherit}
+.sr .rn b{color:#fff;text-shadow:none;text-transform:none;letter-spacing:0;font-size:18px}.sr .rn span{color:#8f9bb0;text-shadow:none}
+.sr .rdial{background:#0a0f1a;border:1px solid rgba(255,255,255,.08);box-shadow:none;border-radius:10px}.sr .rscale{opacity:.7}.sr .rscale:after{color:#5d6b85}.sr .rneedle{background:var(--a);box-shadow:0 0 10px var(--a)}
+.sr button.rg,.sr a.rg{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#e8edf5;box-shadow:none;letter-spacing:.2px;transition:background .15s,border-color .15s}.sr button.rg:hover,.sr a.rg:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2)}
+.sr .rpre button.rg b{color:var(--a)}
+.sr .rtape{background:#080b12;border:1px solid rgba(255,255,255,.06);border-radius:20px;box-shadow:inset 0 2px 12px rgba(0,0,0,.6)}
+.sr .rteject{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#e8edf5;box-shadow:none}
+.sr .ri,.sr .rch{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;box-shadow:none}
+.sr .rcm{background:rgba(255,255,255,.06)}.sr .rcm.dj{background:rgba(var(--ar),.14)}
+.sr input.rt,.sr textarea.rt{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:10px}.sr input.rt:focus,.sr textarea.rt:focus{outline:2px solid rgba(var(--ar),.6);border-color:transparent}
+.sr .rwx{background:#0a0f1a;border:1px solid rgba(255,255,255,.08);box-shadow:none;border-radius:12px}
+.sr .rhr .tm,.sr .rf{color:#8f9bb0}.sr .rc{color:#cfd8e6}
+.sr .rnav a{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#e8edf5}.sr .rnav a:hover,.sr .rnav a:focus-visible{background:rgba(var(--ar),.22);border-color:rgba(var(--ar),.5)}
+.sr .rsec h3,.sr .rft h3{color:#fff}.sr .gp,.sr .hc{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.08);border-radius:16px}
+.sr .rart{background:#171e30;box-shadow:0 4px 14px rgba(0,0,0,.45)}
+.srbar{background:rgba(9,12,19,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#e8edf5}
+.srbar .bp{border:0;background:linear-gradient(135deg,var(--sch-a,#4da3ff),var(--sch-b,#2f6bff));color:#fff;box-shadow:0 4px 14px rgba(var(--sch-ar,77,163,255),.5)}.srbar .bp .ic{width:22px;height:22px;display:block;margin:auto}
+.sr .rchn button.rcc{border-radius:14px;background:linear-gradient(135deg,rgba(var(--cb,23,30,48),.95),rgba(var(--ca,77,163,255),.28)),#121828;border:1px solid rgba(var(--ca,77,163,255),.45);color:#e8edf5}
+/* Peukutus: iso, näkyvä osa soitinta */
+.sr .rvt{display:block;margin:14px 0 0;padding:14px 16px 12px;border-radius:18px;background:linear-gradient(180deg,rgba(var(--ar),.14),rgba(var(--ar),.04));border:1px solid rgba(var(--ar),.4);font-size:14px}
+.sr .rvh{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}.sr .rvh b{font-size:16px;color:#fff}.sr .rvh small{font-size:12px;color:var(--a);letter-spacing:.3px}
+.sr .rvb{display:flex;gap:10px;flex-wrap:wrap}
+.sr .rvb .rg{flex:1 1 120px;margin:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 14px;font-size:15px;border-radius:14px}
+.sr .rvb .rg .ic{width:22px;height:22px}.sr .rvb .rg em{font-style:normal;font-variant-numeric:tabular-nums;font-weight:800;min-width:1.2em;text-align:center;padding:1px 8px;border-radius:999px;background:rgba(0,0,0,.35);font-size:13px}
+.sr .rvb [data-vup]:hover{border-color:var(--a)}.sr .rvb [data-vup].on{background:linear-gradient(135deg,var(--a),var(--b));border-color:transparent;color:#fff;box-shadow:0 6px 18px rgba(var(--ar),.45)}.sr .rvb [data-vdn].on{background:rgba(229,72,77,.22);border-color:#e5484d;color:#ffb3b5;box-shadow:none}
+.sr .rvb .rvc{flex:0 1 auto;background:transparent}
+.sr .rvt .on{box-shadow:none}
+.sr .rvn{margin:10px 0 0;font-size:12.5px;line-height:1.45;color:#9aa6b8}.sr .rvt .rs{display:block;margin:4px 0 0;min-height:0}.sr .rvt .rs:empty{display:none}
+/* ---------- 9.67 kulmikas editoriaalinen tyyli (2026-trendi: terävät kulmat, 1px reunat, tiivis typografia, matala banneri) ---------- */
+.sr{border-radius:4px}
+.sr .rcv{aspect-ratio:auto;height:clamp(90px,12vw,150px);object-position:center 72%}
+.sr h2{font-size:26px;letter-spacing:.14em;font-weight:800;margin-top:16px}
+.sr .rb,.sr .rtape,.sr .ri,.sr .rch,.sr .rn,.sr .rdial,.sr .rwx,.sr .rshr,.sr .rbn,.sr .gp,.sr .hc,.sr .rvt,.sr .rcm,.sr input.rt,.sr textarea.rt,.sr .rhl,.sr .rcc,.sr .rchn button.rcc{border-radius:2px}
+.sr button.rg,.sr a.rg,.sr .rteject,.sr .rvb .rg,.sr .rchn button.rcc{border-radius:2px}
+.sr .rvb .rg em,.sr .rl,.sr .gnow{border-radius:2px}
+.sr .rp{border-radius:4px;width:76px;height:76px}.sr .rart{border-radius:2px}.sr .gav{border-radius:2px;width:84px;height:84px}
+.sr .rnav{gap:0;border-bottom:1px solid rgba(255,255,255,.1);padding:0;margin:0 0 6px;overflow-x:auto}
+.sr .rnav a{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:12px 14px 10px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#aab4c5}
+.sr .rnav a:hover,.sr .rnav a:focus-visible{background:rgba(255,255,255,.04);border-bottom-color:var(--a);color:#fff}
+.sr .rsec h3,.sr .rft h3{font-size:14px;letter-spacing:.18em;text-transform:uppercase;padding-left:12px;border-left:3px solid var(--a);line-height:1.2;margin-bottom:14px}
+.sr .rsec h3 .ic{display:none}
+.sr .gt,.sr .rhr .tm,.sr .rvh small{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.04em}
+.sr .rvh b{font-size:17px;letter-spacing:.01em}
+.sr .rpre button.rg{border-radius:2px;text-transform:uppercase;letter-spacing:.1em;font-size:11px}
+.sr .rneedle{width:2px}.sr .rsoc a.rg,.sr .rsoc a.rpro,.sr .rsh button.rg,.sr .rhxt button.rg{border-radius:2px}.sr .rbn,.sr .rshr{border-radius:2px}
+.sr .gp.on,.sr .hc.on{border-color:var(--a)}
+.sr .rcm.dj{border-radius:2px}
+.srbar .ba,.srbar .bp{border-radius:2px}
+@media(max-width:480px){.sr .rcv{height:84px}.sr h2{font-size:21px}.sr .rp{width:64px;height:64px}.sr .rnav a{padding:11px 11px 9px}}
+/* Pudotusvalikot (ohjelmaopas, juontajat), säälaatikko, piilotetut lomakkeet */
+.sr .rhid{display:none !important}
+.sr details.rdd{margin:18px 0 0;padding:0;border:1px solid rgba(255,255,255,.1);border-radius:2px;background:rgba(255,255,255,.02)}
+.sr details.rdd>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px}.sr details.rdd>summary::-webkit-details-marker{display:none}
+.sr details.rdd>summary h3{margin:0}
+.sr details.rdd>summary::after{content:"";flex:none;width:9px;height:9px;border-right:2px solid var(--a);border-bottom:2px solid var(--a);transform:rotate(45deg) translateY(-2px);transition:transform .2s}
+.sr details.rdd[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
+.sr details.rdd>summary:hover{background:rgba(255,255,255,.04)}.sr details.rdd>summary:focus-visible{outline:2px solid var(--a);outline-offset:-2px}
+.sr details.rdd[open]>summary{border-bottom:1px solid rgba(255,255,255,.08)}
+.sr details.rdd>.rgd,.sr details.rdd>.rhs{margin:14px}
+.sr .rwx{padding:0;overflow:hidden;font:inherit;color:#e8edf5;text-shadow:none}.sr .rwx b{font-size:15px}.sr .rwx .wxd span{white-space:normal;margin:0;display:inline-flex;align-items:center;gap:4px}
+.sr .rwx .wxh{padding:10px 14px 0;font:11px ui-monospace,Menlo,Consolas,monospace;letter-spacing:.12em;color:#8f9bb0}
+.sr .rwx .wxt{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:1px;margin:8px 0 0;background:rgba(255,255,255,.08);border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08)}
+.sr .rwx .wxt button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px;background:#0a0f1a;border:0;color:#e8edf5;cursor:pointer;font:inherit;min-width:0}.sr .rwx .wxt button small{font:11px ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em;text-transform:uppercase;color:#8f9bb0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sr .rwx .wxt button b{font-size:15px;white-space:nowrap}
+.sr .rwx .wxt button:hover{background:#121a2b}.sr .rwx .wxt button.on{background:rgba(var(--ar),.18);box-shadow:inset 0 -2px 0 var(--a)}.sr .rwx .wxt button.on small{color:var(--a)}
+.sr .rwx .wxd{display:flex;flex-wrap:wrap;gap:4px 14px;padding:10px 14px;font-size:13px;color:#cfd8e6}.sr .rwx .wxd .wxp{font-weight:700;color:#fff}
+.sr .rwx .wxs{display:flex;gap:8px;padding:0 14px 12px}.sr .rwx .wxs input{flex:1;min-width:0;margin:0;padding:8px 10px}.sr .rwx .wxs button{margin:0;padding:8px 14px}
+.sr .rwx .wxe{padding:0 14px 10px;font-size:12px;color:#ffb3b5}.sr .rwx .wxe:empty{display:none;padding:0}
 /* Kanavan oma ulkoasu (radio.js asettaa html-elementille --sch-* muuttujat ja luokan sch-on) */
 html.sch-on .sr{--a:var(--sch-a);--b:var(--sch-b);--ar:var(--sch-ar)}
 html.sch-on body.home{background:var(--sch-page) !important}
@@ -1466,6 +1561,7 @@ html.sch-on body.home .menu a:hover,html.sch-on body.home .menu .current-menu-it
 html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 </style>
 <div class="sr<?php echo $shop ? ' shop' : ''; ?>"<?php if ( $shop ) : ?> data-shop="<?php echo suorni_ep( 'radio/shop' ); ?><?php echo isset( $_GET['t'] ) ? esc_attr( '&t=' . sanitize_key( wp_unslash( $_GET['t'] ) ) ) : ''; ?>"<?php endif; ?> data-sw="<?php echo esc_url( home_url( '/?suorni_sw=1' ) ); ?>" data-now="<?php echo suorni_ep( 'radio/now' ); ?>"<?php if ( ! $shop ) : ?> data-chs="<?php echo esc_attr( wp_json_encode( suorni_ch_public() ) ); ?>"<?php endif; ?> data-greet="<?php echo suorni_ep( 'radio/greet' ); ?>" data-vote="<?php echo suorni_ep( 'radio/vote' ); ?>"<?php if ( $cfg['welcome'] && ! $shop ) : ?> data-welcome="<?php echo suorni_ep( 'radio/welcome' ); ?>"<?php endif; ?> data-name="<?php echo esc_attr( $cfg['name'] ); ?>" data-icon="<?php echo esc_url( plugins_url( 'pwa/icon-512.png', __FILE__ ) ); ?>"<?php if ( $cfg['wx_show'] ) : ?> data-wx="<?php echo suorni_ep( 'radio/wx' ); ?>"<?php endif; ?><?php if ( $cfg['comm'] ) : ?> data-submit="<?php echo suorni_ep( 'radio/submit' ); ?>"<?php endif; ?>>
+<?php echo suorni_icon_sprite(); ?>
 <?php if ( '' !== $cfg['cover'] ) : ?>
 	<img class="rcv" src="<?php echo esc_url( $cfg['cover'] ); ?>" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none';var s=this.nextElementSibling;if(s){s.style.display='block';}">
 	<?php endif; ?>
@@ -1495,42 +1591,49 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 	<aside class="rcol1">
 	<?php $rq = suorni_reqcfg(); ?>
 	<div class="rhx" data-hx hidden data-hist="<?php echo suorni_ep( 'radio/hist' ); ?>" data-reqlist="<?php echo suorni_ep( 'radio/reqlist' ); ?>" data-req="<?php echo suorni_ep( 'radio/req' ); ?>" data-reqon="<?php echo $rq['on'] ? '1' : '0'; ?>">
-		<div class="ri"><b>🕘 Soinut äsken</b><div data-hxr></div></div>
-		<div class="ri"><div class="rhxt"><button type="button" class="rg" data-hxt="top">🏆 Top 10</button><?php if ( $rq['on'] ) : ?><button type="button" class="rg" data-hxt="req">🎁 Toivo kappale</button><?php endif; ?></div><div class="rhxb" data-hxb></div></div>
+		<div class="ri"><b><?php echo suorni_ic( 'clock' ); ?> Soinut äsken</b><div data-hxr></div></div>
+		<div class="ri"><div class="rhxt"><button type="button" class="rg" data-hxt="top"><?php echo suorni_ic( 'trophy' ); ?> Top 10</button><?php if ( $rq['on'] ) : ?><button type="button" class="rg" data-hxt="req"><?php echo suorni_ic( 'gift' ); ?> Toivo kappale</button><?php endif; ?></div><div class="rhxb" data-hxb></div></div>
 	</div>
 	</aside>
 	<div class="rcol2">
 	<?php if ( ! $shop ) { echo suorni_share_card_html(); } ?>
 	<?php if ( ! $shop ) : ?><div class="rchn" data-chn role="tablist" aria-label="Kanavat"></div><?php endif; ?>
 	<div class="rb">
-		<button class="rp" data-play aria-label="Kuuntele">▶</button>
+		<button class="rp" data-play aria-label="Kuuntele"><?php echo suorni_ic( 'play' ); ?></button>
 		<span class="rart" data-art aria-hidden="true"></span>
 		<div class="rn"><b data-title>Paina play ja kuuntele</b><span data-artist></span><span data-next></span></div>
 		<div class="rdial" aria-hidden="true"><div class="rscale"></div><i class="rneedle" data-needle></i></div>
 	</div>
 	<div class="rtape" aria-hidden="false">
 		<div class="rslot" data-slot><div class="rcas c1" data-cas role="img" aria-label="Kasetti"><div class="rlab"><span data-tlabel>Suorni Radio</span><em>A</em></div><div class="rwin"><i class="tp"><i class="hub"></i></i><i class="tp"><i class="hub"></i></i></div><div class="rbot"></div></div></div>
-		<button type="button" class="rteject" data-eject aria-label="Pysäytä radio" title="Pysäytä">⏏</button>
+		<button type="button" class="rteject" data-eject aria-label="Pysäytä radio" title="Pysäytä"><?php echo suorni_ic( 'eject' ); ?></button>
+	</div>
+	<div class="rvt" data-votebox hidden>
+		<div class="rvh"><b data-vlabel>Pidätkö tästä kappaleesta?</b><small data-vx>Sinun peukkusi ohjaa soittolistaa.</small></div>
+		<div class="rvb">
+			<button type="button" class="rg" data-vup aria-label="Ylöspeukku"><?php echo suorni_ic( 'thumbup' ); ?><span>Pidän</span><em data-vu>0</em></button>
+			<button type="button" class="rg" data-vdn aria-label="Alapeukku"><?php echo suorni_ic( 'thumbdown' ); ?><span>Ei iske</span><em data-vd>0</em></button>
+			<button type="button" class="rg rvc" data-vchat><?php echo suorni_ic( 'chat' ); ?><span>Keskustele</span></button>
+		</div>
+		<p class="rvn">Peukuttamalla vaikutat siihen, kuinka usein kappale soi: paljon peukkuja saanut kappale soi useammin ja alapeukut vähentävät soittoa. Yksi peukku per kuuntelija.</p>
+		<span class="rs" data-vst></span>
 	</div>
 	<div class="rpre">
-		<button type="button" class="rg" data-pre="greet"><b>1</b>TERVEISET</button>
-		<?php if ( $cfg['chat'] ) : ?><button type="button" class="rg" data-pre="chat"><b>2</b>CHAT</button><?php endif; ?>
-		<?php if ( $cfg['comm'] ) : ?><button type="button" class="rg" data-pre="song"><b>3</b>LÄHETÄ BIISI</button>
-		<button type="button" class="rg" data-pre="vote"><b>4</b>PEUKUTA</button><?php endif; ?>
+		<?php if ( $cfg['chat'] ) : ?><button type="button" class="rg" data-pre="chat"><b>1</b>CHAT</button><?php endif; ?>
+		<button type="button" class="rg" data-pre="vote"><b>2</b>PEUKUTA</button>
 	</div>
 	<div class="rv"><span>VOL</span><input type="range" min="0" max="100" value="100" data-vol aria-label="Äänenvoimakkuus"></div>
-	<?php if ( ! $shop ) : ?><div class="rsh"><button type="button" class="rg" data-share aria-label="Jaa tämä kappale">🔗 Jaa tämä kappale</button><span data-sharem aria-live="polite"></span></div><?php endif; ?>
+	<?php if ( ! $shop ) : ?><div class="rsh"><button type="button" class="rg" data-share aria-label="Jaa tämä kappale"><?php echo suorni_ic( 'link' ); ?> Jaa tämä kappale</button><span data-sharem aria-live="polite"></span></div><?php endif; ?>
 	<div class="rc" data-cap></div>
-	<div class="rvt" data-votebox hidden><span data-vlabel>🎵 Uuden artistin kappale</span><button type="button" class="rg" data-vup aria-label="Ylöspeukku">👍 <span data-vu>0</span></button><button type="button" class="rg" data-vdn aria-label="Alapeukku">👎 <span data-vd>0</span></button><button type="button" class="rg" data-vchat>💬 Keskustele</button><span class="rs" data-vst style="margin:0;flex:1 1 100%"></span></div>
 	<?php if ( $cfg['comm'] ) : ?>
-	<div class="ri" data-cq hidden><b>🆕 Tulossa uusilta artisteilta</b><div data-cqlist></div></div>
+	<div class="ri" data-cq hidden><b><?php echo suorni_ic( 'sparkle' ); ?> Tulossa uusilta artisteilta</b><div data-cqlist></div></div>
 	<?php endif; ?>
 	<?php if ( ! $shop ) { echo suorni_social_html(); } ?>
 	</div>
 	<aside class="rcol3">
 	<?php if ( $cfg['chat'] ) : ?>
 	<div class="rch" id="sr-chat" data-chat data-chaturl="<?php echo suorni_ep( 'radio/chat' ); ?>">
-		<b>💬 Kuuntelijoiden chat</b>
+		<b><?php echo suorni_ic( 'chat' ); ?> Kuuntelijoiden chat</b>
 		<div class="rcl" data-chatlist aria-live="polite"><span class="rs">Ei viestejä vielä. Kirjoita ensimmäinen!</span></div>
 		<div class="rcty" data-typing hidden></div>
 		<input class="rt" data-cname maxlength="20" placeholder="Nimimerkki">
@@ -1538,16 +1641,17 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 		<input class="rh" data-chp tabindex="-1" autocomplete="off" aria-hidden="true">
 		<button class="rg" data-csend>Lähetä</button>
 		<p class="rs" data-cst></p>
-		<div class="rs rgn" data-gnote hidden>🤖 = tekoälyvieras</div>
+		<div class="rs rgn" data-gnote hidden><?php echo suorni_ic( 'robot' ); ?> = tekoälyvieras</div>
 	</div>
 	<?php endif; ?>
 	</aside>
 	</div>
 	<p class="rs" data-count></p>
 	<?php if ( ! $shop ) { echo suorni_station_guide(); echo suorni_station_hosts(); } ?>
+	<div class="rhid" hidden>
 	<?php if ( $cfg['comm'] ) : ?>
 	<details>
-		<summary>🎵 Lähetä oma kappaleesi radioon</summary>
+		<summary><?php echo suorni_ic( 'note' ); ?> Lähetä oma kappaleesi radioon</summary>
 		<input class="rt" data-sartist maxlength="40" placeholder="Artistin nimi">
 		<input class="rt" data-stitle maxlength="60" placeholder="Kappaleen nimi">
 		<input class="rt" data-semail type="email" maxlength="100" placeholder="Sähköposti (näkyy vain ylläpidolle)">
@@ -1564,7 +1668,7 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 		<input class="rt" data-gname maxlength="30" placeholder="Nimesi">
 		<?php if ( $cfg['greet_voices'] ) : ?>
 		<select class="rt" data-gvoice aria-label="Ääni">
-			<?php foreach ( suorni_greet_voices() as $vk => $vv ) { echo '<option value="' . esc_attr( $vk ) . '">' . esc_html( ( 'oletus' === $vk ? '🎙️ ' : '🗣️ ' ) . $vv[0] ) . '</option>'; } ?>
+			<?php foreach ( suorni_greet_voices() as $vk => $vv ) { echo '<option value="' . esc_attr( $vk ) . '">' . esc_html( $vv[0] ) . '</option>'; } ?>
 		</select>
 		<?php endif; ?>
 		<textarea class="rt" data-gmsg rows="3" maxlength="140" placeholder="Terveisesi (enintään 140 merkkiä)"></textarea>
@@ -1573,8 +1677,9 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 		<p class="rs" data-gst></p>
 		<p class="rs">Terveiset luetaan radiossa vasta, kun ne on hyväksytty.</p>
 	</details>
-	<div class="ri" data-inst hidden><b>📲 Asenna radio puhelimeen</b><span data-insttxt></span><button type="button" class="rg" data-instbtn hidden>Asenna</button></div>
-	<?php if ( $shop ) : ?><div class="rf">🇫🇮 Suorni Radio – musiikkia Suomesta, Suomen yössä</div><?php else : echo suorni_station_footer( $cfg ); endif; ?>
+	</div>
+	<div class="ri" data-inst hidden><b><?php echo suorni_ic( 'phone' ); ?> Asenna radio puhelimeen</b><span data-insttxt></span><button type="button" class="rg" data-instbtn hidden>Asenna</button></div>
+	<?php if ( $shop ) : ?><div class="rf"><?php echo suorni_flag(); ?> Suorni Radio – musiikkia Suomesta, Suomen yössä</div><?php else : echo suorni_station_footer( $cfg ); endif; ?>
 	</div>
 </div>
 	<?php
@@ -1651,8 +1756,8 @@ add_shortcode( 'suorni_radio_admin', function () {
 <div class="sra">
 	<div class="stbar">
 		<span class="onair" data-sb-air><i></i>ON AIR</span>
-		<span class="stname" data-sb-name>📻 Radion ohjaamo</span>
-		<div class="stchips"><button type="button" class="chip ibchip" data-sb-inbox hidden></button><span class="chip">👥 <b data-sb-live>–</b> kuuntelijaa</span><span class="stclock" data-sb-clock>--:--:--</span><a class="chip" href="<?php echo esc_url( home_url( '/' ) ); ?>">↗ Avaa radio</a></div>
+		<span class="stname" data-sb-name><?php echo suorni_ic( 'radio' ); ?> Radion ohjaamo</span>
+		<div class="stchips"><button type="button" class="chip ibchip" data-sb-inbox hidden></button><span class="chip"><?php echo suorni_ic( 'users' ); ?> <b data-sb-live>–</b> kuuntelijaa</span><span class="stclock" data-sb-clock>--:--:--</span><a class="chip" href="<?php echo esc_url( home_url( '/' ) ); ?>"><?php echo suorni_ic( 'arrow' ); ?> Avaa radio</a></div>
 	</div>
 	<div data-radio-box data-admin="<?php echo suorni_ep( 'radio/admin' ); ?>" data-cfg="<?php echo suorni_ep( 'radio/cfg' ); ?>" data-greets="<?php echo suorni_ep( 'radio/greets' ); ?>" data-info="<?php echo suorni_ep( 'radio/info' ); ?>" data-tracks="<?php echo suorni_ep( 'radio/tracks' ); ?>" data-ai="<?php echo suorni_ep( 'radio/ai' ); ?>" data-aitest="<?php echo suorni_ep( 'radio/aitest' ); ?>" data-chatdel="<?php echo suorni_ep( 'radio/chatdel' ); ?>" data-chatair="<?php echo suorni_ep( 'radio/chatair' ); ?>" data-chatlist="<?php echo suorni_ep( 'radio/chatlist' ); ?>" data-feedtest="<?php echo suorni_ep( 'radio/feedtest' ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'wp_rest' ) ); ?>"></div>
 </div>
