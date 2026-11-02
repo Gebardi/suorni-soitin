@@ -84,6 +84,7 @@ function suorni_radio_cfg() {
 		'greet_voices' => ! isset( $c['greet_voices'] ) || ! empty( $c['greet_voices'] ),
 		'chat'       => ! isset( $c['chat'] ) || ! empty( $c['chat'] ),
 		'chat_ai'    => ! isset( $c['chat_ai'] ) || ! empty( $c['chat_ai'] ),
+		'speak'      => ! isset( $c['speak'] ) || ! empty( $c['speak'] ),
 		'chat_air'   => ( isset( $c['chat_air'] ) && 'auto' === $c['chat_air'] ) ? 'auto' : 'owner',
 		'new_default' => isset( $c['new_default'] ) ? sanitize_key( (string) $c['new_default'] ) : '',
 		'boost_on'   => ! isset( $c['boost_on'] ) || ! empty( $c['boost_on'] ),
@@ -180,6 +181,7 @@ function suorni_radio_cfg_post( $req ) {
 		'greet_voices' => (bool) $req->get_param( 'greet_voices' ),
 		'chat'       => (bool) $req->get_param( 'chat' ),
 		'chat_ai'    => (bool) $req->get_param( 'chat_ai' ),
+		'speak'      => null !== $req->get_param( 'speak' ) ? (bool) $req->get_param( 'speak' ) : suorni_radio_speak_on(),
 		'chat_air'   => ( 'auto' === $req->get_param( 'chat_air' ) ) ? 'auto' : 'owner',
 		'new_default' => sanitize_key( (string) $req->get_param( 'new_default' ) ),
 		'boost_on'   => (bool) $req->get_param( 'boost_on' ),
@@ -912,7 +914,26 @@ function suorni_radio_dj_segs( $cfg, $prog, $ts, $reason, $next_ids, $pool, &$st
 	suorni_dj_log_add( array( 't' => time(), 'ai' => 0, 'topics' => $topics, 'miss' => array(), 'text' => mb_substr( implode( ' ', array_map( function ( $z ) { return $z['t']; }, $main ) ), 0, 400 ) ) );
 	return array_merge( $main, $gsegs, $segs );
 }
+/* Juontaja päällä? Pois päältä: ei puhetta, ei tekoälytekstiä, ei puhesynteesiä (säästää krediittejä) */
+function suorni_radio_speak_on() {
+	$c = get_option( 'suorni_radio', array() );
+	return ! is_array( $c ) || ! isset( $c['speak'] ) || ! empty( $c['speak'] );
+}
+function suorni_radio_speak_post( $req ) {
+	$on = (bool) $req->get_param( 'on' );
+	$c  = get_option( 'suorni_radio', array() );
+	if ( ! is_array( $c ) ) { $c = array(); }
+	$c['speak'] = $on;
+	update_option( 'suorni_radio', $c, false );
+	wp_cache_delete( 'suorni_radio', 'options' );
+	suorni_radio_log_trim();
+	return suorni_json( array( 'speak' => $on ) );
+}
+add_action( 'rest_api_init', function () {
+	register_rest_route( 'suorni/v1', '/radio/speak', array( 'methods' => 'POST', 'callback' => 'suorni_radio_speak_post', 'permission_callback' => 'suorni_can' ) );
+} );
 function suorni_radio_make_dj( $cfg, $prog, $ts, $reason, &$st, $pool ) {
+	if ( ! suorni_radio_speak_on() ) { return null; }
 	$dj = suorni_radio_dj();
 	$n  = max( 1, min( 3, (int) $dj['next'] ) );
 	$ids = suorni_radio_queue_next( $st, $pool, $n );
@@ -931,6 +952,7 @@ function suorni_radio_make_dj( $cfg, $prog, $ts, $reason, &$st, $pool ) {
 }
 /* Terveiset heti: katkaistaan nykyinen kappale, soitetaan terveiset ja jatketaan samasta kohdasta */
 function suorni_radio_live_greets( &$log, $now ) {
+	if ( ! suorni_radio_speak_on() ) { return; }
 	$all = suorni_greets();
 	$idx = -1;
 	foreach ( $all as $i => $x ) { if ( 'ok' === $x['status'] && ! empty( $x['live'] ) && ( isset( $x['ch'] ) ? $x['ch'] : '' ) === suorni_ch_cur() ) { $idx = $i; break; } }
@@ -1011,7 +1033,7 @@ function suorni_radio_extend( &$log, $now, $horizon ) {
 			if ( ! $apool ) { $apool = $pool; $aprog = $prog; }
 		}
 		/* Kellonaikaan sidottu oma juonto: sanasta sanaan, tasalta */
-		$sc = $early ? null : suorni_radio_script_due( $end );
+		$sc = ( $early || ! suorni_radio_speak_on() ) ? null : suorni_radio_script_due( $end );
 		if ( $sc ) {
 			$it = suorni_radio_script_item( $cfg, $sc, (int) $end, $prog );
 			if ( $it ) {
@@ -1358,7 +1380,7 @@ function suorni_radio_admin_get() {
 		'mon'    => suorni_mon_admin(),
 		'health' => suorni_health_get(), 'watch' => suorni_watch_data(), 'maxup' => (int) wp_max_upload_size(), 'reqs' => suorni_req_admin_list(), 'reqcfg' => suorni_reqcfg(),
 		'sunoleft' => function_exists( 'suorni_suno_left' ) ? suorni_suno_left() : 0,
-		'urls'   => array( 'bkexport' => suorni_ep( 'radio/export' ), 'bkmake' => suorni_ep( 'radio/bkmake' ), 'bkimport' => suorni_ep( 'radio/import' ), 'bkrestore' => suorni_ep( 'radio/bkrestore' ), 'bkdel' => suorni_ep( 'radio/bkdel' ), 'social' => suorni_ep( 'radio/social' ), 'tags' => suorni_ep( 'radio/tags' ), 'tagdel' => suorni_ep( 'radio/tagdel' ), 'push' => suorni_ep( 'radio/push' ), 'channels' => suorni_ep( 'radio/channels' ), 'classify' => suorni_ep( 'radio/classify' ), 'scripts' => suorni_ep( 'radio/scripts' ), 'scriptprev' => suorni_ep( 'radio/scriptprev' ), 'scriptnow' => suorni_ep( 'radio/scriptnow' ), 'ads' => suorni_ep( 'ads' ), 'adgen' => suorni_ep( 'radio/adgen' ), 'unhide' => suorni_ep( 'radio/unhide' ), 'coverup' => suorni_ep( 'radio/coverup' ), 'chatreply' => suorni_ep( 'radio/chatreply' ), 'watch' => suorni_ep( 'radio/watch' ), 'watchmail' => suorni_ep( 'radio/watchmail' ), 'upload' => suorni_ep( 'radio/upload' ), 'health' => suorni_ep( 'radio/health' ), 'reqact' => suorni_ep( 'radio/reqact' ), 'reqcfg' => suorni_ep( 'radio/reqcfg' ), 'sunocache' => suorni_ep( 'radio/sunocache' ), 'queue' => suorni_ep( 'radio/queue' ), 'queuecut' => suorni_ep( 'radio/queuecut' ), 'commact' => suorni_ep( 'radio/commact' ), 'trackprogs' => suorni_ep( 'radio/trackprogs' ), 'trackboost' => suorni_ep( 'radio/trackboost' ), 'monrenew' => suorni_ep( 'radio/monrenew' ), 'suggest' => suorni_ep( 'radio/suggest' ), 'suggact' => suorni_ep( 'radio/suggact' ), 'trackstyle' => suorni_ep( 'radio/trackstyle' ) ),
+		'urls'   => array( 'speak' => suorni_ep( 'radio/speak' ), 'bkexport' => suorni_ep( 'radio/export' ), 'bkmake' => suorni_ep( 'radio/bkmake' ), 'bkimport' => suorni_ep( 'radio/import' ), 'bkrestore' => suorni_ep( 'radio/bkrestore' ), 'bkdel' => suorni_ep( 'radio/bkdel' ), 'social' => suorni_ep( 'radio/social' ), 'tags' => suorni_ep( 'radio/tags' ), 'tagdel' => suorni_ep( 'radio/tagdel' ), 'push' => suorni_ep( 'radio/push' ), 'channels' => suorni_ep( 'radio/channels' ), 'classify' => suorni_ep( 'radio/classify' ), 'scripts' => suorni_ep( 'radio/scripts' ), 'scriptprev' => suorni_ep( 'radio/scriptprev' ), 'scriptnow' => suorni_ep( 'radio/scriptnow' ), 'ads' => suorni_ep( 'ads' ), 'adgen' => suorni_ep( 'radio/adgen' ), 'unhide' => suorni_ep( 'radio/unhide' ), 'coverup' => suorni_ep( 'radio/coverup' ), 'chatreply' => suorni_ep( 'radio/chatreply' ), 'watch' => suorni_ep( 'radio/watch' ), 'watchmail' => suorni_ep( 'radio/watchmail' ), 'upload' => suorni_ep( 'radio/upload' ), 'health' => suorni_ep( 'radio/health' ), 'reqact' => suorni_ep( 'radio/reqact' ), 'reqcfg' => suorni_ep( 'radio/reqcfg' ), 'sunocache' => suorni_ep( 'radio/sunocache' ), 'queue' => suorni_ep( 'radio/queue' ), 'queuecut' => suorni_ep( 'radio/queuecut' ), 'commact' => suorni_ep( 'radio/commact' ), 'trackprogs' => suorni_ep( 'radio/trackprogs' ), 'trackboost' => suorni_ep( 'radio/trackboost' ), 'monrenew' => suorni_ep( 'radio/monrenew' ), 'suggest' => suorni_ep( 'radio/suggest' ), 'suggact' => suorni_ep( 'radio/suggact' ), 'trackstyle' => suorni_ep( 'radio/trackstyle' ) ),
 	) );
 }
 

@@ -135,7 +135,7 @@ function suorni_radio_fill_before( &$log, $i, $cfg ) {
 }
 /* Mainos kappaleen jälkeen (jos radion mainokset on otettu käyttöön). Palauttaa aikajanan kohteen tai null. */
 function suorni_radio_ad_item( $cfg, &$st, $items, $end, $anc, $pool = null ) {
-	if ( empty( $cfg['radads'] ) ) { return null; }
+	if ( empty( $cfg['radads'] ) || ! suorni_radio_speak_on() ) { return null; }
 	$ads = suorni_ads();
 	if ( ! $ads['on'] ) { return null; }
 	$last = $items ? $items[ count( $items ) - 1 ] : null;

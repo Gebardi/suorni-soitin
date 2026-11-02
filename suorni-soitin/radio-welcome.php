@@ -22,7 +22,7 @@ function suorni_welcome_texts( $name, $host ) {
 }
 function suorni_welcome_get() {
 	$cfg = suorni_radio_cfg();
-	if ( ! $cfg['on'] || empty( $cfg['welcome'] ) || '' === suorni_tts_cfg()['key'] ) { return suorni_json( array( 'url' => '' ) ); }
+	if ( ! $cfg['on'] || empty( $cfg['welcome'] ) || ! suorni_radio_speak_on() || '' === suorni_tts_cfg()['key'] ) { return suorni_json( array( 'url' => '' ) ); }
 	/* Rajoitus: yksi haku per kuuntelija kahdessa minuutissa */
 	$h = md5( ( isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : '' ) . wp_salt() );
 	if ( get_transient( 'suorni_wel_' . $h ) ) { return suorni_json( array( 'url' => '' ) ); }

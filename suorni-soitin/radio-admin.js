@@ -207,7 +207,19 @@
 		drawC();
 
 		var pw = el('div');
-		pw.innerHTML = '<h3 style="margin:14px 0 6px">Ohjelmat</h3><p style="font-size:13px;opacity:.7">Ylin sopiva ohjelma voittaa. Jos mikään ei osu kohdalle, käytetään ensimmäistä.</p>';
+		var spk = el('div', { style: 'margin:6px 0 14px;padding:12px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3;display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between' });
+		function drawSpk() {
+			spk.innerHTML = '<div style="flex:1 1 260px"><b>🎙️ Juontajat: ' + (c.speak ? '<span style="color:#4cc27a">PÄÄLLÄ</span>' : '<span style="color:#ffb347">POIS PÄÄLTÄ</span>') + '</b><div style="font-size:13px;opacity:.8;margin-top:2px">' + (c.speak ? 'Juontajat puhuvat ja kuluttavat tekoäly- ja puhekrediittejä. Voit ottaa heidät pois, kun kuuntelijoita on vähän.' : 'Radio soittaa vain musiikkia: ei puhetta, ei tekoälytekstejä, ei puhesynteesiä eikä kuluja. Terveiset, omat juonnot ja radion lukemat mainokset odottavat.') + '</div></div>';
+			var tb = el('button', { type: 'button', 'class': c.speak ? '' : 'pri', style: 'flex:none' }, c.speak ? '🔇 Ota juontajat pois päältä' : '🎙️ Ota juontajat takaisin päälle');
+			tb.addEventListener('click', function () {
+				tb.disabled = true;
+				api('POST', D.urls.speak, { on: !c.speak }).then(function (j) { c.speak = !!j.speak; drawSpk(); }).catch(function (e) { tb.disabled = false; alert('Virhe: ' + e.message); });
+			});
+			spk.appendChild(tb);
+		}
+		drawSpk();
+		pw.appendChild(spk);
+		pw.insertAdjacentHTML('beforeend', '<h3 style="margin:14px 0 6px">Ohjelmat</h3><p style="font-size:13px;opacity:.7">Ylin sopiva ohjelma voittaa. Jos mikään ei osu kohdalle, käytetään ensimmäistä.</p>');
 		var plist = el('div');
 		pw.appendChild(plist);
 		box.appendChild(pw);
@@ -1082,6 +1094,7 @@
 			var W = D.watch || { checks: [] };
 			(W.checks || []).forEach(function (c) { if (c.lvl === 'bad' || c.lvl === 'warn') { T.push({ lvl: c.lvl === 'bad' ? 0 : 1, ico: c.lvl === 'bad' ? '🛑' : '⚠️', t: c.title, d: c.detail, tab: 'yleinen', btn: 'Valvonta' }); } });
 			var np = (D.subs || []).filter(function (x) { return x.status === 'pending'; }).length;
+			if (D.cfg && D.cfg.speak === false) { T.push({ lvl: 1, ico: '🔇', t: 'Juontajat ovat pois päältä', d: 'Radio soittaa vain musiikkia eikä kuluta tekoäly- tai puhekrediittejä. Ota takaisin päälle Ohjelmat-välilehdeltä.', tab: 'ohjelmat', btn: 'Avaa' }); }
 			if (np) { T.push({ lvl: 1, ico: '🎵', t: np + ' uutta kappaletta odottaa hyväksyntää', d: 'Yhteisön lähettämät kappaleet.', tab: 'yhteiso', btn: 'Avaa' }); }
 			var ng = (D.greets || []).filter(function (g) { return ['ok', 'no', 'played'].indexOf(g.status) < 0; }).length;
 			if (ng) { T.push({ lvl: 1, ico: '💌', t: ng + ' tervehdystä odottaa', d: 'Hyväksy tai hylkää ne ennen kuin ne soivat.', tab: 'yleiso', btn: 'Avaa' }); }
