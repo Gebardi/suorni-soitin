@@ -433,6 +433,14 @@ function suorni_radio_pool( $list, $ids = array(), $pid = '' ) {
 		foreach ( suorni_view( suorni_tracks(), $l ) as $t ) {
 			if ( $t['dur'] > 0 && ! in_array( (int) $t['id'], $excl, true ) && suorni_track_allowed( $t, $pid ) ) { $out[] = $t; }
 		}
+		if ( $out && count( $out ) < 3 && '' !== $pid ) {
+			/* Ohjelmarajaus jättäisi alle 3 kappaletta: laajennetaan listan kaikkiin soitettaviin, ettei sama kappale toistu */
+			$wide = array();
+			foreach ( suorni_view( suorni_tracks(), $l ) as $t ) {
+				if ( $t['dur'] > 0 && ! in_array( (int) $t['id'], $excl, true ) ) { $wide[] = $t; }
+			}
+			if ( count( $wide ) > count( $out ) ) { $out = $wide; }
+		}
 		if ( $out || '' === $l ) { break; }
 	}
 	return $out;

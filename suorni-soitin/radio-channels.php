@@ -105,7 +105,8 @@ function suorni_ch_pool( $ch, $pid = '' ) {
 	$all = suorni_ch_tracks( $ch );
 	if ( '' === $pid ) { return $all; }
 	$ok = array_values( array_filter( $all, function ( $t ) use ( $pid ) { return suorni_track_allowed( $t, $pid ); } ) );
-	return $ok ? $ok : $all;
+	/* Ohjelmarajaus on toive, ei pakko: jos sallittuja kappaleita on liian vähän (alle 5 tai koko lista), käytetään koko kanavan listaa, ettei sama kappale toistu */
+	return count( $ok ) >= min( 5, count( $all ) ) ? $ok : $all;
 }
 /* Julkinen lista: pääkanava + käytössä olevat kanavat, joilla on vähintään 3 soitettavaa kappaletta */
 function suorni_ch_public() {
