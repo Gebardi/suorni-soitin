@@ -180,6 +180,15 @@ function suorni_ch_post( $req ) {
 		$out[] = array( 'id' => $id, 'name' => $name, 'icon' => $icon, 'list' => $lid, 'on' => ! isset( $x['on'] ) || ! empty( $x['on'] ), 'th' => $th );
 	}
 	if ( $lch ) { update_option( 'suorni_lists', $lists, false ); }
+	/* Muistetaan käyttäjän poistamat kanavat, ettei tagien automaatio luo niitä uudelleen */
+	$keep = array();
+	foreach ( $out as $o ) { $keep[] = $o['id']; }
+	$skip = get_option( 'suorni_ch_skip', array() );
+	if ( ! is_array( $skip ) ) { $skip = array(); }
+	foreach ( suorni_ch_all() as $old ) {
+		if ( ! in_array( $old['id'], $keep, true ) && function_exists( 'suorni_tags_n' ) ) { $skip[] = suorni_tags_n( $old['name'] ); }
+	}
+	update_option( 'suorni_ch_skip', array_slice( array_values( array_unique( $skip ) ), -40 ), false );
 	update_option( 'suorni_channels', $out, false );
 	$m = $req->get_param( 'main' );
 	if ( is_array( $m ) ) {

@@ -62,14 +62,14 @@ function suorni_tags_name_match( $a, $b, $min ) {
 }
 /* Merkinnän nimet -> nykyisen asetuksen kanavat ja ohjelmat */
 function suorni_tags_resolve( $e ) {
-	$r = array( 'ch' => array(), 'pr_ids' => array(), 'pr_names' => array(), 'pr_all' => false, 'bad' => array() );
+	$r = array( 'ch' => array(), 'pr_ids' => array(), 'pr_names' => array(), 'pr_all' => false, 'bad' => array(), 'bad_ch' => array() );
 	foreach ( (array) $e['ch'] as $n ) {
 		if ( in_array( suorni_tags_n( $n ), array( 'kaikki', 'paakanava', 'main' ), true ) ) { continue; }
 		$hit = false;
 		foreach ( suorni_ch_all() as $c ) {
 			if ( suorni_tags_name_match( $n, $c['name'], 4 ) || suorni_tags_n( $n ) === suorni_tags_n( $c['id'] ) ) { $r['ch'][ $c['id'] ] = $c; $hit = true; }
 		}
-		if ( ! $hit ) { $r['bad'][] = 'kanava ' . $n; }
+		if ( ! $hit ) { $r['bad'][] = 'kanava ' . $n; $r['bad_ch'][] = $n; }
 	}
 	foreach ( (array) $e['pr'] as $n ) {
 		if ( in_array( suorni_tags_n( $n ), array( 'kaikki', 'kaikkiohjelmat', 'all' ), true ) ) { $r['pr_all'] = true; continue; }
@@ -101,10 +101,72 @@ function suorni_tags_apply_track( $e, $t, &$lists, $reset ) {
 	if ( '' !== $e['info'] ) { update_post_meta( $id, '_suorni_info', $e['info'] ); }
 	update_post_meta( $id, '_suorni_tagged', time() );
 }
+/* Automaattiset kanavat (9.69): kun tagien mainitsemalle, vielä olemattomalle kanavalle löytyy kirjastosta vähintään
+ * SUORNI_TAGS_AUTOCH_MIN soitettavaa kappaletta, kanava ja sen soittolista luodaan ja kappaleet lisätään.
+ * Julkisessa valinnassa kanava näkyy heti (vähintään 3 soitettavaa kappaletta). Käyttäjän poistamia kanavia ei luoda uudelleen. */
+if ( ! defined( 'SUORNI_TAGS_AUTOCH_MIN' ) ) { define( 'SUORNI_TAGS_AUTOCH_MIN', 3 ); }
+$GLOBALS['suorni_tags_newch'] = array();
+function suorni_tags_autochannels( $E ) {
+	$GLOBALS['suorni_tags_newch'] = array();
+	$all = suorni_ch_all();
+	if ( count( $all ) >= 12 ) { return; }
+	$skip = get_option( 'suorni_ch_skip', array() );
+	if ( ! is_array( $skip ) ) { $skip = array(); }
+	$excl = suorni_radio_excl();
+	$byk  = array();
+	foreach ( suorni_view( suorni_tracks(), '' ) as $t ) {
+		if ( $t['dur'] > 0 && ! in_array( (int) $t['id'], $excl, true ) ) { $byk[ suorni_tags_n( $t['title'] ) ][] = (int) $t['id']; }
+	}
+	$need = array();
+	foreach ( $E as $k => $e ) {
+		if ( empty( $byk[ $k ] ) || empty( $e['ch'] ) ) { continue; }
+		$r = suorni_tags_resolve( $e );
+		foreach ( $r['bad_ch'] as $n ) {
+			$nk = suorni_tags_n( $n );
+			if ( strlen( $nk ) < 3 || in_array( $nk, $skip, true ) ) { continue; }
+			if ( ! isset( $need[ $nk ] ) ) { $need[ $nk ] = array( 'name' => $n, 'ids' => array() ); }
+			$need[ $nk ]['ids'] = array_merge( $need[ $nk ]['ids'], $byk[ $k ] );
+		}
+	}
+	if ( ! $need ) { return; }
+	$lists = suorni_lists();
+	$chs   = get_option( 'suorni_channels', array() );
+	if ( ! is_array( $chs ) ) { $chs = array(); }
+	$used  = array( 'kaikki', 'main' );
+	foreach ( $chs as $c ) { if ( is_array( $c ) && isset( $c['id'] ) ) { $used[] = $c['id']; } }
+	$lids = array();
+	foreach ( $lists as $l ) { $lids[] = $l['id']; }
+	$icons = array( 'metal' => '🤘', 'party' => '🎉', 'iskelma' => '🎤', 'teras' => '🍺', 'rauhallinen' => '🌙' );
+	$made  = array();
+	foreach ( $need as $nk => $x ) {
+		$ids = array_values( array_unique( $x['ids'] ) );
+		if ( count( $ids ) < SUORNI_TAGS_AUTOCH_MIN || count( $chs ) >= 12 ) { continue; }
+		$name = mb_substr( mb_strtoupper( mb_substr( $x['name'], 0, 1 ) ) . mb_substr( $x['name'], 1 ), 0, 24 );
+		$id   = substr( sanitize_title( $name ), 0, 24 );
+		if ( '' === $id ) { continue; }
+		$b = $id; $i = 2;
+		while ( in_array( $id, $used, true ) ) { $id = $b . '-' . $i; $i++; }
+		$used[] = $id;
+		$lid = $id; $i = 2;
+		while ( in_array( $lid, $lids, true ) ) { $lid = $id . '-' . $i; $i++; }
+		$lids[]  = $lid;
+		$lists[] = array( 'id' => $lid, 'name' => $name, 'ids' => $ids );
+		$st      = suorni_ch_style_guess( $name );
+		$chs[]   = array( 'id' => $id, 'name' => $name, 'icon' => isset( $icons[ $st ] ) ? $icons[ $st ] : '🎵', 'list' => $lid, 'on' => true, 'th' => suorni_ch_th_norm( array( 'st' => $st ) ) );
+		$made[]  = $name;
+	}
+	if ( ! $made ) { return; }
+	update_option( 'suorni_lists', $lists, false );
+	update_option( 'suorni_channels', $chs, false );
+	delete_transient( 'suorni_ch_pub' );
+	suorni_clear_tracks();
+	$GLOBALS['suorni_tags_newch'] = $made;
+}
 /* Käy läpi kappaleet ja käyttää tagit niille, joille niitä ei ole vielä käytetty. Palauttaa käytettyjen määrän. */
 function suorni_tags_apply_all( $reset_keys = array() ) {
 	$E = suorni_tags_all();
 	if ( ! $E ) { return 0; }
+	suorni_tags_autochannels( $E );
 	$lists = suorni_lists();
 	$n     = 0;
 	foreach ( suorni_view( suorni_tracks(), '' ) as $t ) {
@@ -155,7 +217,7 @@ function suorni_tags_post( $req ) {
 	$E = array_slice( $E, -300, null, true );
 	update_option( 'suorni_tags', $E, false );
 	$applied = suorni_tags_apply_all( $reset );
-	return suorni_json( array( 'tags' => suorni_tags_state(), 'added' => $added, 'replaced' => $repl, 'applied' => $applied ) );
+	return suorni_json( array( 'tags' => suorni_tags_state(), 'added' => $added, 'replaced' => $repl, 'applied' => $applied, 'newch' => $GLOBALS['suorni_tags_newch'] ) );
 }
 function suorni_tags_del( $req ) {
 	$E = suorni_tags_all();

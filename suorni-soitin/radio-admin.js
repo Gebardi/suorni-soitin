@@ -990,10 +990,10 @@
 			}
 			function draw(msg) {
 				var rows = G.list.map(function (e) {
-					var st2 = e.n > 0 ? '<span style="color:#4cc27a">✅ käytetty ' + e.n + ' kappaleelle</span>' : '<span style="color:#ffb347">⏳ odottaa kappaletta</span>';
+					var st2 = e.n > 0 ? '<span style="color:#4cc27a">✅ käytetty ' + e.n + ' kappaleelle</span>' : '<span style="opacity:.65">ei kappaletta kirjastossa (tiedot odottavat)</span>';
 					return '<div style="padding:7px 8px;margin:4px 0;border:1px solid #2a303b;border-radius:10px;background:#101319;font-size:13px"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:baseline;justify-content:space-between"><b>' + esc(e.t) + '</b><span>' + st2 + ' <button type="button" data-tgd="' + esc(e.key) + '" style="padding:2px 8px" title="Poista rivi (kappaleiden luokitus säilyy)">🗑</button></span></div>' +
 						'<div style="opacity:.85">Kanavat: ' + (e.ch.length ? esc(e.ch.join(', ')) : '–') + ' · Ohjelmat: ' + (e.pr.length ? esc(e.pr.join(', ')) : '–') + (e.st ? ' · Tyyli: ' + esc(e.st) : '') + '</div>' +
-						(e.bad.length ? '<div style="color:#ffb347;margin-top:2px">⚠️ Tuntematon: ' + esc(e.bad.join(', ')) + ' (tarkista nimi tai luo kanava)</div>' : '') + '</div>';
+						(e.bad.length ? '<div style="opacity:.6;margin-top:2px">Ei käytössä (vain tiedoksi): ' + esc(e.bad.join(', ')) + '</div>' : '') + '</div>';
 				}).join('');
 				tgw.innerHTML = '<h3 style="margin:0 0 6px">🏷️ Sanoittajan tiedot (Radio-tagit)</h3>' +
 					'<p style="font-size:13px;opacity:.8;margin:0 0 8px">Liitä tähän sanoitusapurin antamat rivit. Kun samanniminen kappale on tai tulee mediakirjastoon, se lisätään heti oikeille kanaville ja ohjelmiin, ja sille tallennetaan tyyli ja kuvaus. Rivin muoto:<br><code style="font-size:12px">Kappaleen nimi | kanavat: Iskelmä, Miesten ilta | ohjelmat: Ilta | tyyli: lämmin iskelmä, haitari | kuvaus: lyhyt tarina</code></p>' +
@@ -1004,7 +1004,7 @@
 				g('[data-tgs]').addEventListener('click', function () {
 					var txt = g('[data-tgt]').value; if (!txt.trim()) { g('[data-tgm]').textContent = 'Liitä ensin rivit.'; return; }
 					g('[data-tgm]').textContent = 'Tallennetaan…';
-					api('POST', D.urls.tags, { text: txt }).then(function (j) { G = j.tags; D.tags = G; draw('✅ ' + j.added + ' uutta, ' + j.replaced + ' korvattua. Käytetty heti ' + j.applied + ' kappaleelle.'); }).catch(function (e) { g('[data-tgm]').textContent = '⚠️ ' + e.message; });
+					api('POST', D.urls.tags, { text: txt }).then(function (j) { G = j.tags; D.tags = G; draw('✅ ' + j.added + ' uutta, ' + j.replaced + ' korvattua. Käytetty heti ' + j.applied + ' kappaleelle.' + (j.newch && j.newch.length ? ' Uudet kanavat luotu: ' + j.newch.join(', ') + '.' : '')); }).catch(function (e) { g('[data-tgm]').textContent = '⚠️ ' + e.message; });
 				});
 				g('[data-tgc]').addEventListener('click', function () {
 					var tx = guide(), m = g('[data-tgm]');
