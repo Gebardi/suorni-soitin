@@ -1804,7 +1804,7 @@ add_shortcode( 'suorni_radio_admin', function () {
 } );
 add_filter( 'wp_robots', function ( $r ) {
 	global $post;
-	if ( is_singular() && $post && has_shortcode( $post->post_content, 'suorni_radio_admin' ) ) { $r['noindex'] = true; $r['nofollow'] = true; }
+	if ( is_singular() && $post && has_shortcode( $post->post_content, 'suorni_radio_admin' ) && ! has_shortcode( $post->post_content, 'suorni_radio' ) && ! is_front_page() ) { $r['noindex'] = true; $r['nofollow'] = true; }
 	return $r;
 } );
 add_action( 'admin_init', function () {

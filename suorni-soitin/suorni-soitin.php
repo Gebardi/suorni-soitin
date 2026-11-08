@@ -2,11 +2,11 @@
 /**
  * Plugin Name: Suorni Soitin
  * Description: Soitin mediakirjaston äänitiedostoista. Lyhytkoodit: [suorni_soitin] (valinnaisesti lista="nimi") ja [suorni_kauko] (kauko-ohjain kirjautuneelle).
- * Version: 9.73
+ * Version: 9.74
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SUORNI_VER', '9.73' );
+define( 'SUORNI_VER', '9.74' );
 require_once plugin_dir_path( __FILE__ ) . 'radio.php';
 require_once plugin_dir_path( __FILE__ ) . 'update.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-cache.php';
@@ -640,6 +640,7 @@ function suorni_client_state( $req ) {
 /* Ei hakukoneisiin */
 add_filter( 'wp_robots', function ( $r ) {
 	global $post;
+	if ( is_front_page() || ( $post && has_shortcode( (string) $post->post_content, 'suorni_radio' ) ) ) { return $r; } /* radiosivu ja etusivu saavat näkyä hakukoneille, vaikka niillä olisi asiakaskortti */
 	if ( is_singular() && $post && ( has_shortcode( $post->post_content, 'suorni_asiakas' ) || has_shortcode( $post->post_content, 'suorni_kauko' ) ) ) { $r['noindex'] = true; $r['nofollow'] = true; }
 	return $r;
 } );
