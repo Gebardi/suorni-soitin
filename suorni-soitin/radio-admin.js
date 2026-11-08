@@ -1042,12 +1042,14 @@
 					f('Kuvan osoite (tyhjä = oletuskuva)', 'og_img', 'https://…/kuva.jpg', 'Sopiva koko 1200 × 630.') + f('Lyhyt kuvaus', 'desc', 'Suorni – suomalaista radiota ympäri vuorokauden') +
 					'<h4 style="margin:14px 0 2px">🎼 Teostovapaa-esittely</h4><label><input type="checkbox" data-so-tv' + (S.tv_on !== false ? ' checked' : '') + '> Näytä &quot;Teostovapaa nettiradio&quot; -osio sivulla ja hakukoneille</label><p style="font-size:12px;opacity:.7;margin:0">Osio, usein kysytyt kysymykset ja hakukoneiden rakenteinen data. Näkyy soittimen alla.</p>' +
 					f('Esittelyteksti (enintään 700 merkkiä)', 'tv_text', S.tv_def || '') +
+					'<h4 style="margin:14px 0 2px">🔎 Google Search Console</h4><p style="font-size:12px;opacity:.7;margin:0">Vahvistus HTML-tunnisteella: liitä tähän Googlen antama koodi (tai koko meta-tagi). Koodi lisätään etusivun otsikkotietoihin.</p>' +
+					f('Vahvistuskoodi', 'gsc', 'google-site-verification-koodi') +
 					'<h4 style="margin:14px 0 2px">🏁 Sivun alatunniste</h4><p style="font-size:12px;opacity:.7;margin:0">Näkyy soittimen alla Yhteystiedot-osiossa yhdessä some-linkkien kanssa.</p>' +
 					f('Tietoa asemasta (enintään 600 merkkiä)', 'about', 'Suorni on suomalainen nettiradio…') + f('Yhteystietona näkyvä sähköposti', 'contact', 'noreply@suorni.fi') +
 					'<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" data-sosv>💾 Tallenna</button><span data-somsg style="font-size:13px">' + (msg || '') + '</span></div>' +
 					'<h4 style="margin:16px 0 4px">🔎 Hakukoneet</h4><div style="font-size:14px">' + (S.seo && S.seo.public === false ? '🛑 Hakukoneet on estetty (WordPressin asetus). <button type="button" data-soidx>Salli hakukoneet</button>' : '✅ Hakukoneet saavat indeksoida sivuston.') + '</div>';
 				var g = function (k) { return sow.querySelector(k); };
-				function body() { var b = { promo_on: g('[data-so-on]').checked, tv_on: g('[data-so-tv]').checked }; ['ig', 'tt', 'promo_text', 'promo_url', 'og_img', 'desc', 'about', 'contact', 'tv_text'].forEach(function (k) { b[k] = g('[data-so="' + k + '"]').value; }); if (b.tv_text === S.tv_def) { b.tv_text = ''; } return b; }
+				function body() { var b = { promo_on: g('[data-so-on]').checked, tv_on: g('[data-so-tv]').checked }; ['ig', 'tt', 'promo_text', 'promo_url', 'og_img', 'desc', 'about', 'contact', 'tv_text', 'gsc'].forEach(function (k) { b[k] = g('[data-so="' + k + '"]').value; }); if (b.tv_text === S.tv_def) { b.tv_text = ''; } return b; }
 				function send(extra) {
 					var b = body(); Object.keys(extra || {}).forEach(function (k) { b[k] = extra[k]; });
 					g('[data-somsg]').textContent = 'Tallennetaan…';

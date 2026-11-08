@@ -75,3 +75,17 @@ add_action( 'wp_head', function () {
 	);
 	echo '<script type="application/ld+json">' . wp_json_encode( $g, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . '</script>' . "\n";
 }, 7 );
+
+/* Google Search Console -vahvistus (HTML-tunniste): liitetään vain koodin arvo, hyväksytään myös koko meta-tagi */
+function suorni_gsc_code() {
+	$c = get_option( 'suorni_social', array() );
+	/* Oletuksena suorni.fi:n vahvistuskoodi (julkinen, näkyy sivun lähdekoodissa); tyhjäksi tallennettu kenttä poistaa tunnisteen */
+	$v = ( is_array( $c ) && isset( $c['gsc'] ) ) ? trim( (string) $c['gsc'] ) : '4shUWGSmecW6Kktg0sP9bJQJxXXwrib7y0otIHr8mjY';
+	if ( preg_match( '#content=["\']([A-Za-z0-9_\-]{20,100})["\']#', $v, $m ) ) { return $m[1]; }
+	return preg_match( '#^[A-Za-z0-9_\-]{20,100}$#', $v ) ? $v : '';
+}
+add_action( 'wp_head', function () {
+	if ( ! is_front_page() ) { return; }
+	$g = suorni_gsc_code();
+	if ( '' !== $g ) { echo '<meta name="google-site-verification" content="' . esc_attr( $g ) . '">' . "\n"; }
+}, 1 );

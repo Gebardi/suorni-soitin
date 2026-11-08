@@ -135,12 +135,12 @@ function suorni_social_html() {
 }
 function suorni_social_state() {
 	$c = suorni_social_cfg();
-	return array_merge( $c, array( 'seo' => suorni_seo_status(), 'tv_on' => suorni_tv_on(), 'tv_text' => suorni_tv_text(), 'tv_def' => suorni_tv_default_text() ) );
+	return array_merge( $c, array( 'seo' => suorni_seo_status(), 'tv_on' => suorni_tv_on(), 'tv_text' => suorni_tv_text(), 'tv_def' => suorni_tv_default_text(), 'gsc' => suorni_gsc_code() ) );
 }
 function suorni_social_post( $req ) {
 	$cur = get_option( 'suorni_social', array() );
 	if ( ! is_array( $cur ) ) { $cur = array(); }
-	foreach ( array( 'ig', 'tt', 'promo_text', 'promo_url', 'og_img', 'desc', 'about', 'contact', 'tv_text' ) as $k ) {
+	foreach ( array( 'ig', 'tt', 'promo_text', 'promo_url', 'og_img', 'desc', 'about', 'contact', 'tv_text', 'gsc' ) as $k ) {
 		if ( null !== $req->get_param( $k ) ) { $cur[ $k ] = trim( (string) $req->get_param( $k ) ); }
 	}
 	if ( null !== $req->get_param( 'promo_on' ) ) { $cur['promo_on'] = (bool) $req->get_param( 'promo_on' ); }
