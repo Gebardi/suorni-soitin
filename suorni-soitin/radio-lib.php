@@ -5,6 +5,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 function suorni_up_split( $name ) {
 	$n = preg_replace( '#\.[A-Za-z0-9]{2,5}$#', '', (string) $name );
 	$n = trim( preg_replace( '#[_]+#', ' ', $n ) );
+	/* Selaimen/WordPressin kaksoiskappaleen jäljet pois: "nimi (2)", "nimi-3" (vain tiedostonimestä) */
+	$n = trim( preg_replace( '#\s*\(\d{1,2}\)$#u', '', $n ) );
+	$n = trim( preg_replace( '#(?<=\D)-\d{1,2}$#u', '', $n ) );
 	$n = trim( preg_replace( '#^\d{1,3}[\s.\-)]+(?=\D)#u', '', $n ) );
 	if ( preg_match( '#^(.+?)\s+[-–—]\s+(.+)$#u', $n, $m ) ) { return array( trim( $m[1] ), trim( $m[2] ) ); }
 	return array( '', $n );
@@ -26,7 +29,9 @@ function suorni_up_post( $req ) {
 	$tag_artist = ( is_array( $meta ) && ! empty( $meta['artist'] ) ) ? (string) $meta['artist'] : '';
 	$tag_title  = ( is_array( $meta ) && ! empty( $meta['title'] ) ) ? (string) $meta['title'] : '';
 	$artist = '' !== $tag_artist ? $tag_artist : ( '' !== $fn[0] ? $fn[0] : 'Suorni' );
-	$title  = '' !== $tag_title ? $tag_title : ( '' !== $fn[1] ? $fn[1] : ( $p ? $p->post_title : 'Nimetön kappale' ) );
+	/* Tiedoston nimi on ensisijainen otsikko (käyttäjän antama nimi); ID3-otsikko vain jos nimi on yleinen/koneellinen */
+	$fn_ok  = '' !== $fn[1] && ! preg_match( '#^(?:[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}|[0-9a-f]{16,}|(?:audio|track|raita|kappale|song|untitled|nimeton)[\s_-]*\d*|\d+)$#iu', $fn[1] );
+	$title  = $fn_ok ? $fn[1] : ( '' !== $tag_title ? $tag_title : ( '' !== $fn[1] ? $fn[1] : ( $p ? $p->post_title : 'Nimetön kappale' ) ) );
 	wp_update_post( array( 'ID' => $id, 'post_title' => sanitize_text_field( $title ), 'post_excerpt' => sanitize_text_field( $artist ) ) );
 	$dur = ( is_array( $meta ) && ! empty( $meta['length'] ) ) ? (int) $meta['length'] : 0;
 	suorni_clear_tracks();

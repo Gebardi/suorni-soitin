@@ -24,7 +24,7 @@ function suorni_social_cfg() {
 		'promo_text' => ( isset( $c['promo_text'] ) && '' !== trim( $c['promo_text'] ) ) ? mb_substr( sanitize_text_field( $c['promo_text'] ), 0, 80 ) : 'Mainospaikka vapaana – ota haltuun!',
 		'promo_url'  => ( isset( $c['promo_url'] ) && '' !== trim( $c['promo_url'] ) ) ? $ok( $c['promo_url'], true ) : 'mailto:noreply@suorni.fi',
 		'og_img'     => isset( $c['og_img'] ) ? $ok( $c['og_img'] ) : '',
-		'desc'       => ( isset( $c['desc'] ) && '' !== trim( $c['desc'] ) ) ? mb_substr( sanitize_text_field( $c['desc'] ), 0, 200 ) : 'Suomalaista musiikkia suorana: juontajat, kanavat, terveiset ja toiveet. Paina play ja kuuntele.',
+		'desc'       => ( isset( $c['desc'] ) && '' !== trim( $c['desc'] ) ) ? mb_substr( sanitize_text_field( $c['desc'] ), 0, 200 ) : 'Teostovapaa suomalainen nettiradio: ilmaista musiikkia ympäri vuorokauden, ilman kirjautumista. Kuuntele missä vain – kotona, töissä tai kaupassa.',
 		'about'      => ( isset( $c['about'] ) && '' !== trim( $c['about'] ) ) ? mb_substr( sanitize_textarea_field( $c['about'] ), 0, 600 ) : 'Suorni on suomalainen nettiradio, jossa soi oma musiikki ympäri vuorokauden. Ohjelmia juontavat Aino, Sanni, Eino ja Unto, ja kuuntelijat voivat toivoa kappaleita, peukuttaa suosikkejaan ja keskustella chatissa.',
 		'contact'    => isset( $c['contact'] ) ? sanitize_email( (string) $c['contact'] ) : 'noreply@suorni.fi',
 	);
@@ -54,7 +54,7 @@ function suorni_seo_info() {
 	$cfg = suorni_radio_cfg();
 	$soc = suorni_social_cfg();
 	$name = $cfg['name'];
-	$info = array( 'title' => $name, 'desc' => $soc['desc'], 'url' => home_url( '/' ), 'img' => '', 'custom' => false, 'type' => 'website' );
+	$info = array( 'title' => function_exists( 'suorni_tv_title' ) && suorni_tv_on() ? suorni_tv_title() : $name, 'desc' => $soc['desc'], 'url' => home_url( '/' ), 'img' => '', 'custom' => false, 'type' => 'website' );
 	$img  = '' !== $soc['og_img'] ? $soc['og_img'] : ( '' !== $cfg['cover'] ? $cfg['cover'] : plugins_url( 'pwa/share.png', __FILE__ ) );
 	$ch   = ( ! empty( $_GET['kanava'] ) ) ? suorni_ch_clean( wp_unslash( $_GET['kanava'] ) ) : '';
 	if ( '' !== $ch ) {
@@ -104,6 +104,7 @@ add_filter( 'pre_get_document_title', function ( $t ) {
 	if ( ! function_exists( 'suorni_radio_is_page' ) || ! suorni_radio_is_page() ) { return $t; }
 	$i = suorni_seo_info();
 	if ( $i['custom'] ) { return $i['title']; }
+	if ( function_exists( 'suorni_tv_on' ) && suorni_tv_on() && ! defined( 'WPSEO_VERSION' ) && ! defined( 'RANK_MATH_VERSION' ) && ! defined( 'AIOSEO_VERSION' ) ) { return suorni_tv_title(); }
 	if ( '' === trim( (string) get_bloginfo( 'name' ) ) ) {
 		$c = function_exists( 'suorni_radio_cfg' ) ? suorni_radio_cfg() : array();
 		return ( ! empty( $c['name'] ) ? $c['name'] : 'Suorni Radio' ) . ' – musiikkia Suomesta';
@@ -134,15 +135,16 @@ function suorni_social_html() {
 }
 function suorni_social_state() {
 	$c = suorni_social_cfg();
-	return array_merge( $c, array( 'seo' => suorni_seo_status() ) );
+	return array_merge( $c, array( 'seo' => suorni_seo_status(), 'tv_on' => suorni_tv_on(), 'tv_text' => suorni_tv_text(), 'tv_def' => suorni_tv_default_text() ) );
 }
 function suorni_social_post( $req ) {
 	$cur = get_option( 'suorni_social', array() );
 	if ( ! is_array( $cur ) ) { $cur = array(); }
-	foreach ( array( 'ig', 'tt', 'promo_text', 'promo_url', 'og_img', 'desc', 'about', 'contact' ) as $k ) {
+	foreach ( array( 'ig', 'tt', 'promo_text', 'promo_url', 'og_img', 'desc', 'about', 'contact', 'tv_text' ) as $k ) {
 		if ( null !== $req->get_param( $k ) ) { $cur[ $k ] = trim( (string) $req->get_param( $k ) ); }
 	}
 	if ( null !== $req->get_param( 'promo_on' ) ) { $cur['promo_on'] = (bool) $req->get_param( 'promo_on' ); }
+	if ( null !== $req->get_param( 'tv_on' ) ) { $cur['tv_on'] = (bool) $req->get_param( 'tv_on' ); }
 	update_option( 'suorni_social', $cur, false );
 	if ( $req->get_param( 'allow_index' ) ) { update_option( 'blog_public', '1' ); }
 	return suorni_json( array( 'social' => suorni_social_state() ) );

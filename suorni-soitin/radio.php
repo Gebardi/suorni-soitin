@@ -17,6 +17,7 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-need.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-push.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-tags.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-seo.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-teosto.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-backup.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-icons.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-station.php';
@@ -1470,6 +1471,10 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 .sr .gav{position:relative;flex:none;width:76px;height:76px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,hsl(var(--h),62%,46%),hsl(calc(var(--h) + 40),60%,26%));box-shadow:0 0 0 2px rgba(var(--ar),.5),0 4px 10px rgba(0,0,0,.45)}.sr .gav b{font-size:32px;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.4)}.sr .gav img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.sr .gav img.gdf{transform:scale(1.4);transform-origin:50% 42%}
 .sr .hb{min-width:0}.sr .hb h4{margin:0;font-size:17px;color:#fff}.sr .hp{margin:2px 0 6px;font-size:12px;opacity:.7}.sr .hd{margin:0 0 6px;font-size:14px;line-height:1.45}.sr .hai{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.08);opacity:.85}
 .sr .rft{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:18px 28px;margin:30px 0 0;padding:20px 0 0;border-top:1px solid rgba(255,255,255,.1);scroll-margin-top:14px}.sr .rft p{margin:0;font-size:14px;line-height:1.55;opacity:.85}.sr .rft h4{margin:0 0 8px;font-size:14px;letter-spacing:1px;text-transform:uppercase;opacity:.75}.sr .rft ul{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:14px}.sr .rft a{color:var(--a);text-decoration:none}.sr .rft a:hover{text-decoration:underline}.sr .rfc{grid-column:1/-1;text-align:center;font-size:13px;color:#8b8472;letter-spacing:1px;padding-top:6px}.sr .rfc small{letter-spacing:0;opacity:.8}
+.sr .rtv{margin:30px 0 0}.sr .rtv .tvh{margin:0 0 12px;font-size:14px;letter-spacing:.18em;text-transform:uppercase;padding-left:12px;border-left:3px solid var(--a,#4da3ff);line-height:1.3;color:#fff}
+.sr .rtv .tvp{margin:0 0 14px;font-size:15px;line-height:1.6;opacity:.9;max-width:70ch}
+.sr .rtv .tvb{list-style:none;margin:0 0 16px;padding:0;display:flex;flex-wrap:wrap;gap:8px}.sr .rtv .tvb li{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid rgba(255,255,255,.14);border-radius:2px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.sr .rtv .tvb .ic{color:rgb(var(--ar))}
+.sr .rtv .tvq details{border-top:1px solid rgba(255,255,255,.1);padding:0}.sr .rtv .tvq details:last-child{border-bottom:1px solid rgba(255,255,255,.1)}.sr .rtv .tvq summary{cursor:pointer;padding:12px 4px;font-size:14px;font-weight:600;list-style:none}.sr .rtv .tvq summary::-webkit-details-marker{display:none}.sr .rtv .tvq summary:before{content:"+";display:inline-block;width:18px;color:rgb(var(--ar));font-weight:700}.sr .rtv .tvq details[open] summary:before{content:"\2212"}.sr .rtv .tvq details p{margin:0;padding:0 4px 14px 22px;font-size:14px;line-height:1.6;opacity:.85;max-width:70ch}
 @media(max-width:640px){.sr .rft{grid-template-columns:1fr}.sr .gt{min-width:0}.sr .gp{flex-wrap:wrap}.sr .gav{width:64px;height:64px}}
 .sr .rart{flex:none;width:72px;height:72px;border-radius:10px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:32px;font-weight:700;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.45);background:#2a2c32;box-shadow:0 0 0 2px #15171b,0 4px 8px rgba(0,0,0,.55)}.sr .rart:empty{display:none}.sr .rart img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.sr .rart img.gdf{transform:scale(1.4);transform-origin:50% 42%}.sr .rart small{position:absolute;right:5px;bottom:2px;font-size:13px;opacity:.7}
 @media(max-width:480px){.sr .rart{width:56px;height:56px;font-size:26px}.sr .rp{width:60px;height:60px;font-size:24px}}
@@ -1709,6 +1714,7 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 	</details>
 	</div>
 	<div class="ri" data-inst hidden><b><?php echo suorni_ic( 'phone' ); ?> Asenna radio puhelimeen</b><span data-insttxt></span><button type="button" class="rg" data-instbtn hidden>Asenna</button></div>
+	<?php if ( ! $shop ) { echo suorni_tv_html(); } ?>
 	<?php if ( $shop ) : ?><div class="rf"><?php echo suorni_flag(); ?> Suorni Radio – musiikkia Suomesta, Suomen yössä</div><?php else : echo suorni_station_footer( $cfg ); endif; ?>
 	</div>
 </div>
