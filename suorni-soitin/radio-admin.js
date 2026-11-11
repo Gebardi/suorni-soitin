@@ -540,7 +540,7 @@
 		var sc = document.querySelector('[data-sb-clock]');
 		if (sc) { if (window.__suorniClk) { clearInterval(window.__suorniClk); } var tickc = function () { var d = new Date(); sc.textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }; tickc(); window.__suorniClk = setInterval(tickc, 1000); }
 		var loose = [].slice.call(box.children);
-		var TABS = [['tanaan', '📌 Tänään'], ['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista'], ['kanavat', '📻 Kanavat'], ['tarve', '🎯 Kappaletarve'], ['mainokset', '📢 Mainokset'], ['sivusto', '🌐 Sivusto']];
+		var TABS = [['tanaan', '📌 Tänään'], ['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista'], ['kanavat', '📻 Kanavat'], ['tarve', '🎯 Kappaletarve'], ['levy', '🗄️ Levytila'], ['mainokset', '📢 Mainokset'], ['sivusto', '🌐 Sivusto']];
 
 		/* Massalisäys + päivittäinen tarkistus */
 		var upw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
@@ -1107,6 +1107,8 @@
 			var N = D.need || {}, lows = [];
 			(N.progs || []).concat(N.chans || []).forEach(function (r) { if ((r.st === 'bad' || r.st === 'low') && (r.from || r.on)) { lows.push(r); } });
 			if (lows.length) { T.push({ lvl: 2, ico: '🎯', t: 'Kappaleita puuttuu: ' + lows.slice(0, 3).map(function (r) { return r.name + ' (+' + r.need + ')'; }).join(', ') + (lows.length > 3 ? ' ja ' + (lows.length - 3) + ' muuta' : ''), d: 'Tuota näitä seuraavaksi.', tab: 'tarve', btn: 'Kappaletarve' }); }
+			var DK = D.disk || {};
+			if (DK.quota && DK.used) { var dpc = Math.round(DK.used / (DK.quota * 1048576) * 100); if (dpc >= 80) { T.push({ lvl: dpc >= 90 ? 1 : 2, ico: '🗄️', t: 'Levytila ' + dpc + ' % täynnä', d: 'Vapaata noin ' + mb(Math.max(0, DK.quota * 1048576 - DK.used)) + '. Katso siivousehdotukset.', tab: 'levy', btn: 'Avaa' }); } }
 			if (D.push && D.push.err) { T.push({ lvl: 2, ico: '📲', t: 'Pling-ilmoitus ei lähde', d: D.push.err, tab: 'yleinen', btn: 'Avaa' }); }
 			var S = D.social || {};
 			if (S.seo && S.seo.public === false) { T.push({ lvl: 2, ico: '🔎', t: 'Hakukoneet on estetty', d: 'Sivusto ei löydy Googlesta.', tab: 'sivusto', btn: 'Korjaa' }); }
@@ -1127,7 +1129,87 @@
 		}
 		redraw.tn = function () { var n = drawToday(); if (tbtn.tanaan) { tbtn.tanaan.innerHTML = TABS[0][1] + (n ? ' <b class="bdg">' + n + '</b>' : ''); } };
 		drawToday();
-		var bucket = { tanaan: [tnw], yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, tgw, bw, tw], kanavat: [chw, clw], tarve: [nw], mainokset: [adw], sivusto: [sow, bkw] };
+
+		/* Levytila: levynkäyttö, soittotasaisuus ja käyttämättömän median raportti */
+		var dkw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
+		var dk = { loaded: false, sel: {} };
+		function mb(b) { b = +b || 0; return b >= 1073741824 ? (b / 1073741824).toFixed(2) + ' Gt' : (b >= 104857.6 ? (b / 1048576).toFixed(b >= 10485760 ? 0 : 1) + ' Mt' : Math.max(0, Math.round(b / 1024)) + ' kt'); }
+		function dkTime(s) { return s ? new Date(s * 1000).toLocaleDateString('fi-FI') : '–'; }
+		function dkDraw(X, note) {
+			var pct = X.quota ? Math.min(100, Math.round(X.used / (X.quota * 1048576) * 100)) : 0;
+			var col = pct >= 90 ? '#ff5a4f' : (pct >= 75 ? '#ffb347' : '#4cc27a');
+			var h = '<h3 style="margin:0 0 6px">🗄️ Levytila</h3>';
+			if (note) { h += '<div style="padding:6px 8px;margin:0 0 8px;border:1px solid #2f6b4a;border-radius:8px;background:#12261b;font-size:13px">' + esc(note) + '</div>'; }
+			h += '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;align-items:baseline"><span style="font-size:18px"><b>' + mb(X.used) + '</b> / ' + X.quota + ' Mt</span><b style="color:' + col + '">' + pct + ' %</b></div>';
+			h += '<div style="height:12px;border-radius:6px;background:#252b36;margin:6px 0"><div style="height:12px;border-radius:6px;width:' + Math.max(2, pct) + '%;background:' + col + '"></div></div>';
+			h += '<div style="font-size:12px;opacity:.7;margin:0 0 6px">Vapaata noin ' + mb(Math.max(0, X.quota * 1048576 - X.used)) + '. Mitattu ' + dkTime(X.t) + (X.secs ? ' (' + X.secs + ' s)' : '') + (X.partial ? '. <b style="color:#ffb347">Mittaus jäi kesken, luvut ovat vähintään näin suuria.</b>' : '') + '</div>';
+			h += '<div style="margin:8px 0">';
+			(X.cats || []).slice().sort(function (a, b) { return b.bytes - a.bytes; }).forEach(function (c) { h += '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #232936;font-size:13px"><span>' + esc(c.name) + ' <span style="opacity:.55">(' + c.files + ' tdstoa)</span></span><b>' + mb(c.bytes) + '</b></div>'; });
+			h += '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #232936;font-size:13px"><span>WordPress, lisäosat ja teemat</span><b>' + mb(X.wp) + '</b></div>';
+			h += '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span>Tietokanta' + (X.incdb ? '' : ' <span style="opacity:.55">(ei lasketa mukaan)</span>') + '</span><b>' + mb(X.db) + '</b></div></div>';
+			h += '<div style="font-size:13px;margin:6px 0"><b>Mediakirjasto:</b> ' + X.kinds.audio.n + ' äänitiedostoa ' + mb(X.kinds.audio.b) + (X.kinds.audio.n ? ' (keskim. ' + mb(X.kinds.audio.b / X.kinds.audio.n) + ')' : '') + ', ' + X.kinds.image.n + ' kuvaa ' + mb(X.kinds.image.b) + (X.kinds.other.n ? ', ' + X.kinds.other.n + ' muuta ' + mb(X.kinds.other.b) : '') + '.</div>';
+			h += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0"><label style="font-size:13px">Levytilan koko (Mt) <input type="number" data-dkq value="' + X.quota + '" min="50" style="width:90px;padding:5px;border-radius:6px;border:1px solid #363d4a;background:#1b1f27;color:#eef0f4"></label><label style="font-size:13px"><input type="checkbox" data-dki' + (X.incdb ? ' checked' : '') + '> laske tietokanta mukaan</label><button type="button" data-dks>Tallenna</button><button type="button" data-dkr style="margin-left:auto">↻ Mittaa uudelleen</button></div>';
+			if ((X.big || []).length) { h += '<h4 style="margin:12px 0 4px">Suurimmat tiedostot</h4>'; X.big.forEach(function (b) { h += '<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span>' + (b.k === 'audio' ? '🎵' : '🖼️') + ' ' + esc(b.t) + '</span><b>' + mb(b.b) + '</b></div>'; }); }
+			/* Siivous */
+			var C = X.cand || {}, secs = '';
+			function rows(list, kind) {
+				return list.map(function (r) { return '<label style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid #232936;font-size:13px"><input type="checkbox" data-dkc="' + r.id + '"' + (dk.sel[r.id] ? ' checked' : '') + '><span style="flex:1"><b>' + esc(r.t || '(nimetön)') + '</b>' + (r.a ? ' <span style="opacity:.65">· ' + esc(r.a) + '</span>' : '') + '<br><span style="opacity:.65">' + mb(r.b) + (r.dur ? ' · ' + Math.floor(r.dur / 60) + ':' + ('0' + (r.dur % 60)).slice(-2) : '') + (kind === 'trk' ? ' · valittu soittoon ' + r.n + ' kertaa' : '') + (r.at ? ' · lisätty ' + dkTime(r.at) : '') + (r.url ? ' · <a href="' + esc(r.url) + '" target="_blank" rel="noopener" style="color:#4da3ff">avaa</a>' : '') + '</span></span></label>'; }).join('');
+			}
+			function sec(title, sub, body, bytes) { return '<div style="margin:10px 0;padding:8px;border:1px solid #2a303b;border-radius:10px;background:#101319"><b>' + title + '</b> <span style="opacity:.65;font-size:12px">' + (bytes ? '· yhteensä ' + mb(bytes) : '') + '</span><div style="font-size:12px;opacity:.75;margin:2px 0 4px">' + sub + '</div>' + body + '</div>'; }
+			secs += (C.dup || []).length ? sec('♊ Samannimiset kappaleet (' + C.dup.length + ' ryhmää)', 'Sama kappale ladattu useammin kuin kerran. Uusin versio on ylimpänä. Mitään ei ole valittu valmiiksi.<br><button type="button" data-dkold style="margin-top:4px">Valitse kaikki paitsi uusimmat</button>', C.dup.map(function (g) { return '<div style="margin:6px 0;padding:4px 6px;border-left:3px solid #4da3ff">' + rows(g, 'trk') + '</div>'; }).join(''), X.dupb) : '';
+			secs += (C.hid || []).length ? sec('🙈 Piilotetut kappaleet (' + C.hid.length + ')', 'Näitä ei soiteta radiossa missään.', rows(C.hid, 'trk'), X.hidb) : '';
+			secs += (C.broken || []).length ? sec('⚠️ Rikkinäiset kappaleet (' + C.broken.length + ')', 'Kestoa ei tunnisteta tai tiedosto puuttuu, joten niitä ei soiteta.', rows(C.broken, 'trk'), X.brokenb) : '';
+			secs += (C.ad || []).length ? sec('📢 Mainosäänet, jotka eivät ole mainoslistalla (' + C.ad.length + ')', 'Mainosgeneraattorilla tehtyjä tiedostoja, joita mikään lista ei käytä.', rows(C.ad, 'trk'), X.adb) : '';
+			secs += (C.img || []).length ? sec('🖼️ Kuvat, joita ei löydy käytöstä (' + C.img.length + ')', 'Ei löytynyt viittauksia sivuilta, asetuksista tai teemasta. Tarkista kuva ennen poistoa (avaa-linkki).', rows(C.img, 'img'), X.imgb) : '';
+			var tts = (X.cats || []).filter(function (c) { return c.k === 'suorni-tts'; })[0];
+			var ex = '';
+			if (tts && tts.bytes > 0) { ex += '<div style="margin:6px 0;font-size:13px">Puhevälimuisti ' + mb(tts.bytes) + ' (' + tts.files + ' tdstoa) <button type="button" data-dktts>Tyhjennä puhevälimuisti</button><br><span style="opacity:.65;font-size:12px">Tekoälyn puheet tehdään tarvittaessa uudelleen, mutta uusi puhe maksaa Azure-krediittejä.</span></div>'; }
+			if (X.orph && X.orph.n) { ex += '<div style="margin:6px 0;font-size:13px">' + X.orph.n + ' ehdotuksiin kuulumatonta tiedostoa (' + mb(X.orph.b) + ') kansiossa uusien artistien kappaleille <button type="button" data-dkorph>Poista nämä</button></div>'; }
+			h += '<h4 style="margin:16px 0 2px">🧹 Siivousehdotukset</h4><p style="font-size:12px;opacity:.75;margin:0 0 4px">Mitään ei poisteta itsestään. Poisto on pysyvä: tiedostoa ei voi palauttaa ohjaamosta, ja varmuuskopio sisältää vain asetukset. Soiva tai jonossa oleva kappale ohitetaan.</p>' + (secs || '<div style="font-size:13px;opacity:.8">Ei löytynyt selvästi turhaa mediaa.</div>') + ex;
+			h += '<div data-dkbar style="position:sticky;bottom:0;padding:8px;margin-top:8px;border:1px solid #363d4a;border-radius:10px;background:#1b1f27;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span data-dkn style="font-size:13px">Ei valittuja</span><button type="button" data-dkdel disabled style="margin-left:auto;background:#5a1f1f;color:#fff">Poista valitut</button></div>';
+			/* Soittotasaisuus */
+			var P = X.plays || {};
+			h += '<h4 style="margin:16px 0 2px">⚖️ Soittotasaisuus</h4>';
+			if (!P.total) { h += '<div style="font-size:13px;opacity:.8">Soittomäärien laskenta alkoi ' + dkTime(P.since) + '. Tulokset kertyvät sitä mukaa, kun kappaleita valitaan soittoon.</div>'; }
+			else {
+				h += '<div style="font-size:13px;margin:2px 0">Laskettu ' + dkTime(P.since) + ' alkaen: <b>' + P.total + '</b> soittoa, keskimäärin <b>' + P.avg + '</b> / kappale. Eniten soinut <b>' + P.max + '</b> kertaa, vähiten <b>' + P.min + '</b>' + (P.never ? ', <b>' + P.never + '</b> kappaletta ei ole vielä soinut' : '') + '.</div><div style="display:flex;gap:14px;flex-wrap:wrap">';
+				h += '<div style="flex:1;min-width:210px;font-size:13px"><b>Eniten</b>' + (P.top || []).slice(0, 8).map(function (r) { return '<div style="display:flex;justify-content:space-between;gap:6px"><span>' + esc(r.t) + '</span><b>' + r.n + '</b></div>'; }).join('') + '</div>';
+				h += '<div style="flex:1;min-width:210px;font-size:13px"><b>Vähiten</b>' + (P.low || []).slice(0, 8).map(function (r) { return '<div style="display:flex;justify-content:space-between;gap:6px"><span>' + esc(r.t) + '</span><b>' + r.n + '</b></div>'; }).join('') + '</div></div>';
+			}
+			h += '<p style="font-size:12px;opacity:.7;margin:6px 0 0">Valinta tasaa soittoa automaattisesti: jäljessä oleva kappale saa suuremman todennäköisyyden ja edellä oleva pienemmän. Peukut vaikuttavat tämän päälle. Jos kappaleelle on rajattu vain tietyt ohjelmat, se voi soida enintään niiden aikoina.</p>';
+			dkw.innerHTML = h;
+			function upd() {
+				var ids = Object.keys(dk.sel).filter(function (k) { return dk.sel[k]; }), tot = 0;
+				ids.forEach(function (k) { (['dup', 'hid', 'broken', 'ad', 'img']).forEach(function (kk) { var L = kk === 'dup' ? [].concat.apply([], C.dup || []) : (C[kk] || []); L.forEach(function (r) { if (String(r.id) === k) { tot += r.b; } }); }); });
+				dkw.querySelector('[data-dkn]').textContent = ids.length ? ids.length + ' valittu, vapauttaa noin ' + mb(tot) : 'Ei valittuja';
+				dkw.querySelector('[data-dkdel]').disabled = !ids.length;
+			}
+			[].forEach.call(dkw.querySelectorAll('[data-dkc]'), function (cb) { cb.addEventListener('change', function () { dk.sel[cb.getAttribute('data-dkc')] = cb.checked; upd(); }); });
+			var ob = dkw.querySelector('[data-dkold]');
+			if (ob) { ob.addEventListener('click', function () { (C.dup || []).forEach(function (g) { g.forEach(function (r, i) { dk.sel[r.id] = i > 0; }); }); dkDraw(X); upd(); }); }
+			function act(body, okmsg) { api('POST', D.urls.diskact, body).then(function (j) { dk.sel = {}; dkLoad(true, okmsg(j)); }).catch(function (e) { alert('Virhe: ' + e.message); }); }
+			dkw.querySelector('[data-dkdel]').addEventListener('click', function () {
+				var ids = Object.keys(dk.sel).filter(function (k) { return dk.sel[k]; }).map(Number);
+				if (!ids.length || !confirm('Poistetaanko ' + ids.length + ' tiedostoa pysyvästi?\n\nPoistoa ei voi perua. Jos kappale on vielä koneellasi, sen voi ladata myöhemmin uudelleen.')) { return; }
+				act({ act: 'del', ids: ids }, function (j) { return 'Poistettu ' + (j.done || []).length + ' tiedostoa, vapautui ' + mb(j.freed) + '.' + ((j.skipped || []).length ? ' Ohitettu ' + j.skipped.length + ': ' + j.skipped.map(function (x) { return x.why; }).join(' ') : ''); });
+			});
+			var bt = dkw.querySelector('[data-dktts]');
+			if (bt) { bt.addEventListener('click', function () { if (confirm('Tyhjennetäänkö puhevälimuisti? Puheet tehdään tarvittaessa uudelleen (Azure-kulu).')) { act({ act: 'ttsclear' }, function (j) { return 'Puhevälimuisti tyhjennetty: ' + j.n + ' tiedostoa, vapautui ' + mb(j.freed) + '.'; }); } }); }
+			var bo = dkw.querySelector('[data-dkorph]');
+			if (bo) { bo.addEventListener('click', function () { if (confirm('Poistetaanko ' + X.orph.n + ' tiedostoa pysyvästi?')) { act({ act: 'orphsubs' }, function (j) { return 'Poistettu ' + j.n + ' tiedostoa, vapautui ' + mb(j.freed) + '.'; }); } }); }
+			dkw.querySelector('[data-dks]').addEventListener('click', function () {
+				api('POST', D.urls.diskcfg, { quota: +dkw.querySelector('[data-dkq]').value || 512, incdb: dkw.querySelector('[data-dki]').checked }).then(function () { dkLoad(true, 'Asetukset tallennettu.'); }).catch(function (e) { alert('Virhe: ' + e.message); });
+			});
+			dkw.querySelector('[data-dkr]').addEventListener('click', function () { dkLoad(true); });
+			upd();
+		}
+		function dkLoad(force, note) {
+			dkw.innerHTML = '<h3 style="margin:0 0 6px">🗄️ Levytila</h3><p>Mitataan levyä, tämä voi kestää hetken…</p>';
+			api('GET', D.urls.disk + (force ? '?refresh=1' : '')).then(function (X) { dk.loaded = true; D.disk = { t: X.t, used: X.used, quota: X.quota }; dkDraw(X, note); }).catch(function (e) { dkw.innerHTML = '<h3 style="margin:0 0 6px">🗄️ Levytila</h3><p>Virhe: ' + esc(e.message) + '</p>'; });
+		}
+		dkw.innerHTML = '<h3 style="margin:0 0 6px">🗄️ Levytila</h3><p style="font-size:13px;opacity:.8">Avaa välilehti mitataksesi levynkäytön.</p>';
+
+		var bucket = { tanaan: [tnw], yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, tgw, bw, tw], kanavat: [chw, clw], tarve: [nw], levy: [dkw], mainokset: [adw], sivusto: [sow, bkw] };
 		var used = [];
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });
@@ -1145,6 +1227,7 @@
 			bucket[t[0]].forEach(function (n) { p.appendChild(n); });
 		});
 
+		tbtn.levy.addEventListener('click', function () { if (!dk.loaded) { dkLoad(false); } });
 		/* Lähetyspaneeli: aina ylhäällä, erillään välilehdistä */
 		var qp = el('div', { 'class': 'st-air st-top' });
 		qp.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b style="font-size:16px;letter-spacing:.04em">🎛️ LÄHETYS</b><span data-qs style="font-size:12px;opacity:.6"></span><button type="button" data-qr style="margin-left:auto">↻ Päivitä</button></div><div data-qb style="margin-top:6px">Ladataan…</div>';

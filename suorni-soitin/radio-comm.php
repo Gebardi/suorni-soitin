@@ -127,7 +127,7 @@ function suorni_vote_pick( $list ) {
 	if ( ! $list ) { return null; }
 	$list = array_values( $list );
 	$ws = array(); $sum = 0;
-	foreach ( $list as $t ) { $w = (int) round( suorni_vote_weight( $t['id'] ) * 100 ); $ws[] = $w; $sum += $w; }
+	foreach ( $list as $t ) { $w = (int) round( suorni_vote_weight( $t['id'] ) * ( ( function_exists( 'suorni_fair_mult' ) && empty( $t['sub'] ) ) ? suorni_fair_mult( $t['id'] ) : 1 ) * 100 ); $ws[] = $w; $sum += $w; }
 	if ( $sum < 1 ) { return $list[ wp_rand( 0, count( $list ) - 1 ) ]; }
 	$r = wp_rand( 1, $sum );
 	foreach ( $list as $i => $t ) { $r -= $ws[ $i ]; if ( $r <= 0 ) { return $t; } }
