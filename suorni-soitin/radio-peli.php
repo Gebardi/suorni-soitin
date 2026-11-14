@@ -119,31 +119,6 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'suorni/v1', '/peli/top', array( 'methods' => 'GET', 'callback' => 'suorni_peli_top', 'permission_callback' => '__return_true' ) );
 } );
 
-/* Arvaa tyyli -minipeli: pelaajien tyyliarviot kappaleille (yksi arvio per pelaaja ja kappale) */
-function suorni_peli_guess( $req ) {
-	$pid = substr( preg_replace( '/[^a-z0-9]/', '', strtolower( (string) $req->get_param( 'pid' ) ) ), 0, 24 );
-	$tid = absint( $req->get_param( 'tid' ) );
-	$g   = substr( preg_replace( '/[^a-z0-9]/', '', strtolower( (string) $req->get_param( 'g' ) ) ), 0, 16 );
-	if ( strlen( $pid ) < 8 || ! $tid || '' === $g || 0 !== strpos( (string) get_post_mime_type( $tid ), 'audio' ) ) {
-		return new WP_Error( 'suorni_bad', 'Virheellinen', array( 'status' => 400 ) );
-	}
-	$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
-	$rk = 'suorni_pg_' . md5( $ip );
-	$n  = (int) get_transient( $rk );
-	if ( $n >= 80 ) { return suorni_json( array( 'ok' => true, 'wait' => true ) ); }
-	set_transient( $rk, $n + 1, 600 );
-	$all = get_option( 'suorni_peli_guess', array() );
-	if ( ! is_array( $all ) ) { $all = array(); }
-	$t = ( isset( $all[ $tid ] ) && is_array( $all[ $tid ] ) ) ? $all[ $tid ] : array();
-	if ( isset( $t[ $pid ] ) || count( $t ) < 2000 ) { $t[ $pid ] = $g; }
-	$all[ $tid ] = $t;
-	update_option( 'suorni_peli_guess', $all, false );
-	return suorni_json( array( 'ok' => true ) );
-}
-add_action( 'rest_api_init', function () {
-	register_rest_route( 'suorni/v1', '/peli/guess', array( 'methods' => 'POST', 'callback' => 'suorni_peli_guess', 'permission_callback' => '__return_true' ) );
-} );
-
 /* Ohjaamon 🎮 Peli -välilehti: nimimerkkien moderointi ja kappaleiden peukutus */
 function suorni_peli_admin() {
 	$l = suorni_peli_top_list();

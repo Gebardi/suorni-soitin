@@ -133,7 +133,8 @@ nav .dot.has::after{content:"";position:absolute;right:-6px;top:-2px;width:7px;h
 .bm-row{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:13px;color:var(--mu)}.bm-row b{font-size:24px;color:var(--tx)}.bm-row b.hit{color:var(--a)}
 .bm-gauge{position:relative;height:46px;background:var(--bg2);border:1px solid var(--line);border-radius:23px}.bm-mid{position:absolute;left:50%;top:6px;bottom:6px;width:2px;background:var(--mu)}.bm-dot{position:absolute;top:10px;width:26px;height:26px;margin-left:-13px;border-radius:50%;background:var(--a)}
 .bm-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}.bm-btns .btn{padding:20px 8px;touch-action:none}
-#gsB .chip.ok{border-color:var(--ok);background:rgba(61,220,151,.15)}#gsB .chip.bad{border-color:#ff6b6b;background:rgba(255,107,107,.15)}
+.bm-dots{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}.bm-dots i{width:16px;height:16px;border-radius:50%;background:var(--line)}.bm-dots i.l.on{background:var(--a)}.bm-dots i.p{border:2px solid var(--mu);background:transparent}.bm-dots i.g{background:var(--ok);border-color:var(--ok)}.bm-dots i.y{background:var(--warn);border-color:var(--warn)}.bm-dots i.r{background:#ff6b6b;border-color:#ff6b6b}
+.bm-pad{height:190px;border-radius:20px;border:2px solid var(--a);background:rgba(0,0,0,.2);color:var(--a);font:700 28px var(--mono);touch-action:none}.bm-pad:active{background:var(--a);color:#000}
 #setup{position:fixed;inset:0;z-index:25;background:rgba(5,7,12,.96);display:none;align-items:flex-start;justify-content:center;padding:18px;overflow:auto}
 #setup.on{display:flex}
 #setup .box{background:var(--bg2);border:1px solid var(--a);border-radius:var(--r);padding:18px;max-width:420px;width:100%}
@@ -1272,8 +1273,7 @@ $('suGo').addEventListener('click', suGo);
 /* ---------- Minipelit: viritys, arvaa tyyli, beatmatch ---------- */
 var MGS = {
   tune:  {n:'Viritä taajuus', x:'Löydä asemat kohinan seasta.', ant:1},
-  guess: {n:'Arvaa tyyli', x:'Kuuntele pätkä ja arvaa tyyli. Autat samalla oikeaa radiota luokittelemaan kappaleet.', ant:2, real:true},
-  beat:  {n:'Beatmatch', x:'Saata kaksi levyä samaan tahtiin.', ant:3}
+  beat:  {n:'Pidä tahti', x:'Kuuntele tahti ja jatka sitä itse, kun ääni katoaa.', ant:2}
 };
 var MG = {on:false, kind:'', raf:0, held:false, ctx:null};
 function mgOk(k){ return S.antenna >= MGS[k].ant && (!MGS[k].real || (REAL_OK && mgPool().length >= 8)); }
@@ -1307,7 +1307,7 @@ function mgOpen(k){
   mgHold();
   $('mg').classList.add('on'); $('mgRes').style.display = 'none'; $('mgBody').style.display = ''; $('mgScore').textContent = '0 %';
   $('mgTitle').textContent = MGS[k].n; $('mgQuit').style.display = '';
-  ({tune:tuneStart, guess:guessStart, beat:beatStart})[k]();
+  ({tune:tuneStart, beat:beatStart})[k]();
 }
 function mgStop(){
   cancelAnimationFrame(MG.raf); MG.raf = 0;
@@ -1381,111 +1381,60 @@ function tuneLoop(now){
   MG.raf = requestAnimationFrame(tuneLoop);
 }
 
-/* --- 2. Arvaa tyyli --- */
-var GS = {};
-function guessStart(){
-  var pool = mgPool(), known = pool.filter(function(t){ return t.known; }), unk = pool.filter(function(t){ return !t.known; });
-  function shuf(a){ a = a.slice(); for(var i=a.length-1;i>0;i--){ var j = Math.floor(Math.random()*(i+1)), x = a[i]; a[i] = a[j]; a[j] = x; } return a; }
-  known = shuf(known); unk = shuf(unk);
-  var nu = Math.min(3, unk.length), nk = 8 - nu, rounds = known.slice(0, nk).concat(unk.slice(0, nu));
-  if(rounds.length < 8) rounds = rounds.concat(shuf(pool).filter(function(t){ return rounds.indexOf(t) < 0; })).slice(0, 8);
-  GS = {rounds:shuf(rounds), i:-1, pts:0, correct:0, N:0, lock:false};
-  GS.N = GS.rounds.length;
-  $('mgBody').innerHTML = '<div class="mu" id="gsR" style="text-align:center"></div><div class="tn-f" id="gsT" style="font-size:20px">♪ ♪ ♪</div><div class="tn-t"><i id="gsBar"></i></div><div class="hint" id="gsH" style="text-align:center"></div><div class="chips" id="gsB" style="justify-content:center;margin-top:10px"></div>';
-  var h = ''; GORDER.forEach(function(g){ h += '<button class="chip" data-gs="'+g+'" style="padding:12px 14px;font-size:15px">'+GENRES[g].n+'</button>'; }); $('gsB').innerHTML = h;
-  MG.el = MG.el || new Audio(); MG.el.loop = false;
-  if(MG.srcNode && MG.gm){ MG.gm.gain.value = 1; }
-  guessNext();
-}
-function guessNext(){
-  GS.i++; GS.lock = false;
-  if(GS.i >= GS.N){ mgFinish(GS.pts/GS.N, 'Pisteitä ' + GS.pts + '/' + GS.N + '.'); return; }
-  var t = GS.rounds[GS.i]; GS.cur = t; GS.t0 = performance.now();
-  $('gsR').textContent = 'Kappale ' + (GS.i+1) + '/' + GS.N; $('gsT').textContent = '♪ ♪ ♪'; $('gsH').textContent = 'Mikä tyyli tämä on?';
-  var bs = $('gsB').querySelectorAll('.chip'); for(var i=0;i<bs.length;i++){ bs[i].classList.remove('sel','ok','bad'); }
-  MG.el.pause(); MG.el.src = t.url;
-  var seek = function(){ MG.el.removeEventListener('loadedmetadata', seek); try{ MG.el.currentTime = Math.max(0, Math.min((t.dur||60)*0.35, (t.dur||60) - 16)); }catch(e){} };
-  MG.el.addEventListener('loadedmetadata', seek);
-  MG.el.volume = 1; var pr = MG.el.play(); if(pr && pr.catch) pr.catch(function(){});
-  cancelAnimationFrame(MG.raf); MG.last = performance.now(); MG.raf = requestAnimationFrame(guessLoop);
-}
-function guessLoop(now){
-  if(!MG.on || MG.kind !== 'guess') return;
-  var el = (now - GS.t0)/1000; $('gsBar').style.transform = 'scaleX(' + Math.max(0, 1 - el/15) + ')';
-  if(el >= 15 && !GS.lock){ guessAnswer(null); return; }
-  MG.raf = requestAnimationFrame(guessLoop);
-}
-function guessAnswer(g){
-  if(GS.lock) return; GS.lock = true; var t = GS.cur;
-  var ok = false, msg;
-  if(g === null){ msg = 'Aika loppui. ' + t.title; }
-  else {
-    ensurePid(); api('peli/guess', {body:{pid:S.pid, tid:t.id, g:g}}, function(){});
-    if(t.known){ ok = g === t.g; msg = (ok ? 'Oikein! ' : 'Ei aivan, oikea tyyli oli ' + GENRES[t.g].n.toLowerCase() + '. ') + t.title + ' – ' + t.artist; }
-    else { ok = true; msg = 'Kiitos! Tämän kappaleen tyyli on vielä auki, ja vastauksesi auttaa luokittelemaan sen. ' + t.title + ' – ' + t.artist; }
-  }
-  if(ok){ GS.pts++; GS.correct += t.known ? 1 : 0; }
-  var bs = $('gsB').querySelectorAll('.chip');
-  for(var i=0;i<bs.length;i++){ var k = bs[i].dataset.gs; if(g && k === g) bs[i].classList.add(ok ? 'ok' : 'bad'); if(t.known && k === t.g) bs[i].classList.add('ok'); }
-  $('gsH').textContent = msg; $('gsT').textContent = ok ? '✓' : '✗'; mgScoreTxt(GS.pts/GS.N);
-  cancelAnimationFrame(MG.raf);
-  MG.tmo = setTimeout(guessNext, 2200);
-}
-
-/* --- 3. Beatmatch --- */
+/* --- 2. Pidä tahti: kuuntele tahti, jatka sitä itse kun ääni katoaa --- */
 var BM = {};
 function beatStart(){
-  BM = {round:0, N:3, pa:0, pb:0, bpmA:100, bpm:100, aligned:0, total:0, left:18, nudge:0, offMs:0, lastA:0, lastB:0};
-  $('mgBody').innerHTML = '<div class="mu" id="bmR" style="text-align:center"></div>' +
-    '<div class="bm-row"><span>Levy A</span><b id="bmA">???</b></div><div class="bm-row"><span>Levy B</span><b id="bmB">100,0 BPM</b></div>' +
-    '<div class="bm-gauge"><i class="bm-mid"></i><i class="bm-dot" id="bmD"></i></div><div class="hint" style="text-align:center" id="bmH">Kuuntele ja katso: pysäytä merkin ajelehtiminen tempolla, keskitä se painikkeilla.</div>' +
-    '<input type="range" id="bmS" min="600" max="1700" step="1" value="1000">' +
-    '<div class="bm-btns"><button class="btn" id="bmL" style="margin:0;border:0">◀ Viivytä</button><button class="btn" id="bmP" style="margin:0;border:0">Työnnä ▶</button></div><div class="tn-t"><i id="bmT"></i></div>';
-  $('bmS').addEventListener('input', function(){ BM.bpm = +this.value/10; });
-  [['bmL',-1],['bmP',1]].forEach(function(b){
-    var e = $(b[0]);
-    e.addEventListener('pointerdown', function(ev){ ev.preventDefault(); BM.nudge = b[1]; });
-    ['pointerup','pointerleave','pointercancel'].forEach(function(n){ e.addEventListener(n, function(){ if(BM.nudge === b[1]) BM.nudge = 0; }); });
-  });
-  mgCtx(); beatRound(); MG.raf = requestAnimationFrame(beatLoop);
+  BM = {round:0, N:3, ph:'', pts:0, cnt:0, taps:[], marks:[]};
+  $('mgBody').innerHTML = '<div class="mu" id="bmR" style="text-align:center"></div><div class="tn-f" id="bmMsg" style="font-size:22px">Kuuntele tahtia</div>' +
+    '<div class="bm-dots" id="bmDots"></div><button class="bm-pad" id="bmPad">TAP</button><div class="hint" style="text-align:center" id="bmH"></div>';
+  $('bmPad').addEventListener('pointerdown', function(ev){ ev.preventDefault(); beatTap(); });
+  mgCtx(); beatRound();
 }
 function beatRound(){
-  BM.round++; BM.left = 18; BM.bpmA = 92 + Math.floor(Math.random()*46);
-  var off = (12 + Math.random()*16) * (Math.random() < 0.5 ? -1 : 1); BM.bpm = Math.max(60, Math.min(170, BM.bpmA + off));
-  BM.pa = 0; BM.pb = Math.random(); BM.lastA = 0; BM.lastB = Math.floor(BM.pb);
-  $('bmS').value = Math.round(BM.bpm*10); $('bmR').textContent = 'Levypari ' + BM.round + '/' + BM.N;
+  BM.round++; BM.ph = 'listen'; BM.taps = []; BM.marks = [];
+  var bpm = 84 + (BM.round-1)*18 + Math.floor(Math.random()*10); BM.iv = 60000/bpm;
+  BM.nL = 4; BM.nP = 4 + BM.round*2;                     // kuunneltavat / pelaajan lyönnit
+  BM.t0 = performance.now() + 700;                        // ensimmäinen isku
+  var h = ''; for(var i=0;i<BM.nL+BM.nP;i++) h += '<i class="'+(i<BM.nL?'l':'p')+'"></i>'; $('bmDots').innerHTML = h;
+  $('bmR').textContent = 'Kierros ' + BM.round + '/' + BM.N + ' · ' + Math.round(bpm) + ' BPM';
+  $('bmMsg').textContent = 'Kuuntele tahtia'; $('bmH').textContent = 'Kun ääni katoaa, jatka samaa tahtia napauttamalla.';
+  BM.played = -1; cancelAnimationFrame(MG.raf); MG.last = performance.now(); MG.raf = requestAnimationFrame(beatLoop);
 }
-function beatClick(kick){
-  var c = MG.ctx; if(!c) return;
-  var t = c.currentTime, o, g = c.createGain();
-  if(kick){ o = c.createOscillator(); o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12); g.gain.setValueAtTime(0.7, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18); }
-  else { o = c.createOscillator(); o.type = 'square'; o.frequency.setValueAtTime(1800, t); g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05); }
+function beatClick(){
+  var c = MG.ctx; if(!c) return; var t = c.currentTime, o = c.createOscillator(), g = c.createGain();
+  o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(50, t + 0.1);
+  g.gain.setValueAtTime(0.7, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
   o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.2);
 }
+function beatTap(){
+  if(!MG.on || MG.kind !== 'beat' || BM.ph !== 'play') return;
+  var now = performance.now(), k = Math.round((now - BM.t0)/BM.iv);
+  if(k < BM.nL || k >= BM.nL + BM.nP || BM.marks[k] !== undefined) return;
+  var err = Math.abs(now - (BM.t0 + k*BM.iv)), p = err < 70 ? 1 : err < 140 ? 0.6 : err < 220 ? 0.25 : 0;
+  BM.marks[k] = p; BM.pts += p; BM.cnt++;
+  var d = $('bmDots').children[k]; if(d) d.className = 'p ' + (p >= 1 ? 'g' : p >= 0.6 ? 'y' : 'r');
+  $('bmMsg').textContent = p >= 1 ? 'Täsmälleen!' : p >= 0.6 ? 'Hyvä' : p > 0 ? 'Vähän sivussa' : 'Ohi';
+}
+function beatTotal(){ var t = 0; for(var r=1;r<=BM.N;r++) t += 4 + r*2; return t; }
 function beatLoop(now){
   if(!MG.on || MG.kind !== 'beat') return;
-  var dt = Math.min(0.1, (now - MG.last)/1000); MG.last = now;
-  BM.pa += dt * BM.bpmA/60;
-  BM.pb += dt * (BM.bpm/60) * (1 + 0.07*BM.nudge);
-  if(Math.floor(BM.pa) > BM.lastA){ BM.lastA = Math.floor(BM.pa); beatClick(true); $('bmA').classList.add('hit'); setTimeout(function(){ $('bmA').classList.remove('hit'); }, 90); }
-  if(Math.floor(BM.pb) > BM.lastB){ BM.lastB = Math.floor(BM.pb); beatClick(false); $('bmB').classList.add('hit'); setTimeout(function(){ $('bmB').classList.remove('hit'); }, 90); }
-  var d = ((BM.pb - BM.pa) % 1 + 1.5) % 1 - 0.5;                 // vaihe-ero -0.5..0.5
-  BM.offMs = d * 60000 / BM.bpmA;
-  var al = Math.abs(BM.offMs) < 45;
-  $('bmB').textContent = BM.bpm.toFixed(1).replace('.',',') + ' BPM';
-  var x = Math.max(-1, Math.min(1, BM.offMs/250));
-  $('bmD').style.left = (50 + x*46) + '%'; $('bmD').style.background = al ? 'var(--ok)' : 'var(--a)';
-  BM.left -= dt; BM.total += dt; if(al) BM.aligned += dt;
-  $('bmT').style.transform = 'scaleX(' + Math.max(0, BM.left/18) + ')';
-  mgScoreTxt(BM.aligned/(BM.N*18*0.6));
-  if(BM.left <= 0){
-    if(BM.round >= BM.N){ var r = Math.min(1, BM.aligned/(BM.N*18*0.6)); mgFinish(r, 'Tahdissa ' + BM.aligned.toFixed(1).replace('.',',') + ' s.'); return; }
-    beatRound();
+  var k = Math.floor((now - BM.t0)/BM.iv + 0.02), dots = $('bmDots').children;
+  while(BM.played < k && BM.played < BM.nL + BM.nP - 1){
+    BM.played++;
+    if(BM.played < BM.nL){ beatClick(); dots[BM.played].className = 'l on'; }
+    else if(BM.ph !== 'play'){ BM.ph = 'play'; $('bmMsg').textContent = 'Nyt sinä!'; }
   }
+  if(BM.ph === 'play' && now > BM.t0 + (BM.nL + BM.nP)*BM.iv - BM.iv*0.3 + 250){
+    // kierros ohi
+    BM.ph = 'wait';
+    if(BM.round >= BM.N){ var r = Math.min(1, BM.pts/beatTotal()); mgFinish(r, 'Osuit tahtiin ' + BM.cnt + ' kertaa.'); return; }
+    $('bmMsg').textContent = 'Seuraava kierros…';
+    MG.tmo = setTimeout(beatRound, 1100); return;
+  }
+  var pr = BM.pts/beatTotal(); mgScoreTxt(pr);
   MG.raf = requestAnimationFrame(beatLoop);
 }
 $('mgList').addEventListener('click', function(e){ var b = e.target.closest('[data-mg]'); if(b) mgOpen(b.dataset.mg); });
-$('mgBody').addEventListener('click', function(e){ var b = e.target.closest('[data-gs]'); if(b && MG.kind === 'guess' && MG.on) guessAnswer(b.dataset.gs); });
 $('mgDone').addEventListener('click', function(){ $('mg').classList.remove('on'); mgRelease(); render(true); });
 $('mgQuit').addEventListener('click', mgQuit);
 
@@ -2135,7 +2084,7 @@ document.addEventListener('visibilitychange', function(){
 window.addEventListener('pagehide', save);
 
 // testikoukku
-window.__taajuus = {MG:MG, TN:function(){return TN;}, GS:function(){return GS;}, BM:function(){return BM;}, mgOpen:mgOpen, mgCtx:mgCtx, FL:FL, dq:function(){return S.dq;}, dailyTick:dailyTick, heardSong:heardSong, drawCol:drawCol, state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();S.setup=true;lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, voteNow:voteNow, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
+window.__taajuus = {MG:MG, TN:function(){return TN;}, BM:function(){return BM;}, mgOpen:mgOpen, mgCtx:mgCtx, FL:FL, dq:function(){return S.dq;}, dailyTick:dailyTick, heardSong:heardSong, drawCol:drawCol, state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();S.setup=true;lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, voteNow:voteNow, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
 
 loadReal();
 drawLb(); setTimeout(function(){ lbSend(false); lbFetch(); }, 1500);
