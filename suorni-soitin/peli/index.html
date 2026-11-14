@@ -496,10 +496,14 @@ var ANT = [
   {n:'Kaupunginosan radio', a:'kaupunginosa'},
   {n:'Kaupunkiradio', a:'koko kaupunki'},
   {n:'Maakuntaradio', a:'koko maakunta'},
-  {n:'Valtakunnan taajuus', a:'koko Suomi'}
+  {n:'Valtakunnan taajuus', a:'koko Suomi'},
+  {n:'Pohjoismainen lähetys', a:'koko Pohjola'},
+  {n:'Euroopan aallot', a:'koko Eurooppa'},
+  {n:'Satelliittiradio', a:'koko maapallo'},
+  {n:'Kuuradio', a:'maapallo ja Kuu'}
 ];
-var ANT_REACH = [4, 9, 20, 46, 105, 240];
-var ANT_COST  = [0, 45, 350, 3500, 40000, 500000];
+var ANT_REACH = [4, 9, 20, 46, 105, 240, 520, 1150, 2500, 5400];
+var ANT_COST  = [0, 45, 350, 3500, 40000, 500000, 6000000, 80000000, 1200000000, 20000000000];
 
 /* ---------- Tila ---------- */
 var KEY = 'taajuus_v1';
@@ -643,7 +647,7 @@ function incomePerSec(){ return S.lis * COIN_PER_LIS * coinMult() * (1 + AD_MULT
 /* ---------- Kauppa ---------- */
 function songCost(){ return Math.round(10 * Math.pow(1.2, S.songsBought)); }
 function studioCost(){ return Math.round(90 * Math.pow(2.6, S.studio)); }
-var STUDIO_MAX = 12;
+var STUDIO_MAX = 20;
 
 function buySong(g){
   var c = songCost();
@@ -1874,6 +1878,10 @@ var ACH = [
   {id:'h4',  n:'Koko tiimi', x:'Palkkaa kaikki neljä juontajaa', t:function(){ return Object.keys(S.hired).length >= 4; }},
   {id:'ad',  n:'Kaupallinen asema', x:'Palkkaa mainosmyyjä', t:function(){ return S.adOn; }},
   {id:'a3',  n:'Kaupunkiradio', x:'Hanki Kaupunkiradion antenni', t:function(){ return S.antenna >= 3; }},
+  {id:'a6',  n:'Pohjolan ääni', x:'Hanki Pohjoismainen lähetys', t:function(){ return S.antenna >= 6; }},
+  {id:'a8',  n:'Maailmanradio', x:'Hanki Satelliittiradio', t:function(){ return S.antenna >= 8; }},
+  {id:'a9',  n:'Kuuhun asti', x:'Hanki Kuuradio', t:function(){ return S.antenna >= 9; }},
+  {id:'st20', n:'Täysi studio', x:'Päivitä studiolaitteet tasolle 20', t:function(){ return S.studio >= 20; }},
   {id:'a5',  n:'Koko Suomi kuuluu', x:'Hanki Valtakunnan taajuus', t:function(){ return S.antenna >= 5; }},
   {id:'k1',  n:'Ensimmäinen kaupunki', x:'Rakenna kuuluvuus ensimmäiseen kaupunkiin', t:function(){ return cityCount() >= 1; }},
   {id:'k6',  n:'Puoli Suomea', x:'Rakenna kuuluvuus 6 kaupunkiin', t:function(){ return cityCount() >= 6; }},
