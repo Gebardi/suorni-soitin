@@ -540,7 +540,7 @@
 		var sc = document.querySelector('[data-sb-clock]');
 		if (sc) { if (window.__suorniClk) { clearInterval(window.__suorniClk); } var tickc = function () { var d = new Date(); sc.textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }; tickc(); window.__suorniClk = setInterval(tickc, 1000); }
 		var loose = [].slice.call(box.children);
-		var TABS = [['tanaan', '📌 Tänään'], ['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista'], ['kanavat', '📻 Kanavat'], ['tarve', '🎯 Kappaletarve'], ['levy', '🗄️ Levytila'], ['ihmiset', '🎤 Ihmisjuontajat'], ['mainokset', '📢 Mainokset'], ['sivusto', '🌐 Sivusto']];
+		var TABS = [['tanaan', '📌 Tänään'], ['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista'], ['kanavat', '📻 Kanavat'], ['tarve', '🎯 Kappaletarve'], ['levy', '🗄️ Levytila'], ['ihmiset', '🎤 Ihmisjuontajat'], ['mainokset', '📢 Mainokset'], ['peli', '🎮 Peli'], ['sivusto', '🌐 Sivusto']];
 
 		/* Massalisäys + päivittäinen tarkistus */
 		var upw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
@@ -926,6 +926,41 @@
 			});
 		})();
 
+		/* Taajuus-peli: nimimerkkien moderointi ja kappaleiden peukutus */
+		var pgw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
+		function drawPeli() {
+			var P = D.peli || { pend: [], ok: [], no: [], votes: [] };
+			function fm(n) { return Number(n).toLocaleString('fi-FI'); }
+			function grp(title, list, btns) {
+				var h = '<p style="margin:12px 0 2px"><b>' + title + ' (' + list.length + ')</b></p>';
+				if (!list.length) { return h + '<p style="font-size:13px;opacity:.7;margin:0">Ei ketään.</p>'; }
+				return h + list.map(function (x) {
+					return '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:6px 0;border-top:1px solid #2a303b"><span><b>' + esc(x.n) + '</b> <span style="opacity:.7;font-size:13px">$ ' + fm(x.s) + '</span></span><span>' + btns.map(function (b) { return '<button type="button" data-pid="' + esc(x.pid) + '" data-do="' + b[0] + '">' + b[1] + '</button>'; }).join(' ') + '</span></div>';
+				}).join('');
+			}
+			var h = '<h3 style="margin:0 0 6px">🎮 Taajuus-peli</h3><p style="font-size:13px;opacity:.8;margin:0 0 6px">Pelaajien nimimerkit näkyvät Top 10 -listalla vasta hyväksynnän jälkeen. Pisteet ovat pelaajien itse ilmoittamia.</p>';
+			h += grp('Odottaa hyväksyntää', P.pend, [['ok', '✅ Hyväksy'], ['no', '🚫 Hylkää']]);
+			h += grp('Hyväksytyt', P.ok, [['no', '🚫 Hylkää'], ['del', '🗑️']]);
+			h += grp('Hylätyt', P.no, [['ok', '✅ Hyväksy'], ['del', '🗑️']]);
+			h += '<h3 style="margin:16px 0 6px">👍 Kappaleiden peukutus pelissä</h3><p style="font-size:13px;opacity:.8;margin:0 0 6px">Pelaajat arvioivat oikeita kappaleita. Järjestys on nettopeukkujen mukaan. Pienet äänimäärät ovat vain suuntaa-antavia.</p>';
+			if (!(P.votes || []).length) { h += '<p style="font-size:13px;opacity:.7">Ei vielä ääniä.</p>'; }
+			else {
+				h += '<table style="width:100%;font-size:14px;border-collapse:collapse"><tr style="text-align:left"><th>Kappale</th><th>👍</th><th>👎</th><th>Hyväksyntä</th></tr>' + P.votes.map(function (v) {
+					var pc = Math.round(v.u / (v.u + v.d) * 100);
+					return '<tr style="border-top:1px solid #2a303b"><td>' + esc(v.n) + '</td><td>' + v.u + '</td><td>' + v.d + '</td><td style="color:' + (pc >= 70 ? '#4cc27a' : pc < 40 ? '#ff5a4f' : '#e5d04f') + '">' + pc + ' %</td></tr>';
+				}).join('') + '</table>';
+			}
+			pgw.innerHTML = h;
+			[].forEach.call(pgw.querySelectorAll('[data-pid]'), function (b) {
+				b.addEventListener('click', function () {
+					if (b.getAttribute('data-do') === 'del' && !confirm('Poistetaanko pelaaja listalta?')) { return; }
+					b.disabled = true;
+					api('POST', D.urls.peliact, { pid: b.getAttribute('data-pid'), do: b.getAttribute('data-do') }).then(function (j) { D.peli = j.peli; drawPeli(); }).catch(function (e) { alert(e.message); b.disabled = false; });
+				});
+			});
+		}
+		drawPeli();
+
 		/* Kappaletarve: missä ohjelmissa ja kanavilla kappaleita puuttuu */
 		var nw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
 		(function () {
@@ -1247,7 +1282,7 @@
 		}
 		hsDraw();
 
-		var bucket = { tanaan: [tnw], yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, tgw, bw, tw], kanavat: [chw, clw], tarve: [nw], levy: [dkw], ihmiset: [hsw], mainokset: [adw], sivusto: [sow, bkw] };
+		var bucket = { tanaan: [tnw], yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, tgw, bw, tw], kanavat: [chw, clw], tarve: [nw], levy: [dkw], ihmiset: [hsw], mainokset: [adw], peli: [pgw], sivusto: [sow, bkw] };
 		var used = [];
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });
@@ -1256,7 +1291,7 @@
 		var panes = {}, tbtn = {};
 		var npend = (D.subs || []).filter(function (x) { return x.status === 'pending'; }).length;
 		var gpend = (D.greets || []).filter(function (g) { return ['ok', 'no', 'played'].indexOf(g.status) < 0; }).length;
-		var badge = { yhteiso: npend, yleiso: gpend, tanaan: todoItems().length };
+		var badge = { yhteiso: npend, yleiso: gpend, tanaan: todoItems().length, peli: ((D.peli || {}).pend || []).length };
 		TABS.forEach(function (t) {
 			var b = el('button', { type: 'button' }, t[1] + (badge[t[0]] ? ' <b class="bdg">' + badge[t[0]] + '</b>' : ''));
 			b.addEventListener('click', function () { show(t[0]); });
