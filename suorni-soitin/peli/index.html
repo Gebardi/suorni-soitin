@@ -60,6 +60,7 @@ main{flex:1;overflow-y:auto;padding:14px 14px 96px}
 @keyframes eq{0%,100%{height:25%}50%{height:100%}}
 .np .t{min-width:0}
 .np .t b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vote{display:flex;gap:8px;margin-top:6px}.vote button{border:1px solid var(--line);border-radius:8px;padding:3px 10px;font-size:15px;opacity:.55}.vote button.on{opacity:1;border-color:var(--a);background:rgba(77,163,255,.12)}
 .np .t small{font-family:var(--mono);font-size:11px;color:var(--mu)}
 .silent .eq i{animation:none;height:10%;background:var(--mu)}
 
@@ -224,7 +225,7 @@ details.fl li b{color:var(--tx);font-weight:500}
         <div class="ev" id="evBox"><b id="evT"></b><span id="evX"></span><div class="tb" id="evBar"></div></div>
         <div class="np">
           <div class="eq"><i></i><i></i><i></i><i></i></div>
-          <div class="t"><b id="npT">–</b><small id="npS">–</small><div class="say" id="npSay"></div><div class="nfo" id="npI"></div></div>
+          <div class="t"><b id="npT">–</b><small id="npS">–</small><div class="say" id="npSay"></div><div class="nfo" id="npI"></div><div class="vote" id="vote" style="display:none"><button id="vUp" aria-label="Peukku ylös">👍</button><button id="vDn" aria-label="Peukku alas">👎</button></div></div>
           <img class="av" id="npAv" alt="" style="display:none">
         </div>
       </div>
@@ -440,7 +441,7 @@ function fresh(){
     antenna:0, studio:0,
     hired:{}, hostIn:[null,null,null,null], hostLv:{}, ads:[0,0,0,0], adOn:false,
     tp:0, tpFree:0, perks:{}, runs:0, sbLeft:0, sbNext:0,
-    buffs:[], cities:{}, nick:'', pid:'', bank:0, lastSent:-1, ach:{}, liveCd:0, lives:0, liveBest:0, wishes:0, choices:0, choice:null,
+    buffs:[], cities:{}, nick:'', pid:'', bank:0, lastSent:-1, votes:{}, fails:0, luck:0, ach:{}, liveCd:0, lives:0, liveBest:0, wishes:0, choices:0, choice:null,
     ls:0, total:20, hearts:0, songsBought:0,
     last:Date.now(), started:Date.now()
   };
@@ -600,7 +601,7 @@ function prestige(){
   var old = S, n = fresh();
   n.tp = old.tp + gain; n.tpFree = old.tpFree + gain; n.perks = old.perks; n.runs = (old.runs||0) + 1;
   n.ach = old.ach; n.lives = old.lives; n.liveBest = old.liveBest; n.wishes = old.wishes; n.choices = old.choices; n.liveCd = old.liveCd;
-  n.nick = old.nick; n.pid = old.pid; n.bank = (old.bank||0) + old.total; n.lastSent = old.lastSent; n.hearts = old.hearts; n.fixes = old.fixes; n.started = old.started; n.sbNext = old.sbNext; n.sbLeft = old.sbLeft;
+  n.votes = old.votes; n.fails = old.fails; n.luck = old.luck; n.nick = old.nick; n.pid = old.pid; n.bank = (old.bank||0) + old.total; n.lastSent = old.lastSent; n.hearts = old.hearts; n.fixes = old.fixes; n.started = old.started; n.sbNext = old.sbNext; n.sbLeft = old.sbLeft;
   n.coins = 20; n.total = 20;
   if(old.perks.p1) n.antenna = 1;
   if(old.perks.p2){ n.hired = old.hired; n.hostLv = old.hostLv; n.hostIn = old.hostIn.slice(); }
@@ -640,9 +641,9 @@ function clockText(){
   return (hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
 }
 var toastT;
-function toast(t){
+function toast(t, ms){
   var e = $('toast'); e.textContent = t; e.classList.add('on');
-  clearTimeout(toastT); toastT = setTimeout(function(){ e.classList.remove('on'); }, 2200);
+  clearTimeout(toastT); toastT = setTimeout(function(){ e.classList.remove('on'); }, ms || 2200);
 }
 function fitCls(m){
   return m >= 1.3 ? ['g3','▲▲▲'] : m >= 1.05 ? ['g2','▲▲'] : m >= 0.8 ? ['g1','▲'] : ['g0','▽'];
@@ -660,7 +661,7 @@ function render(force){
   $('clk').textContent = clockText();
   $('clkSlot').textContent = SLOTS[idx].n;
   $('stName').textContent = ANT[S.antenna].n;
-  $('stSub').textContent = 'kuuluvuus: ' + ANT[S.antenna].a + ' · ' + cityCount() + '/' + CITIES.length + ' kaupunkia · maine ' + fameLevel();
+  $('stSub').textContent = ANT[S.antenna].a + ' · ' + cityCount() + '/' + CITIES.length + ' kaupunkia · maine ' + fameLevel();
 
   // soi parhaillaan
   var card = $('stCard');
@@ -724,6 +725,7 @@ function render(force){
     drawAch();
     drawMap();
   }
+  drawVote();
   $('shopDot').classList.toggle('has', canBuyAny());
   $('achDot').classList.toggle('has', achNew);
 }
@@ -1018,6 +1020,28 @@ function drawMap(){
 }
 
 
+
+/* ---------- Peukutus: kerää dataa oikealle radiolle ---------- */
+function ensurePid(){ if(!S.pid){ S.pid = ''; for(var i=0;i<16;i++) S.pid += '0123456789abcdef'.charAt(Math.floor(Math.random()*16)); } }
+function voteNow(v){
+  var c = AU.on && AU.cur && AU.cur.real ? AU.cur : null; if(!c) return;
+  ensurePid();
+  var old = S.votes[c.id] || 0, nv = (old === v) ? 0 : v;
+  if(nv === 0) delete S.votes[c.id]; else S.votes[c.id] = nv;
+  api('peli/vote', {body:{pid:S.pid, tid:c.id, v:nv}}, function(){});
+  toast(nv === 1 ? 'Peukku ylös! Kiitos, kerromme sen oikealle radiolle.' : nv === -1 ? 'Peukku alas kirjattu. Kiitos palautteesta.' : 'Äänesi peruttu', 2600);
+  save(); drawVote();
+}
+function drawVote(){
+  var c = AU.on && AU.cur && AU.cur.real ? AU.cur : null, box = $('vote');
+  box.style.display = c ? '' : 'none';
+  if(!c) return;
+  var v = S.votes[c.id] || 0;
+  $('vUp').classList.toggle('on', v === 1); $('vDn').classList.toggle('on', v === -1);
+}
+$('vUp').addEventListener('click', function(){ voteNow(1); });
+$('vDn').addEventListener('click', function(){ voteNow(-1); });
+
 /* ---------- Top 10 ja nimimerkki ---------- */
 var LBD = null, lbAcc = 50, lbBusy = false;
 function myScore(){ return Math.floor((S.bank||0) + S.total); }
@@ -1139,7 +1163,37 @@ var CHOICES = [
    b:{l:'Pidä linjasi', d:'Pieni palkkio', gain:25}},
   {t:'Henkilökunta pyytää kahvitaukoa', x:'Hyvä mieli näkyy lähetyksessä.',
    a:{l:'Tarjoa kahvit', d:'Maksaa, kolikot ×1,25', cost:40, buff:['Hyvä tiimihenki',120,1,1.25]},
-   b:{l:'Ei aikaa', d:'Ei vaikutusta'}}
+   b:{l:'Ei aikaa', d:'Ei vaikutusta'}},
+  {t:'Serkkusi bändi haluaa avausbiisin', x:'"Ihan oikeasti hyviä, kyllä sä tykkäät."',
+   a:{l:'Soita serkun levy', d:'Perhe on ylpeä', hit:0.35, buff:['Serkun säveltäjäpäivä',90,0.8,1], msg:'Kitara oli viritetty eri vuosikymmenelle. 35 % kuulijoista lähti.'},
+   b:{l:'Väitä, että postin hukkasi levyn', d:'Joulu on tästä lähtien hankala', buff:['Perhe-ero',60,0.95,1]}},
+  {t:'Juontajan mikrofoni jäi vahingossa päälle', x:'Kaikki kuuluu, myös lounas.',
+   a:{l:'Jatka kuin ei mitään', d:'Rohkea veto: kaikki tai ei mitään', risk:{p:0.5, good:{buff:['Aito tunnelma',90,1.5,1], msg:'Kuulijat rakastivat suoraa puhetta! Kuulijat ×1,5.'}, bad:{hit:0.5, buff:['Lounaan äänet',60,0.7,1], msg:'Lounaan äänet olivat liikaa. Puolet kuulijoista poistui.'}}},
+   b:{l:'Sammuta mikrofoni', d:'Pieni palkkio hiljaisuudesta', gain:20}},
+  {t:'Rotta Reiska on muuttanut lähetinmastoon', x:'Se on jo pureskellut yhtä kaapelia.',
+   a:{l:'Kutsu tuholaistorjuja', d:'Maksaa, Reiska muuttaa pois', cost:60},
+   b:{l:'Nimeä Reiska asemamaskotiksi', d:'Söpö, mutta kaapelit ovat herkkua', hit:0.4, buff:['Rotta Reiska',90,0.85,1], msg:'Reiska söi pääkaapelin. Lähetys katkesi ja 40 % kuulijoista siirtyi muualle.'}},
+  {t:'Tuntematon jättää asemalle mystisen laatikon', x:'Siinä lukee vain "Avaa, kiitos".',
+   a:{l:'Avaa laatikko', d:'Mitä pahaa siitä voisi seurata?', risk:{p:0.5, good:{gain:300, msg:'Laatikossa oli vanha lahjoitusrahasto!'}, bad:{hit:0.6, buff:['Laatikon ääni',60,0.7,1], msg:'Laatikossa oli 300 kappaletta tiskialtaan kolinaa. 60 % kuulijoista pakeni.'}}},
+   b:{l:'Vie laatikko roskiin', d:'Ei vaikutusta'}},
+  {t:'Hautaustoimisto haluaa mainostaa', x:'"Ikuinen Leposija: soita ennen kuin on myöhäistä."',
+   a:{l:'Julkaise mainos iskelmäillan keskellä', d:'Rahaa tulee, tunnelma laskee', gain:120, hit:0.25, msg:'Kuulijat pitivät ajoitusta masentavana. 25 % kuulijoista lähti.'},
+   b:{l:'Kieltäydy kohteliaasti', d:'Ei vaikutusta'}},
+  {t:'Tähtijuontaja ehdottaa nelituntista monologia', x:'Aiheena sää vuonna 1987.',
+   a:{l:'Anna mennä, taide on taidetta', d:'Taiteellinen vapaus', hit:0.8, buff:['Säämonologi',120,0.5,1], msg:'Neljän tunnin kohdalla kuuntelijoita oli jäljellä yksi. Hän kuuntelee edelleen.'},
+   b:{l:'Pyydä viisi minuuttia', d:'Pieni palkkio', gain:40}},
+  {t:'Kissa käveli mikserin yli', x:'Äänenvoimakkuus on nyt mielenkiintoinen.',
+   a:{l:'Yritä korjata', d:'Kissa ei ole samaa mieltä', risk:{p:0.6, good:{msg:'Korjaus onnistui. Kissa on silti kateellinen.', gain:40}, bad:{hit:0.3, msg:'Kissa vastusti. 30 % kuulijoista kuuli kissan konsertin.'}}},
+   b:{l:'Anna kissan tuottaa', d:'Luovuus ei tunne rajoja', risk:{p:0.5, good:{buff:['Kissamiksaus viraali',120,1.8,1], msg:'Kissan miksaus nousi viraaliksi! Kuulijat ×1,8.'}, bad:{hit:0.5, buff:['Kissan miksaus',60,0.7,1], msg:'Kissan miksaus oli yksi pitkä jauhe. Puolet kuulijoista lähti.'}}}},
+  {t:'Saunakaverit haluavat lähettää suoraan saunasta', x:'Löylyä, lenkkimakkaraa ja mikrofoni.',
+   a:{l:'Lähetä saunasta', d:'Hikinen mutta aito', risk:{p:0.5, good:{buff:['Löylyt',90,1.4,1], msg:'Löylyhetki oli hitti. Kuulijat ×1,4.'}, bad:{hit:0.35, msg:'Mikrofoni huurtui, ja ääni kuului kuin kala kuiskaisi. 35 % kuulijoista lähti.'}}},
+   b:{l:'Pidä lähetys kuivana', d:'Ei vaikutusta'}},
+  {t:'Viesti: "Voitit miljoona, klikkaa linkkiä!"', x:'Lähettäjänä "Prinssi Uzbek-Kiitos".',
+   a:{l:'Klikkaa linkkiä', d:'Mitä pahaa siitä voisi seurata?', hit:0.9, buff:['Haittaohjelma',120,0.4,1], msg:'Lähetin joutui haittaohjelman valtaan. 90 % kuulijoista katosi eetteriin.'},
+   b:{l:'Poista viesti', d:'Viisas valinta', gain:30}},
+  {t:'Kuuntelija toivoo neljän minuutin hiljaisuutta', x:'"Se on avantgardea, kyllä te ymmärrätte."',
+   a:{l:'Soita hiljaisuus', d:'Rohkea taiteellinen ele', risk:{p:0.5, good:{gain:150, buff:['Taidekriitikot',90,1.3,1], msg:'Kriitikot kehuivat rohkeutta. Kuulijat ×1,3.'}, bad:{hit:0.4, msg:'Kuulijat luulivat lähetyksen katkenneen. 40 % kuulijoista lähti.'}}},
+   b:{l:'Soita tavallinen kappale', d:'Ei vaikutusta'}}
 ];
 var choiceTimer = 100 + Math.random()*60, lastChoice = -1;
 function choiceAmt(sec){ return Math.max(15, Math.round(incomePerSec() * sec)); }
@@ -1169,16 +1223,27 @@ function drawChoice(){
   }
   $('choiceBody').innerHTML = '<p style="margin:0 0 2px"><b>'+c.t+'</b></p><p class="mu" style="margin:0">'+c.x+'</p><div class="opts">'+opt('a',c.a)+opt('b',c.b)+'</div>';
 }
+function applyFx(e){
+  var bad = false;
+  if(e.gain){ var g = choiceAmt(e.gain); S.coins += g; S.total += g; }
+  if(e.hit){ S.lis = Math.max(0, S.lis * (1 - e.hit)); if(e.hit >= 0.25) bad = true; }
+  if(e.buff) addBuff(e.buff[0], e.buff[1], e.buff[2], e.buff[3]);
+  return bad;
+}
 function choose(k){
   if(S.choice === null) return;
   var o = CHOICES[S.choice][k], cost = optCost(o);
   if(cost && S.coins < cost) return;
   if(cost) S.coins -= cost;
-  if(o.gain){ var g = choiceAmt(o.gain); S.coins += g; S.total += g; }
-  if(o.buff) addBuff(o.buff[0], o.buff[1], o.buff[2], o.buff[3]);
+  var msg = o.msg, bad = false;
+  if(o.risk){
+    var win = Math.random() >= o.risk.p, fx = win ? o.risk.good : o.risk.bad;
+    bad = applyFx(fx); msg = fx.msg; if(win) S.luck = (S.luck||0) + 1;
+  } else bad = applyFx(o);
+  if(bad) S.fails = (S.fails||0) + 1;
   S.choice = null; S.choices++;
-  toast(o.buff ? o.buff[0] + ' alkoi' : 'Päätös tehty');
-  render(true); save();
+  toast(msg || (o.buff ? o.buff[0] + ' alkoi' : 'Päätös tehty'), msg ? 4500 : 2200);
+  lastSig = ''; render(true); save();
 }
 
 /* ---------- Kuuntelijatoiveet ---------- */
@@ -1373,6 +1438,9 @@ var ACH = [
   {id:'k1',  n:'Ensimmäinen kaupunki', x:'Rakenna kuuluvuus ensimmäiseen kaupunkiin', t:function(){ return cityCount() >= 1; }},
   {id:'k6',  n:'Puoli Suomea', x:'Rakenna kuuluvuus 6 kaupunkiin', t:function(){ return cityCount() >= 6; }},
   {id:'k12', n:'Koko kartta', x:'Kuulu kaikissa 12 kaupungissa', t:function(){ return cityCount() >= CITIES.length; }},
+  {id:'f1',  n:'Mitä tapahtui?', x:'Menetä päätöksellä kuuntelijoita (vähintään 25 %)', t:function(){ return S.fails >= 1; }},
+  {id:'f5',  n:'Kriisinhallinta', x:'Selviä 5 katastrofista', t:function(){ return S.fails >= 5; }},
+  {id:'r3',  n:'Onnenpotku', x:'Voita kolme riskivalintaa', t:function(){ return S.luck >= 3; }},
   {id:'lv1', n:'Ensimmäinen live', x:'Pelaa live-lähetys', t:function(){ return S.lives >= 1; }},
   {id:'lv9', n:'Rytmimestari', x:'Live-lähetys 90 % tai paremmin', t:function(){ return S.liveBest >= 0.9; }},
   {id:'w5',  n:'Toiveiden täyttäjä', x:'Toteuta 5 kuuntelijatoivetta', t:function(){ return S.wishes >= 5; }},
@@ -1529,7 +1597,7 @@ document.addEventListener('visibilitychange', function(){
 window.addEventListener('pagehide', save);
 
 // testikoukku
-window.__taajuus = {state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
+window.__taajuus = {state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, voteNow:voteNow, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
 
 loadReal();
 drawLb(); setTimeout(function(){ lbSend(false); lbFetch(); }, 1500);
