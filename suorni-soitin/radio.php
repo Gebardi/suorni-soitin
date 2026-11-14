@@ -21,6 +21,7 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-teosto.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-disk.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-hosts.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-peli.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-peli-kisa.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-backup.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-icons.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-station.php';
