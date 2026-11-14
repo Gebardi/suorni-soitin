@@ -1667,6 +1667,7 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 	<div class="rv"><span>VOL</span><input type="range" min="0" max="100" value="100" data-vol aria-label="Äänenvoimakkuus"></div>
 	<?php if ( ! $shop ) : ?><div class="rsh"><button type="button" class="rg" data-share aria-label="Jaa tämä kappale"><?php echo suorni_ic( 'link' ); ?> Jaa tämä kappale</button><span data-sharem aria-live="polite"></span></div><?php endif; ?>
 	<div class="rc" data-cap></div>
+	<?php if ( ! $shop && function_exists( 'suorni_peli_url' ) ) { echo suorni_peli_html(); } ?>
 	<?php if ( $cfg['comm'] ) : ?>
 	<div class="ri" data-cq hidden><b><?php echo suorni_ic( 'sparkle' ); ?> Tulossa uusilta artisteilta</b><div data-cqlist></div></div>
 	<?php endif; ?>
@@ -1722,7 +1723,6 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 	</div>
 	<div class="ri" data-inst hidden><b><?php echo suorni_ic( 'phone' ); ?> Asenna radio puhelimeen</b><span data-insttxt></span><button type="button" class="rg" data-instbtn hidden>Asenna</button></div>
 	<?php if ( ! $shop ) { echo suorni_tv_html(); } ?>
-	<?php if ( ! $shop && function_exists( 'suorni_peli_url' ) ) { echo suorni_peli_html(); } ?>
 	<?php if ( $shop ) : ?><div class="rf"><?php echo suorni_flag(); ?> Suorni Radio – musiikkia Suomesta, Suomen yössä</div><?php else : echo suorni_station_footer( $cfg ); endif; ?>
 	</div>
 </div>
