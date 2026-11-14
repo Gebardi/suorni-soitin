@@ -213,7 +213,7 @@ details.fl li b{color:var(--tx);font-weight:500}
 #lvTap{width:100%;max-width:420px;padding:26px 12px;font-size:16px;font-weight:700;letter-spacing:.14em;background:var(--a);color:#06101f;border-radius:var(--r)}
 #lvRes{width:100%;max-width:420px;text-align:center}
 #lvRes .big{font-family:var(--mono);font-size:34px;color:var(--ok);margin:8px 0}
-.fmap{width:100%;max-width:300px;display:block;margin:0 auto 8px}.fmap .hm{fill:var(--warn);font-size:13px}.fmap .land{fill:#141a28;stroke:var(--line);stroke-width:1.5}.fmap .cov{fill:rgba(77,163,255,.10)}.fmap .cov2{fill:rgba(77,163,255,.14)}.fmap .cty{cursor:pointer}.fmap .hit{fill:transparent}.fmap .dt{fill:var(--mu)}.fmap .cty.on .dt{fill:var(--a)}.fmap .cty.lock .dt{fill:#2a3246}.fmap .cty.sel .dt{stroke:#fff;stroke-width:2}
+.fmap{width:100%;max-width:300px;display:block;margin:0 auto 8px}.fmap .hm{fill:var(--warn);font-size:13px}.fmap .land{fill:#141a28;stroke:var(--line);stroke-width:1.5}.fmap .cov{fill:rgba(77,163,255,.10)}.fmap .cov2{fill:rgba(77,163,255,.14)}.fmap .cty{cursor:pointer}.fmap .hit{fill:transparent}.fmap .dt{fill:var(--mu)}.fmap .cty.on .dt{fill:var(--a)}.fmap .cty.lock .dt{fill:#2a3246}.fmap .cty.kme .dt{stroke:var(--warn);stroke-width:2.5}.fmap .cty.kfoe .dt{stroke:#ff6b6b;stroke-width:2}.fmap .cty.sel .dt{stroke:#fff;stroke-width:2}
 .lb{display:flex;flex-direction:column}.lbr{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}.lbr:first-child{border-top:0}.lbr.me{color:var(--a)}.lbn{width:26px;color:var(--mu);font-family:var(--mono)}.lbt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lbs{font-family:var(--mono)}.nickrow{display:flex;gap:8px;margin-top:8px}.nickrow input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:inherit;padding:10px;font:inherit;font-size:14px}.nickrow .btn{border:0;padding:0 14px}
 .ach{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--line);align-items:center}
 .ach:first-of-type{border-top:0;padding-top:0}
@@ -306,6 +306,7 @@ details.fl li b{color:var(--tx);font-weight:500}
       <div class="card"><h2>Päivän tehtävät</h2><div id="dqBox"></div></div>
       <div class="card"><h2 id="colH">Kokoelma</h2><div id="colBox"></div></div>
       <div class="card"><h2>Top 10 -radiot</h2><div id="lbBox"></div></div>
+      <div class="card"><h2>Viikkokisa</h2><div id="kisaBox"></div></div>
       <div class="card"><h2 id="mapH">Kuuluvuuskartta</h2><div id="mapBox"></div></div>
       <div class="card"><h2 id="achH">Saavutukset</h2><div id="achList"></div></div>
     </section>
@@ -517,7 +518,7 @@ function fresh(){
     tp:0, tpFree:0, perks:{}, runs:0, sbLeft:0, sbNext:0,
     buffs:[], cities:{}, nick:'', pid:'', bank:0, lastSent:-1, votes:{}, fails:0, luck:0, ach:{}, liveCd:0, lives:0, liveBest:0, wishes:0, choices:0, choice:null,
     ls:0, total:20, hearts:0, songsBought:0,
-    setup:false, focus:'all', home:'', mgCd:{}, mgN:0, mgBest:{},
+    setup:false, focus:'all', home:'', mgCd:{}, mgN:0, mgBest:{}, kc:{}, kWeek:'', kLeague:-1, kHad:false, kN:0, kWins:[],
     earn:0, heard:{}, heardN:0, voteN:0, sbN:0, dq:null, streak:0, streakDay:'', dqDays:0,
     last:Date.now(), started:Date.now()
   };
@@ -723,7 +724,7 @@ function prestige(){
   if(S.antenna < 5 || gain < 1) return;
   var old = S, n = fresh();
   n.tp = old.tp + gain; n.tpFree = old.tpFree + gain; n.perks = old.perks; n.runs = (old.runs||0) + 1;
-  n.mgN = old.mgN; n.mgBest = old.mgBest; n.setup = false; n.focus = old.focus; n.home = old.home; n.earn = old.earn; n.heard = old.heard; n.heardN = old.heardN; n.voteN = old.voteN; n.sbN = old.sbN; n.dq = old.dq; n.streak = old.streak; n.streakDay = old.streakDay; n.dqDays = old.dqDays; n.ach = old.ach; n.lives = old.lives; n.liveBest = old.liveBest; n.wishes = old.wishes; n.choices = old.choices; n.liveCd = old.liveCd;
+  n.kc = old.kc; n.kWeek = old.kWeek; n.kLeague = old.kLeague; n.kHad = old.kHad; n.kN = old.kN; n.kWins = old.kWins; n.mgN = old.mgN; n.mgBest = old.mgBest; n.setup = false; n.focus = old.focus; n.home = old.home; n.earn = old.earn; n.heard = old.heard; n.heardN = old.heardN; n.voteN = old.voteN; n.sbN = old.sbN; n.dq = old.dq; n.streak = old.streak; n.streakDay = old.streakDay; n.dqDays = old.dqDays; n.ach = old.ach; n.lives = old.lives; n.liveBest = old.liveBest; n.wishes = old.wishes; n.choices = old.choices; n.liveCd = old.liveCd;
   n.votes = old.votes; n.fails = old.fails; n.luck = old.luck; n.nick = old.nick; n.pid = old.pid; n.bank = (old.bank||0) + old.total; n.lastSent = old.lastSent; n.hearts = old.hearts; n.fixes = old.fixes; n.started = old.started; n.sbNext = old.sbNext; n.sbLeft = old.sbLeft;
   n.coins = 20; n.total = 20;
   if(old.perks.p1) n.antenna = 1;
@@ -849,7 +850,7 @@ function render(force){
   } else eb.classList.remove('on');
 
   // rakenteen muutos -> piirrä listat uudelleen
-  var sig = JSON.stringify([S.slots,S.owned,S.unlocked,S.antenna,S.studio,idx,S.choice, choiceSig(), REAL_OK,S.hired,S.hostIn,S.hostLv,S.ads,S.adOn,S.tp,S.tpFree,S.perks,S.cities,cityOpen,tpGain(), canBuyAny(), GORDER.map(function(k){return Math.round((S.fat[k]||0)*100);})]);
+  var sig = JSON.stringify([S.slots,S.owned,S.unlocked,S.antenna,S.studio,idx,S.choice, choiceSig(), REAL_OK,S.hired,S.hostIn,S.hostLv,S.ads,S.adOn,S.tp,S.tpFree,S.perks,S.cities,cityOpen,K.v,mapTier,tpGain(), canBuyAny(), GORDER.map(function(k){return Math.round((S.fat[k]||0)*100);})]);
   if(force || sig !== lastSig){
     lastSig = sig;
     drawSlots(idx);
@@ -1182,7 +1183,7 @@ function drawMap(){
   for(var j=0;j<CITIES.length;j++){
     if(mapTier >= 0 && CITIES[j].t !== mapTier) continue;
     var d = CITIES[j], o = !!S.cities[d.id], l = S.antenna < d.ant, xx = mx(d.lon), yy = my(d.lat);
-    svg += '<g data-city="'+d.id+'" class="cty'+(o?' on':'')+(l?' lock':'')+(cityOpen===d.id?' sel':'')+'"><circle cx="'+xx+'" cy="'+yy+'" r="9" class="hit"/><circle cx="'+xx+'" cy="'+yy+'" r="'+((o?1.5:1)+d.t*0.9+2.2)+'" class="dt"/>'+(S.home===d.id?'<text x="'+xx+'" y="'+(yy-9)+'" class="hm" text-anchor="middle">★</text>':'')+'</g>';
+    svg += '<g data-city="'+d.id+'" class="cty'+(o?' on':'')+(l?' lock':'')+(cityOpen===d.id?' sel':'')+(S.kc[d.id]!==undefined?' kme':(K.d&&K.d.cities[d.id]&&K.d.cities[d.id].owner?' kfoe':''))+'"><circle cx="'+xx+'" cy="'+yy+'" r="9" class="hit"/><circle cx="'+xx+'" cy="'+yy+'" r="'+((o?1.5:1)+d.t*0.9+2.2)+'" class="dt"/>'+(S.home===d.id?'<text x="'+xx+'" y="'+(yy-9)+'" class="hm" text-anchor="middle">★</text>':'')+'</g>';
   }
   svg += '</svg>';
   var info = '';
@@ -1192,7 +1193,7 @@ function drawMap(){
     if(S.cities[c2.id]) info += '<span class="mu" style="font-size:13px">Kuuluu ✓</span>';
     else if(S.antenna < c2.ant) info += '<span class="mu" style="font-size:12px;text-align:right">Vaatii: '+ANT[c2.ant].n+'</span>';
     else info += buyBtn(cityCost(c2),'Rakenna','city',c2.id);
-    info += '</div>';
+    info += '</div>' + kisaCityRow(c2);
   } else info = '<p class="hint">Napauta paikkaa. Kylä antaa +2 %, kunta +3 %, kaupunki +4 % ja suurkaupunki +6 % kuuntelijoita, lisäksi +3 %, kun ohjelmassa soi sen suosikkityyli. Kun kaikki saman tason paikat kuuluvat, saat ×1,1. Kotikaupunkisi (★) lähellä olevat paikat ovat halvempia.</p>';
   var tf = '<div class="chips" style="margin-bottom:8px"><button class="chip'+(mapTier<0?' sel':'')+'" data-mt="-1">Kaikki</button>';
   for(var tt=0;tt<4;tt++) tf += '<button class="chip'+(mapTier===tt?' sel':'')+'" data-mt="'+tt+'">'+TIER_PL[tt]+' '+tierOwned(tt)+'/'+tierTotal(tt)+(tierDone(tt)?' ✓':'')+'</button>';
@@ -1492,6 +1493,121 @@ $('mgDone').addEventListener('click', function(){ $('mg').classList.remove('on')
 $('mgQuit').addEventListener('click', mgQuit);
 
 document.addEventListener('change', function(e){ var t = e.target; if(t && t.dataset && t.dataset.hsel !== undefined){ setHost(+t.dataset.hsel, t.value || null); save(); } });
+/* ---------- Viikkokisa: kaupunkien valtaus ---------- */
+var K = {d:null, ok:false, busy:false, pend:false, q:[], qT:0, v:0, acc:50};
+var LEAGUES = ['aloittelija','amatööri','ammattilainen','mestari'];
+function kisaFetch(cb){
+  if(K.busy) return; ensurePid(); K.busy = true;
+  api('peli/map', {qs:'pid=' + encodeURIComponent(S.pid)}, function(d){
+    K.busy = false;
+    if(!d || !d.cities){ K.ok = false; K.v++; drawKisa(); if(cb) cb(false); return; }
+    kisaApply(d); if(cb) cb(true);
+  });
+}
+function kisaApply(d){
+  var old = K.d; K.d = d; K.ok = true; K.v++;
+  if(S.kWeek && S.kWeek !== d.week){ kisaWeekEnd(d); S.kc = {}; S.kHad = false; }
+  S.kWeek = d.week;
+  for(var id in S.kc){ if(!(d.cities[id] && d.cities[id].mine)) delete S.kc[id]; }
+  for(var id2 in d.cities){ if(d.cities[id2].mine && S.kc[id2] === undefined) S.kc[id2] = d.cities[id2].mp; }
+  if(old && old.league === d.league){
+    for(var k in old.cities){
+      var o = old.cities[k], n = d.cities[k];
+      if(o.own && n && n.mine && !n.own){ var c = cityBy(k); toast((n.owner || 'Joku') + ' ohitti sinut kaupungissa ' + (c ? c.n : k) + '!', 3500); }
+    }
+  }
+  if(S.kLeague >= 0 && d.league > S.kLeague) toast('Nousit liigaan: ' + (d.leagueName || LEAGUES[d.league]) + '!', 4000);
+  S.kLeague = d.league; lastSig = ''; drawKisa();
+}
+function kisaWeekEnd(d){
+  if(!S.kHad) return;
+  var bonus = Math.round(Math.max(100, incomePerSec() * 600)), win = false;
+  S.coins += bonus; S.total += bonus;
+  if(d.prev && d.prev[0] && S.nick && d.prev[0].n === S.nick){ win = true; S.kWins = (S.kWins || []).concat([S.kWeek]).slice(-60); }
+  toast(win ? 'Voitit viikkokisan! 🏆 Palkinto +' + fmt(bonus) + ' $' : 'Viikkokisa päättyi. Osallistumispalkinto +' + fmt(bonus) + ' $', 4500);
+}
+function kisaPower(c){ return Math.max(1, Math.round(S.lis * (1 + 0.3*c.t) * (S.focus === c.g ? 1.15 : 1))); }
+function kisaPrice(id){
+  var c = cityBy(id), dc = K.d && K.d.cities[id], me = K.d.me;
+  var base = Math.max(40, incomePerSec() * 120) * (1 + 0.4 * c.t), cm = dc ? dc.cm : 1;
+  return {cost: Math.round(base * cm * me.om * me.nb), cm: cm, om: me.om, nb: me.nb, riv: dc ? Math.max(0, dc.n - (dc.mine ? 1 : 0)) : 0};
+}
+function kisaClaim(id){
+  var c = cityBy(id); if(!c || !S.cities[id] || !K.ok || !K.d || K.pend || S.kc[id] !== undefined) return;
+  if(K.d.me.owned >= K.d.me.cap){ toast('Asemaraja täynnä (' + K.d.me.cap + '). Pelaa lisää päiviä tai luovu yhdestä.', 3500); return; }
+  var pr = kisaPrice(id); if(S.coins < pr.cost) return;
+  S.coins -= pr.cost; K.pend = true; var pw = kisaPower(c);
+  api('peli/claim', {body:{pid:S.pid, city:id, power:pw}}, function(d){
+    K.pend = false;
+    if(!d || d.wait || d.ok === false){
+      S.coins += pr.cost;
+      toast(d && d.cap ? 'Asemaraja täynnä. Pelaa lisää päiviä tai luovu yhdestä.' : d && d.wait ? 'Odota hetki ja yritä uudelleen.' : 'Yhteys ei toiminut, maksu palautettu.', 3000);
+      if(d && d.cities) kisaApply(d); render(true); return;
+    }
+    S.kc[id] = pw; S.kHad = true; S.kN = (S.kN || 0) + 1; kisaApply(d);
+    var dc = d.cities[id]; toast(dc && dc.own ? c.n + ' on nyt sinun!' : c.n + ': asemasi on mukana, mutta toinen johtaa.', 3000); render(true); save();
+  });
+}
+function kisaUnclaim(id){
+  if(S.kc[id] === undefined || K.pend) return; K.pend = true;
+  api('peli/unclaim', {body:{pid:S.pid, city:id}}, function(d){
+    K.pend = false;
+    if(!d || d.wait){ toast('Odota hetki ja yritä uudelleen.', 2500); return; }
+    delete S.kc[id]; kisaApply(d); render(true); save();
+  });
+}
+function kisaTick(dt){
+  K.acc += dt;
+  if(K.acc >= 60 && !document.hidden){
+    K.acc = 0;
+    kisaFetch(function(ok){ if(ok){ K.q = []; for(var id in S.kc) K.q.push(id); } });
+  }
+  K.qT -= dt;
+  if(K.q.length && K.qT <= 0 && !K.pend && K.ok){
+    K.qT = 5.5; var id = K.q.shift(), c = cityBy(id);
+    if(c && S.kc[id] !== undefined){ var pw = kisaPower(c); api('peli/claim', {body:{pid:S.pid, city:id, power:pw}}, function(d){ if(d && d.ok && d.cities) S.kc[id] = pw; }); }
+  }
+}
+function kisaLeft(){
+  if(!K.d) return ''; var s = Math.max(0, K.d.ends - Date.now()/1000), dd = Math.floor(s/86400), hh = Math.floor((s%86400)/3600);
+  return dd > 0 ? dd + ' pv ' + hh + ' h' : hh + ' h ' + Math.floor((s%3600)/60) + ' min';
+}
+function drawKisa(){
+  var box = $('kisaBox'); if(!box) return;
+  if(!K.ok || !K.d){ box.innerHTML = '<p class="hint">Viikkokisa avautuu, kun peli on suorni.fi:n päivityksessä.</p>'; return; }
+  var d = K.d, me = d.me, h = '';
+  h += '<div class="row"><div class="i"><b>Liigasi: ' + escH(d.leagueName || LEAGUES[d.league]) + '</b><small>Viikko päättyy ' + kisaLeft() + ' kuluttua. Asemia ' + me.owned + '/' + me.cap + ' · aktiivisia päiviä ' + me.days + '/7</small></div></div>';
+  var tags = [];
+  if(me.nb < 1) tags.push('Aloittelijan alennus −50 %');
+  if(me.om > 1.01) tags.push('Hallitset ' + me.owned + ' kaupunkia: hinta +' + Math.round((me.om - 1)*100) + ' %');
+  if(tags.length) h += '<p class="hint">' + tags.join(' · ') + '</p>';
+  h += '<p class="hint">Valtaa kaupunkeja kartalta (kaupungin täytyy kuulua radiollesi). Kilpailijat nostavat hintaa, ja mitä enemmän hallitset, sitä kalliimpi seuraava on. Raja kasvaa päivä päivältä, kun pelaat.</p>';
+  if(d.top && d.top.length){
+    h += '<div class="lb">';
+    d.top.forEach(function(e, i){ h += '<div class="lbr'+(e.me?' me':'')+'"><span class="lbn">'+(i+1)+'.</span><span class="lbt">'+escH(e.n)+'</span><span class="lbs">'+e.cities+' kaup.</span></div>'; });
+    h += '</div>';
+  } else h += '<p class="hint">Kukaan ei ole vielä vallannut kaupunkia tässä liigassa. Ole ensimmäinen!</p>';
+  if(d.prev && d.prev.length) h += '<p class="hint">Viime viikon voittajat: ' + d.prev.map(function(e, i){ return (i+1) + '. ' + escH(e.n) + ' (' + e.cities + ')'; }).join(' · ') + '</p>';
+  if(S.kWins && S.kWins.length) h += '<p class="hint">🏆 Viikkovoittoja: ' + S.kWins.length + '</p>';
+  box.innerHTML = h;
+}
+function kisaCityRow(c){
+  if(!K.ok || !K.d || !S.cities[c.id]) return '';
+  var dc = K.d.cities[c.id], mine = S.kc[c.id] !== undefined, h = '<div class="row"><div class="i"><b>Viikkokisa</b><small>';
+  if(dc && dc.owner) h += 'Johtaja: ' + escH(dc.owner) + ' (voima ' + fmt(dc.op) + '). '; else h += 'Kaupungilla ei ole johtajaa. ';
+  h += (dc ? dc.n : 0) + ' asemaa.';
+  if(mine){ h += ' Sinun voimasi ' + fmt(S.kc[c.id]) + (dc && dc.own ? ' · johdat!' : ' · sinun on ylitettävä johtaja yli 10 %.'); h += '</small></div><button class="buy ok" data-act="kun" data-arg="'+c.id+'">Luovu</button></div>'; return h; }
+  var pr = kisaPrice(c.id), parts = [];
+  if(pr.riv > 0) parts.push(pr.riv + ' kilpailijaa +' + Math.round((pr.cm - 1)*100) + ' %');
+  if(pr.om > 1.01) parts.push('hallitset ' + K.d.me.owned + ' kaupunkia +' + Math.round((pr.om - 1)*100) + ' %');
+  if(pr.nb < 1) parts.push('aloittelija −50 %');
+  if(parts.length) h += ' Hinta: ' + parts.join(', ') + '.';
+  h += '</small></div>';
+  if(K.d.me.owned >= K.d.me.cap) h += '<span class="mu" style="font-size:12px;text-align:right">Raja täynnä</span>';
+  else h += buyBtn(pr.cost, 'Valtaa', 'kcl', c.id);
+  return h + '</div>';
+}
+
 /* ---------- Tapahtumat ---------- */
 document.addEventListener('click', function(e){
   if(e.target.closest && e.target.closest('a.sl')) giveSuorni();
@@ -1510,6 +1626,8 @@ document.addEventListener('click', function(e){
     else if(a === 'ant') buyAntenna();
     else if(a === 'studio') buyStudio();
     else if(a === 'city') buyCity(t.dataset.arg);
+    else if(a === 'kcl') kisaClaim(t.dataset.arg);
+    else if(a === 'kun') kisaUnclaim(t.dataset.arg);
     else if(a === 'nick'){ saveNick(); return; }
     else if(a === 'nickchg'){ S.nick = ''; save(); drawLb(); return; }
     else if(a === 'hire') hireHost(t.dataset.arg);
@@ -1520,7 +1638,7 @@ document.addEventListener('click', function(e){
     save(); return;
   }
   if(t.dataset.tab){
-    if(t.dataset.tab === 'saav') lbFetch();
+    if(t.dataset.tab === 'saav'){ lbFetch(); kisaFetch(); }
     var tabs = document.querySelectorAll('.tab'), btns = document.querySelectorAll('nav button');
     if(t.dataset.tab === 'saav') achNew = false;
     for(var i=0;i<tabs.length;i++) tabs[i].classList.toggle('on', tabs[i].id === 't-'+t.dataset.tab);
@@ -1885,6 +2003,8 @@ var ACH = [
   {id:'a5',  n:'Koko Suomi kuuluu', x:'Hanki Valtakunnan taajuus', t:function(){ return S.antenna >= 5; }},
   {id:'k1',  n:'Ensimmäinen kaupunki', x:'Rakenna kuuluvuus ensimmäiseen kaupunkiin', t:function(){ return cityCount() >= 1; }},
   {id:'k6',  n:'Puoli Suomea', x:'Rakenna kuuluvuus 6 kaupunkiin', t:function(){ return cityCount() >= 6; }},
+  {id:'kv1', n:'Valtaaja', x:'Valtaa ensimmäinen kaupunki viikkokisassa', t:function(){ return (S.kN||0) >= 1; }},
+  {id:'kw1', n:'Viikon voittaja', x:'Voita viikkokisa', t:function(){ return (S.kWins||[]).length >= 1; }},
   {id:'tr0', n:'Kyläradio valmis', x:'Kuulu kaikissa kylissä', t:function(){ return tierDone(0); }},
   {id:'tr1', n:'Kuntaradio valmis', x:'Kuulu kaikissa kunnissa', t:function(){ return tierDone(1); }},
   {id:'tr2', n:'Kaupunkiradio valmis', x:'Kuulu kaikissa kaupungeissa', t:function(){ return tierDone(2); }},
@@ -2130,6 +2250,7 @@ function frame(now){
     step(dt);
     bubbleTick(dt); evTick(dt); auTick(dt); choiceTick(dt); wishTick(dt);
     achAcc += dt; if(achAcc >= 2){ achAcc = 0; achTick(); }
+    kisaTick(dt);
     lbAcc += dt; if(lbAcc >= 60){ lbAcc = 0; lbSend(false); if(!document.hidden) lbFetch(); }
     acc += dt; saveAcc += dt;
     if(acc >= 0.25){ acc = 0; render(false); }
@@ -2147,10 +2268,10 @@ document.addEventListener('visibilitychange', function(){
 window.addEventListener('pagehide', save);
 
 // testikoukku
-window.__taajuus = {tierDone:tierDone, placeLevel:placeLevel, MG:MG, TN:function(){return TN;}, BM:function(){return BM;}, mgOpen:mgOpen, mgCtx:mgCtx, FL:FL, dq:function(){return S.dq;}, dailyTick:dailyTick, heardSong:heardSong, drawCol:drawCol, state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();S.setup=true;lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, voteNow:voteNow, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
+window.__taajuus = {K:function(){return K;}, kisaApply:kisaApply, kisaClaim:kisaClaim, kisaUnclaim:kisaUnclaim, kisaPrice:kisaPrice, tierDone:tierDone, placeLevel:placeLevel, MG:MG, TN:function(){return TN;}, BM:function(){return BM;}, mgOpen:mgOpen, mgCtx:mgCtx, FL:FL, dq:function(){return S.dq;}, dailyTick:dailyTick, heardSong:heardSong, drawCol:drawCol, state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();S.setup=true;lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, voteNow:voteNow, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
 
 loadReal();
-drawLb(); setTimeout(function(){ lbSend(false); lbFetch(); }, 1500);
+drawLb(); drawKisa(); setTimeout(function(){ lbSend(false); lbFetch(); kisaFetch(); }, 1500);
 offline();
 render(true);
 requestAnimationFrame(frame);
