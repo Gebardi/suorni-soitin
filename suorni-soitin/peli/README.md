@@ -1,4 +1,4 @@
-# Taajuus – radiotycoon-peli (v0.1)
+# Taajuus – radiotycoon-peli (v0.2)
 
 Itsenäinen PWA (yksi index.html, ei riippuvuuksia, tallennus localStorageen).
 Osoite julkaisun jälkeen: https://suorni.fi/?peli=1 (ohjaa kansioon wp-content/plugins/suorni-soitin/peli/). Reititys: radio-peli.php.

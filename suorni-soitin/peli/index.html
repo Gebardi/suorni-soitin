@@ -112,14 +112,14 @@ nav .dot{position:relative}
 nav .dot.has::after{content:"";position:absolute;right:-6px;top:-2px;width:7px;height:7px;background:var(--ok);border-radius:50%}
 
 /* kupla */
-#bubble{position:fixed;z-index:9;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom));max-width:calc(100% - 28px);width:340px;background:var(--bg3);border:1px solid var(--ok);border-radius:var(--r);padding:12px 14px;display:none;text-align:left}
+#bubble{position:fixed;z-index:9;left:50%;transform:translateX(-50%);bottom:calc(136px + env(safe-area-inset-bottom));max-width:calc(100% - 28px);width:340px;background:var(--bg3);border:1px solid var(--ok);border-radius:var(--r);padding:12px 14px;display:none;text-align:left}
 #bubble.on{display:block;animation:pop .25s}
 #bubble b{display:block;font-size:13px;color:var(--ok);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
 #bubble span{font-size:14px}
 #bubble .tm{height:3px;background:var(--ok);margin:8px -14px -12px;transform-origin:left}
 @keyframes pop{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
 
-#toast{position:fixed;z-index:10;left:50%;top:calc(64px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--a);color:#06101f;font-weight:700;padding:8px 14px;border-radius:var(--r);font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s;max-width:90%;text-align:center}
+#toast{position:fixed;z-index:10;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--a);color:#06101f;font-weight:700;padding:8px 14px;border-radius:var(--r);font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s;max-width:90%;text-align:center}
 #toast.on{opacity:1}
 
 #modal{position:fixed;inset:0;z-index:20;background:rgba(5,7,12,.82);display:none;align-items:center;justify-content:center;padding:20px}
@@ -127,6 +127,30 @@ nav .dot.has::after{content:"";position:absolute;right:-6px;top:-2px;width:7px;h
 #modal .box{background:var(--bg2);border:1px solid var(--a);border-radius:var(--r);padding:20px;max-width:360px;width:100%}
 #modal h3{margin:0 0 8px;font-size:18px}
 #modal .big{font-family:var(--mono);font-size:30px;color:var(--ok);margin:6px 0 12px}
+.sub{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mu);margin:10px 0 6px}
+.chip.hc{padding:4px 9px 4px 4px}
+.chip.hc img,.hav{width:26px;height:26px;border-radius:50%;object-fit:cover;display:block;flex:none}
+.chip .star{color:var(--ok);font-size:11px}
+.seg{display:flex;gap:4px}
+.seg button{flex:1;border:1px solid var(--line);border-radius:var(--r);padding:7px 2px;font-family:var(--mono);font-size:12px;background:var(--bg2);color:var(--mu)}
+.seg button.sel{border-color:var(--warn);background:rgba(255,184,77,.14);color:var(--tx)}
+.hint{font-family:var(--mono);font-size:11px;color:var(--mu);margin-top:5px}
+.say{font-size:13px;color:var(--tx);font-style:italic;margin-top:2px;line-height:1.35}
+.np .av{width:42px;height:42px;border-radius:50%;flex:none;object-fit:cover;border:1px solid var(--line)}
+.ev{margin-top:12px;border:1px solid var(--warn);background:rgba(255,184,77,.08);border-radius:var(--r);padding:9px 11px;display:none}
+.ev.on{display:block}
+.ev b{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--warn)}
+.ev span{font-size:13px}
+.ev .tb{height:3px;background:var(--warn);margin:8px -11px -9px;transform-origin:left}
+#bubble.bad{border-color:var(--warn)}
+#bubble.bad b{color:var(--warn)}
+#bubble.bad .tm{background:var(--warn)}
+.hrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.hrow:first-of-type{border-top:0;padding-top:0}
+.hrow img{width:44px;height:44px;border-radius:50%;flex:none;object-fit:cover}
+.hrow .i{flex:1;min-width:0}
+.hrow .i b{display:block;font-size:14px}
+.hrow .i small{display:block;color:var(--mu);font-size:12px;margin-top:2px}
 @media (prefers-reduced-motion:reduce){.eq i{animation:none}}
 </style>
 </head>
@@ -149,16 +173,18 @@ nav .dot.has::after{content:"";position:absolute;right:-6px;top:-2px;width:7px;h
         <div class="stsub" id="stSub">kuuluvuus: oma katu</div>
         <div class="bigl"><b id="lis">0</b><span>kuuntelijaa</span></div>
         <div class="inc" id="inc">+0 / s</div>
+        <div class="ev" id="evBox"><b id="evT"></b><span id="evX"></span><div class="tb" id="evBar"></div></div>
         <div class="np">
           <div class="eq"><i></i><i></i><i></i><i></i></div>
-          <div class="t"><b id="npT">–</b><small id="npS">–</small></div>
+          <div class="t"><b id="npT">–</b><small id="npS">–</small><div class="say" id="npSay"></div></div>
+          <img class="av" id="npAv" alt="" style="display:none">
         </div>
       </div>
 
       <div class="card">
         <h2>Ohjelmapaikat</h2>
         <div id="slots"></div>
-        <p class="mu" style="margin:6px 0 0">Valitse jokaiselle ajalle musiikkityyli. Nuolet kertovat, sopiiko tyyli kellonaikaan. Sama tyyli pitkään ja pieni kappalemäärä kyllästyttää kuulijat.</p>
+        <p class="mu" style="margin:6px 0 0">Valitse jokaiselle ajalle musiikkityyli. Nuolet kertovat, sopiiko tyyli kellonaikaan. Sama tyyli pitkään ja pieni kappalemäärä kyllästyttää kuulijat. Juontaja nostaa tuloja, mainokset tuovat kolikoita mutta karkottavat kuulijoita.</p>
       </div>
     </section>
 
@@ -166,6 +192,10 @@ nav .dot.has::after{content:"";position:absolute;right:-6px;top:-2px;width:7px;h
       <div class="card">
         <h2>Parannukset</h2>
         <div id="ups"></div>
+      </div>
+      <div class="card">
+        <h2>Juontajat</h2>
+        <div id="hostsShop"></div>
       </div>
       <div class="card">
         <h2>Kappaleet ja tyylit</h2>
@@ -191,7 +221,7 @@ nav .dot.has::after{content:"";position:absolute;right:-6px;top:-2px;width:7px;h
     </section>
   </main>
 
-  <div id="bubble" role="button" tabindex="0"><b>Terveiset!</b><span id="bubTx"></span><div class="tm" id="bubTm"></div></div>
+  <div id="bubble" role="button" tabindex="0"><b id="bubT">Terveiset!</b><span id="bubTx"></span><div class="tm" id="bubTm"></div></div>
   <div id="toast"></div>
 
   <nav><div class="in">
@@ -216,11 +246,32 @@ nav .dot.has::after{content:"";position:absolute;right:-6px;top:-2px;width:7px;h
 var GENRES = {
   iskelma:    {n:'Iskelmä',     cost:0,    titles:['Kesäilta kaupungissa','Tanssi torilla','Sinä ja minä ja ilta','Laiturin päässä','Vanha kitara','Lauantaisauna','Valot ikkunassa','Torin kello','Pieni kahvila','Kotiin kuljen kaiken yli','Haitari soi','Kulmakapakan kuningatar']},
   pop:        {n:'Pop',         cost:120,  titles:['Neonvalot','Taas sun kanssa','Kesä ei lopu','Sykkivä sydän','Heijastus','Yöbussi','Ilmapallo','Kirkas aamu','Kaiku','Tanssilattian tähti','Hymy huuliin','Pikselit']},
-  rauhallinen:{n:'Rauhallinen', cost:450,  titles:['Hiljainen järvi','Sade ikkunassa','Kynttilän valo','Unen rannalla','Aamusumu','Tuuli koivuissa','Hidas virta','Tähtitaivas','Villasukat','Pehmeä hämärä','Laineet','Syksyn lämpö']},
-  rock:       {n:'Rock',        cost:1600, titles:['Moottoritie','Rautaa ja rakkautta','Savuinen baari','Tulta tuulessa','Viimeinen veto','Hiekkatie','Kitaran kieli','Rämisevä ilta','Pyörät pyörii','Äänet kaakkoon','Mustat nahkatakit','Keikkabussi']},
-  metalli:    {n:'Metalli',     cost:6000, titles:['Pohjoisen myrsky','Teräksen tahto','Jäinen valtaistuin','Musta metsä','Harmaa rajamaa','Kuilun kuningas','Rautakorppi','Yön verikuu','Ukkosen vartijat','Rummut ja ruoska','Talven sotaherra','Vuoren syvyys']}
+  rauhallinen:{n:'Rauhallinen', cost:500,  titles:['Hiljainen järvi','Sade ikkunassa','Kynttilän valo','Unen rannalla','Aamusumu','Tuuli koivuissa','Hidas virta','Tähtitaivas','Villasukat','Pehmeä hämärä','Laineet','Syksyn lämpö']},
+  rock:       {n:'Rock',        cost:2500, titles:['Moottoritie','Rautaa ja rakkautta','Savuinen baari','Tulta tuulessa','Viimeinen veto','Hiekkatie','Kitaran kieli','Rämisevä ilta','Pyörät pyörii','Äänet kaakkoon','Mustat nahkatakit','Keikkabussi']},
+  metalli:    {n:'Metalli',     cost:12000, titles:['Pohjoisen myrsky','Teräksen tahto','Jäinen valtaistuin','Musta metsä','Harmaa rajamaa','Kuilun kuningas','Rautakorppi','Yön verikuu','Ukkosen vartijat','Rummut ja ruoska','Talven sotaherra','Vuoren syvyys']}
 };
 var GORDER = ['iskelma','pop','rauhallinen','rock','metalli'];
+
+var HOST_IMG = {aino:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IkFpbm8sIGFhbXVqdW9udGFqYSI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZlNDlhIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmY4YTU1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxyZWN0IHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2IiBmaWxsPSJ1cmwoI2EpIi8+PGNpcmNsZSBjeD0iMjA0IiBjeT0iNTAiIHI9IjMwIiBmaWxsPSIjZmZmNmMyIiBvcGFjaXR5PSIuOTUiLz48Y2lyY2xlIGN4PSIyMDQiIGN5PSI1MCIgcj0iNDIiIGZpbGw9IiNmZmY2YzIiIG9wYWNpdHk9Ii4yNSIvPgo8cGF0aCBkPSJNMTY4IDc2QzIzNiA2NiAyNDggMTQyIDIwOCAxODJDMjIwIDEzNiAxOTggMTEyIDE2OCAxMTJaIiBmaWxsPSIjZjFiMDJlIi8+PGNpcmNsZSBjeD0iMTcyIiBjeT0iODYiIHI9IjciIGZpbGw9IiNlODQ0NWYiLz4KPHBhdGggZD0iTTM2IDI1NkMzNiAyMTQgNzggMTkyIDEyOCAxOTJDMTc4IDE5MiAyMjAgMjE0IDIyMCAyNTZaIiBmaWxsPSIjZmY1ZTdhIi8+PHBhdGggZD0iTTEwNiAxOTJMMTI4IDIyMkwxNTAgMTkyWiIgZmlsbD0iI2Y0YzE5YiIvPgo8cmVjdCB4PSIxMTIiIHk9IjE2MCIgd2lkdGg9IjMyIiBoZWlnaHQ9IjQwIiByeD0iMTIiIGZpbGw9IiNlZmI4OGYiLz4KPGVsbGlwc2UgY3g9IjEyOCIgY3k9IjExNiIgcng9IjUzIiByeT0iNjAiIGZpbGw9IiNmOGNmYWUiLz48ZWxsaXBzZSBjeD0iNzYiIGN5PSIxMjQiIHJ4PSI3IiByeT0iMTIiIGZpbGw9IiNmM2MxOWMiLz48ZWxsaXBzZSBjeD0iMTgwIiBjeT0iMTI0IiByeD0iNyIgcnk9IjEyIiBmaWxsPSIjZjNjMTljIi8+CjxwYXRoIGQ9Ik03MiAxMTRDNjYgNTQgMTA4IDM0IDE0MCAzOEMxODQgNDIgMTkyIDg0IDE4NCAxMTZDMTcyIDkyIDE1MiA4MCAxMjggODBDMTA0IDgwIDg4IDk0IDcyIDExNFoiIGZpbGw9IiNmNmJkM2IiLz48cGF0aCBkPSJNNzQgMTEyQzg0IDg0IDExMiA3MCAxNTIgNzZDMTIwIDg0IDk4IDk4IDkyIDEyNEM4NiAxMjQgNzggMTIwIDc0IDExMloiIGZpbGw9IiNlOWE1MmEiLz4KPGcgZmlsbD0iI2ZmZiI+PGVsbGlwc2UgY3g9IjEwNiIgY3k9IjEyNCIgcng9IjEyIiByeT0iMTQiLz48ZWxsaXBzZSBjeD0iMTUwIiBjeT0iMTI0IiByeD0iMTIiIHJ5PSIxNCIvPjwvZz4KPGcgZmlsbD0iIzVhM2ExZSI+PGNpcmNsZSBjeD0iMTA3IiBjeT0iMTI2IiByPSI4Ii8+PGNpcmNsZSBjeD0iMTQ5IiBjeT0iMTI2IiByPSI4Ii8+PC9nPjxnIGZpbGw9IiNmZmYiPjxjaXJjbGUgY3g9IjExMCIgY3k9IjEyMiIgcj0iMyIvPjxjaXJjbGUgY3g9IjE1MiIgY3k9IjEyMiIgcj0iMyIvPjwvZz4KPGcgc3Ryb2tlPSIjYzk4YTFjIiBzdHJva2Utd2lkdGg9IjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgZmlsbD0ibm9uZSI+PHBhdGggZD0iTTkyIDEwMFExMDYgODggMTIyIDk3Ii8+PHBhdGggZD0iTTEzNCA5N1ExNTAgODggMTY0IDEwMCIvPjwvZz4KPGNpcmNsZSBjeD0iOTIiIGN5PSIxNTAiIHI9IjEwIiBmaWxsPSIjZmY4ZjljIiBvcGFjaXR5PSIuNTUiLz48Y2lyY2xlIGN4PSIxNjQiIGN5PSIxNTAiIHI9IjEwIiBmaWxsPSIjZmY4ZjljIiBvcGFjaXR5PSIuNTUiLz4KPHBhdGggZD0iTTEwMCAxNDZRMTI4IDE4OCAxNTYgMTQ2WiIgZmlsbD0iIzhmMmEzZCIvPjxwYXRoIGQ9Ik0xMDMgMTQ3UTEyOCAxNTYgMTUzIDE0N0wxNTAgMTU2UTEyOCAxNjQgMTA2IDE1NloiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMTEzIDE2NlExMjggMTU2IDE0MyAxNjZRMTI4IDE4MCAxMTMgMTY2WiIgZmlsbD0iI2ZmN2I4YyIvPgo8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxNzIgMTkyKSI+PHBhdGggZD0iTTEyIC02cS02IC0xMCAwIC0yME0yNiAtNnEtNiAtMTAgMCAtMjAiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSI0IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIG9wYWNpdHk9Ii44Ii8+PHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjQ2IiBoZWlnaHQ9IjQ4IiByeD0iOSIgZmlsbD0iI2ZmZiIvPjxyZWN0IHg9IjAiIHk9IjE2IiB3aWR0aD0iNDYiIGhlaWdodD0iOSIgZmlsbD0iI2ZmOGE1NSIvPjxwYXRoIGQ9Ik00NiAxMmg4YTkgOSAwIDAgMSAwIDIyaC04IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNiIvPjwvZz48L3N2Zz4K',sanni:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IlNhbm5pLCBww6RpdsOkanVvbnRhamEiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0icyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzdmZDhmZiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmZjJhNiIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPgo8cmVjdCB3aWR0aD0iMjU2IiBoZWlnaHQ9IjI1NiIgZmlsbD0idXJsKCNzKSIvPjxnIGZpbGw9IiNmZmYiIG9wYWNpdHk9Ii45Ij48ZWxsaXBzZSBjeD0iNTIiIGN5PSI0OCIgcng9IjI2IiByeT0iMTEiLz48ZWxsaXBzZSBjeD0iNzAiIGN5PSI0MiIgcng9IjE4IiByeT0iMTAiLz48ZWxsaXBzZSBjeD0iMjA2IiBjeT0iNzgiIHJ4PSIyNCIgcnk9IjEwIi8+PGVsbGlwc2UgY3g9IjIyMCIgY3k9IjcyIiByeD0iMTQiIHJ5PSI4Ii8+PC9nPgo8cGF0aCBkPSJNNjQgMTEyQzU4IDU2IDk4IDM0IDEyOCAzNkMxNjAgMzQgMTk4IDU4IDE5MiAxMTJMMTk2IDE4MEMxODggMTkyIDE3MiAxOTAgMTY4IDE3OEw4OCAxNzhDODQgMTkwIDY4IDE5MiA2MCAxODBaIiBmaWxsPSIjNmEzYjI0Ii8+CjxwYXRoIGQ9Ik0zNiAyNTZDMzYgMjE0IDc4IDE5MiAxMjggMTkyQzE3OCAxOTIgMjIwIDIxNCAyMjAgMjU2WiIgZmlsbD0iI2ZmY2YzZiIvPjxwYXRoIGQ9Ik0xMDQgMTkyUTEyOCAyMTIgMTUyIDE5MiIgZmlsbD0iI2YxYzI5YiIvPjxwYXRoIGQ9Ik0xMTIgMjAwTDEwOCAyMzhNMTQ0IDIwMEwxNDggMjM4IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxyZWN0IHg9IjExMiIgeT0iMTYwIiB3aWR0aD0iMzIiIGhlaWdodD0iNDAiIHJ4PSIxMiIgZmlsbD0iI2U5YjQ4YyIvPgo8ZWxsaXBzZSBjeD0iMTI4IiBjeT0iMTE4IiByeD0iNTIiIHJ5PSI1OCIgZmlsbD0iI2Y0YzhhMyIvPgo8cGF0aCBkPSJNNzQgMTA4Qzc4IDY0IDExOCA0OCAxNDIgNTRDMTcwIDYwIDE4NCA4NCAxODIgMTEwQzE2MiA5MCAxNDIgODAgMTIwIDg0QzEwMCA4OCA4NCA5NiA3NCAxMDhaIiBmaWxsPSIjN2E0NTI5Ii8+CjxwYXRoIGQ9Ik03MCAxMjJDNjIgMzAgMTk0IDMwIDE4NiAxMjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzI1MzAzYyIgc3Ryb2tlLXdpZHRoPSI5IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHJlY3QgeD0iNTgiIHk9IjEwNiIgd2lkdGg9IjI2IiBoZWlnaHQ9IjQwIiByeD0iMTIiIGZpbGw9IiMyZWM0YjYiLz48cmVjdCB4PSIxNzIiIHk9IjEwNiIgd2lkdGg9IjI2IiBoZWlnaHQ9IjQwIiByeD0iMTIiIGZpbGw9IiMyZWM0YjYiLz48cmVjdCB4PSI1OCIgeT0iMTE0IiB3aWR0aD0iMTIiIGhlaWdodD0iMjQiIHJ4PSI2IiBmaWxsPSIjMjUzMDNjIi8+PHJlY3QgeD0iMTg2IiB5PSIxMTQiIHdpZHRoPSIxMiIgaGVpZ2h0PSIyNCIgcng9IjYiIGZpbGw9IiMyNTMwM2MiLz4KPGcgZmlsbD0iI2ZmZiI+PGVsbGlwc2UgY3g9IjEwNiIgY3k9IjEyNCIgcng9IjExIiByeT0iMTIiLz48L2c+PGNpcmNsZSBjeD0iMTA4IiBjeT0iMTI2IiByPSI3IiBmaWxsPSIjMmY1ZDhhIi8+PGNpcmNsZSBjeD0iMTEwIiBjeT0iMTIzIiByPSIyLjYiIGZpbGw9IiNmZmYiLz4KPHBhdGggZD0iTTEzOCAxMjZRMTUwIDExNCAxNjIgMTI2IiBmaWxsPSJub25lIiBzdHJva2U9IiMzYTI0MTciIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxnIHN0cm9rZT0iIzVjMzMyMCIgc3Ryb2tlLXdpZHRoPSI1IiBzdHJva2UtbGluZWNhcD0icm91bmQiIGZpbGw9Im5vbmUiPjxwYXRoIGQ9Ik05MiAxMDNRMTA2IDk0IDEyMCAxMDEiLz48cGF0aCBkPSJNMTM2IDk5UTE1MCA5MiAxNjQgMTAwIi8+PC9nPgo8ZyBmaWxsPSIjYzk4MzVhIiBvcGFjaXR5PSIuNyI+PGNpcmNsZSBjeD0iOTYiIGN5PSIxNDIiIHI9IjIiLz48Y2lyY2xlIGN4PSIxMDQiIGN5PSIxNDYiIHI9IjIiLz48Y2lyY2xlIGN4PSI5MiIgY3k9IjE0OCIgcj0iMiIvPjxjaXJjbGUgY3g9IjE1MiIgY3k9IjE0NiIgcj0iMiIvPjxjaXJjbGUgY3g9IjE2MCIgY3k9IjE0MiIgcj0iMiIvPjxjaXJjbGUgY3g9IjE2NCIgY3k9IjE0OCIgcj0iMiIvPjwvZz4KPHBhdGggZD0iTTEwNiAxNTJRMTI4IDE3NiAxNTIgMTUyIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNhODQ1M2YiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xMDYgMTUyUTEyOCAxNjAgMTUyIDE1MiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjYTg0NTNmIiBzdHJva2Utd2lkdGg9IjMiLz4KPHBhdGggZD0iTTQ0IDQwbDYgNk01MiAzNGwtNiA2IiBzdHJva2U9IiNmZjhhM2QiIHN0cm9rZS13aWR0aD0iMyIgb3BhY2l0eT0iMCIvPjwvc3ZnPgo=',eino:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IkVpbm8sIGlsdGFqdW9udGFqYSI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJlIiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjNGIzMDcwIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZTA4MDRkIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxyZWN0IHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2IiBmaWxsPSJ1cmwoI2UpIi8+PGNpcmNsZSBjeD0iNDYiIGN5PSI2MCIgcj0iNDAiIGZpbGw9IiNmZmQ3N2EiIG9wYWNpdHk9Ii4zIi8+PGNpcmNsZSBjeD0iNDYiIGN5PSI2MCIgcj0iMjAiIGZpbGw9IiNmZmQ3N2EiIG9wYWNpdHk9Ii40NSIvPgo8cGF0aCBkPSJNMzAgMjU2QzMwIDIxMiA3NiAxOTAgMTI4IDE5MEMxODAgMTkwIDIyNiAyMTIgMjI2IDI1NloiIGZpbGw9IiM4YjRhMmIiLz48cGF0aCBkPSJNMTA0IDE5MEwxMjggMjM2TDE1MiAxOTBaIiBmaWxsPSIjZjZlZmUwIi8+PHBhdGggZD0iTTkyIDE5MkwxMjggMjQwTDExNiAxOTJaIiBmaWxsPSIjZTdkY2M2Ii8+PHBhdGggZD0iTTE2NCAxOTJMMTI4IDI0MEwxNDAgMTkyWiIgZmlsbD0iI2U3ZGNjNiIvPgo8ZyBmaWxsPSIjNGUyYTE1Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIyMzIiIHI9IjQiLz48Y2lyY2xlIGN4PSIxMjgiIGN5PSIyNTAiIHI9IjQiLz48L2c+PHBhdGggZD0iTTEyOCAyMDZWMjU2IiBzdHJva2U9IiM2ZTNhMjAiIHN0cm9rZS13aWR0aD0iMyIvPgo8cmVjdCB4PSIxMTAiIHk9IjE2MCIgd2lkdGg9IjM2IiBoZWlnaHQ9IjQwIiByeD0iMTIiIGZpbGw9IiNkOWEwN2MiLz4KPGVsbGlwc2UgY3g9IjEyOCIgY3k9IjExOCIgcng9IjU2IiByeT0iNjIiIGZpbGw9IiNlYmI4OTQiLz48ZWxsaXBzZSBjeD0iNzIiIGN5PSIxMjYiIHJ4PSI5IiByeT0iMTUiIGZpbGw9IiNlMmFiODciLz48ZWxsaXBzZSBjeD0iMTg0IiBjeT0iMTI2IiByeD0iOSIgcnk9IjE1IiBmaWxsPSIjZTJhYjg3Ii8+CjxwYXRoIGQ9Ik03NiAxMDBDNjYgMTEyIDY4IDE0MCA3OCAxNTBDODIgMTM0IDg0IDExNiA4NiA5OFoiIGZpbGw9IiNjZmQyZDYiLz48cGF0aCBkPSJNMTgwIDEwMEMxOTAgMTEyIDE4OCAxNDAgMTc4IDE1MEMxNzQgMTM0IDE3MiAxMTYgMTcwIDk4WiIgZmlsbD0iI2NmZDJkNiIvPgo8ZWxsaXBzZSBjeD0iMTE2IiBjeT0iNzAiIHJ4PSIyMiIgcnk9IjkiIGZpbGw9IiNmZmYiIG9wYWNpdHk9Ii4zNSIvPgo8ZyBzdHJva2U9IiNhZWIyYjgiIHN0cm9rZS13aWR0aD0iOSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48cGF0aCBkPSJNODggOThRMTA0IDg4IDEyMiA5NiIvPjxwYXRoIGQ9Ik0xMzQgOTZRMTUyIDg4IDE2OCA5OCIvPjwvZz4KPGcgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iLjI1Ij48Y2lyY2xlIGN4PSIxMDYiIGN5PSIxMjIiIHI9IjE3Ii8+PGNpcmNsZSBjeD0iMTUwIiBjeT0iMTIyIiByPSIxNyIvPjwvZz4KPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNmIzYjIyIiBzdHJva2Utd2lkdGg9IjQiPjxjaXJjbGUgY3g9IjEwNiIgY3k9IjEyMiIgcj0iMTciLz48Y2lyY2xlIGN4PSIxNTAiIGN5PSIxMjIiIHI9IjE3Ii8+PHBhdGggZD0iTTEyMyAxMjBRMTI4IDExNiAxMzMgMTIwIi8+PHBhdGggZD0iTTg5IDEyMEw3NiAxMTZNMTY3IDEyMEwxODAgMTE2Ii8+PC9nPgo8Y2lyY2xlIGN4PSIxMDYiIGN5PSIxMjQiIHI9IjQuNSIgZmlsbD0iIzJhMmEzMCIvPjxjaXJjbGUgY3g9IjE1MCIgY3k9IjEyNCIgcj0iNC41IiBmaWxsPSIjMmEyYTMwIi8+CjxlbGxpcHNlIGN4PSIxMjgiIGN5PSIxNDIiIHJ4PSIxMiIgcnk9IjkiIGZpbGw9IiNkY2EwN2UiLz4KPGNpcmNsZSBjeD0iOTAiIGN5PSIxNDgiIHI9IjkiIGZpbGw9IiNlOTg3N2QiIG9wYWNpdHk9Ii40Ii8+PGNpcmNsZSBjeD0iMTY2IiBjeT0iMTQ4IiByPSI5IiBmaWxsPSIjZTk4NzdkIiBvcGFjaXR5PSIuNCIvPgo8cGF0aCBkPSJNMTE0IDE3NlExMjggMTg0IDE0MiAxNzYiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzhhNGIzYSIgc3Ryb2tlLXdpZHRoPSIzLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNODggMTU4UTEwOCAxNDAgMTI4IDE1MlExNDggMTQwIDE2OCAxNThRMTUwIDE3NCAxMjggMTY0UTEwNiAxNzQgODggMTU4WiIgZmlsbD0iI2NmZDJkNiIgc3Ryb2tlPSIjOWRhMWE4IiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4K',unto:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IlVudG8sIHnDtmp1b250YWphIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9InUiIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMwNjBhMjQiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMyZDM4NzciLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz4KPHJlY3Qgd2lkdGg9IjI1NiIgaGVpZ2h0PSIyNTYiIGZpbGw9InVybCgjdSkiLz48ZyBmaWxsPSIjZmZmIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjQwIiByPSIyIi8+PGNpcmNsZSBjeD0iNjQiIGN5PSI3NiIgcj0iMS42Ii8+PGNpcmNsZSBjeD0iNDYiIGN5PSIxMzAiIHI9IjEuOCIvPjxjaXJjbGUgY3g9IjIxNCIgY3k9IjE0MCIgcj0iMS42Ii8+PGNpcmNsZSBjeD0iMjAiIGN5PSIxOTAiIHI9IjEuNSIvPjxjaXJjbGUgY3g9IjIzNiIgY3k9IjIwMCIgcj0iMiIvPjxjaXJjbGUgY3g9IjE1MCIgY3k9IjE4IiByPSIxLjUiLz48L2c+CjxjaXJjbGUgY3g9IjIwNCIgY3k9IjU0IiByPSIzMiIgZmlsbD0iI2ZmZjBiOCIvPjxjaXJjbGUgY3g9IjIxOCIgY3k9IjQ2IiByPSIyOCIgZmlsbD0iIzBmMTY0MCIvPgo8ZyBmaWxsPSIjY2RkNmZmIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiIGZvbnQtc3R5bGU9Iml0YWxpYyIgZm9udC13ZWlnaHQ9IjcwMCI+PHRleHQgeD0iMTk2IiB5PSIxMjQiIGZvbnQtc2l6ZT0iMjIiPno8L3RleHQ+PHRleHQgeD0iMjEyIiB5PSIxMDgiIGZvbnQtc2l6ZT0iMTYiPno8L3RleHQ+PHRleHQgeD0iMjI0IiB5PSI5NiIgZm9udC1zaXplPSIxMiI+ejwvdGV4dD48L2c+CjxlbGxpcHNlIGN4PSIxMjgiIGN5PSIxNzAiIHJ4PSI3MCIgcnk9IjMwIiBmaWxsPSIjMjYyYTQ5Ii8+CjxwYXRoIGQ9Ik0zMCAyNTZDMzAgMjE0IDc0IDE5MiAxMjggMTkyQzE4MiAxOTIgMjI2IDIxNCAyMjYgMjU2WiIgZmlsbD0iIzM0Mzg1YyIvPjxwYXRoIGQ9Ik0xMDQgMTk2UTEyOCAyMTAgMTUyIDE5NiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMWUyMTQwIiBzdHJva2Utd2lkdGg9IjUiLz48cGF0aCBkPSJNMTE0IDIwNEwxMTIgMjQwTTE0MiAyMDRMMTQ0IDI0MCIgc3Ryb2tlPSIjZDlkZWY1IiBzdHJva2Utd2lkdGg9IjMuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxyZWN0IHg9IjExMiIgeT0iMTYwIiB3aWR0aD0iMzIiIGhlaWdodD0iNDAiIHJ4PSIxMiIgZmlsbD0iI2NmYTA3ZiIvPgo8ZWxsaXBzZSBjeD0iMTI4IiBjeT0iMTIwIiByeD0iNTMiIHJ5PSI1OCIgZmlsbD0iI2UwYjA4ZCIvPjxlbGxpcHNlIGN4PSI3NiIgY3k9IjEyNiIgcng9IjciIHJ5PSIxMiIgZmlsbD0iI2Q2YTQ4MiIvPjxlbGxpcHNlIGN4PSIxODAiIGN5PSIxMjYiIHJ4PSI3IiByeT0iMTIiIGZpbGw9IiNkNmE0ODIiLz4KPHBhdGggZD0iTTc2IDEyMkM3NiAxNzIgMTAwIDE5OCAxMjggMTk4QzE1NiAxOTggMTgwIDE3MiAxODAgMTIyQzE3MiAxNTAgMTUyIDE2MCAxMjggMTYwQzEwNCAxNjAgODQgMTUwIDc2IDEyMloiIGZpbGw9IiMyYjJiMzMiLz4KPHBhdGggZD0iTTEwNCAxNTZRMTI4IDE0OCAxNTIgMTU2UTE0MiAxNzAgMTI4IDE2OFExMTQgMTcwIDEwNCAxNTZaIiBmaWxsPSIjMmIyYjMzIi8+PGVsbGlwc2UgY3g9IjEyOCIgY3k9IjE3NCIgcng9IjgiIHJ5PSI5IiBmaWxsPSIjMWExMDE2Ii8+PGVsbGlwc2UgY3g9IjEyOCIgY3k9IjE3NyIgcng9IjUiIHJ5PSI1IiBmaWxsPSIjN2EyZjQ1Ii8+CjxwYXRoIGQ9Ik03MiA5OEM2OCA0MCAxMDAgMjQgMTI4IDI0QzE1OCAyNCAxODggNDAgMTg0IDk4WiIgZmlsbD0iIzJmNmY3MyIvPjxyZWN0IHg9IjY4IiB5PSI4MiIgd2lkdGg9IjEyMCIgaGVpZ2h0PSIyNiIgcng9IjEyIiBmaWxsPSIjM2Y4ZDkxIi8+PHBhdGggZD0iTTgyIDgyVjEwOE05OCA4MlYxMDhNMTE0IDgyVjEwOE0xMzAgODJWMTA4TTE0NiA4MlYxMDhNMTYyIDgyVjEwOE0xNzggODJWMTA4IiBzdHJva2U9IiMyZjZmNzMiIHN0cm9rZS13aWR0aD0iMyIgb3BhY2l0eT0iLjU1Ii8+PGNpcmNsZSBjeD0iMTI4IiBjeT0iMjIiIHI9IjEzIiBmaWxsPSIjZTRlYmYyIi8+CjxnIGZpbGw9IiNmZmYiPjxlbGxpcHNlIGN4PSIxMDgiIGN5PSIxMjYiIHJ4PSIxMSIgcnk9IjkiLz48ZWxsaXBzZSBjeD0iMTQ4IiBjeT0iMTI2IiByeD0iMTEiIHJ5PSI5Ii8+PC9nPjxnIGZpbGw9IiMzYTJhMjIiPjxjaXJjbGUgY3g9IjEwOCIgY3k9IjEzMCIgcj0iNS41Ii8+PGNpcmNsZSBjeD0iMTQ4IiBjeT0iMTMwIiByPSI1LjUiLz48L2c+CjxwYXRoIGQ9Ik05NSAxMjRRMTA4IDExNCAxMjEgMTI0WiBNMTM1IDEyNFExNDggMTE0IDE2MSAxMjRaIiBmaWxsPSIjZTBiMDhkIi8+PHBhdGggZD0iTTk1IDEyNEgxMjFNMTM1IDEyNEgxNjEiIHN0cm9rZT0iIzhiNWU0NiIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPGVsbGlwc2UgY3g9IjEwOCIgY3k9IjE0MCIgcng9IjEyIiByeT0iNSIgZmlsbD0iIzhmNmE5YSIgb3BhY2l0eT0iLjUiLz48ZWxsaXBzZSBjeD0iMTQ4IiBjeT0iMTQwIiByeD0iMTIiIHJ5PSI1IiBmaWxsPSIjOGY2YTlhIiBvcGFjaXR5PSIuNSIvPgo8ZyBzdHJva2U9IiMyYjJiMzMiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48cGF0aCBkPSJNOTIgMTEyTDEyMCAxMTYiLz48cGF0aCBkPSJNMTY0IDExMkwxMzYgMTE2Ii8+PC9nPjwvc3ZnPgo='};
+var HOSTS = {
+  aino: {n:'Aino', role:'Aamuvirkku', slot:0, bonus:1.25, cost:250, lines:['Hyvää huomenta, kahvi on keitetty!','Aurinko nousee, ja me soitamme sille.','Mukavaa työmatkaa kaikille!','Aamu on parasta aikaa musiikille.','Pieni venyttely ja sitten musiikkia!']},
+  sanni:{n:'Sanni',role:'Päivän ääni', slot:1, bonus:1.25, cost:350, lines:['Päivä on vielä nuori, jatketaan!','Lounastauolle sopii hyvä biisi.','Täällä Sanni, pysykää linjoilla.','Toiveita saa lähettää, minä kuuntelen.','Iltapäivä sujuu musiikin kanssa.']},
+  eino: {n:'Eino', role:'Iltatähti',   slot:2, bonus:1.25, cost:1500, lines:['Hyvää iltaa, työpäivä on takana.','Sauna lämpiää ja radio soi.','Ilta on pitkä, joten vaihdetaan levyä.','Tervehdys kaikille iltaihmisille!','Nyt vähän tunnelmaa.']},
+  unto: {n:'Unto', role:'Yökyöpeli',   slot:3, bonus:1.30, cost:1500, lines:['Yö on hiljainen, me ei olla.','Valvojille ja yövuoroihin: tässä teille.','Kello käy, mutta emme kiirehdi.','Muut nukkuvat, me soitamme.','Kuuntelijat ovat yön parasta seuraa.']}
+};
+var HORDER = ['aino','sanni','eino','unto'];
+var HOST_MAX = 5;
+var AD_MULT = [0, 0.5, 1.0, 1.7, 2.6];
+var AD_PEN  = [1, 0.97, 0.90, 0.76, 0.55];
+var AD_NAMES = ['Ei','Vähän','Kohtalaisesti','Paljon','Ruuhka'];
+var AD_UNLOCK = 400;
+var EVENTS = [
+  {id:'nhl', n:'NHL-ilta', x:'Jääkiekko alkaa! Rock ja metalli vetävät, muu musiikki ei.', slots:[2], gm:{rock:1.6,metalli:1.6}, def:0.85, dur:60},
+  {id:'pe',  n:'Perjantai-ilta', x:'Viikonloppu alkaa: pop ja iskelmä kelpaavat.', slots:[2], gm:{pop:1.5,iskelma:1.3}, def:1, dur:60},
+  {id:'sade',n:'Sadepäivä', x:'Ulkona sataa: rauhallinen musiikki kelpaa.', slots:[0,1,2,3], gm:{rauhallinen:1.5}, def:1, dur:60},
+  {id:'moki',n:'Mökkiviikonloppu', x:'Ihmiset lähtevät mökille: iskelmä ja pop soivat.', slots:[0,1], gm:{iskelma:1.5,pop:1.2}, def:1, dur:60},
+  {id:'yov', n:'Yövuoroläiset', x:'Yövuorossa kaivataan seuraa: rauhallinen ja metalli.', slots:[3], gm:{rauhallinen:1.4,metalli:1.3}, def:1, dur:60}
+];
 
 var SLOTS = [
   {id:'aamu', n:'Aamu', h:'06–12', base:1.0},
@@ -249,7 +300,7 @@ var ANT = [
   {n:'Valtakunnan taajuus', a:'koko Suomi'}
 ];
 var ANT_REACH = [4, 9, 20, 46, 105, 240];
-var ANT_COST  = [0, 45, 300, 2200, 16000, 120000];
+var ANT_COST  = [0, 45, 350, 3500, 40000, 500000];
 
 /* ---------- Tila ---------- */
 var KEY = 'taajuus_v1';
@@ -259,6 +310,7 @@ function fresh(){
     owned:{iskelma:3}, unlocked:{iskelma:true}, fat:{},
     slots:['iskelma','iskelma','iskelma','iskelma'],
     antenna:0, studio:0,
+    hired:{}, hostIn:[null,null,null,null], hostLv:{}, ads:[0,0,0,0], adOn:false,
     ls:0, total:20, hearts:0, songsBought:0,
     last:Date.now(), started:Date.now()
   };
@@ -286,11 +338,21 @@ function fameLevel(){ return Math.floor(Math.sqrt(S.ls/200)); }
 function coinMult(){ return (1 + 0.3*S.studio) * (1 + 0.01*fameLevel()); }
 function variety(g){ var n = S.owned[g]||0; return 1 - Math.exp(-n/5); }
 function slotIdx(clock){ return Math.floor((clock % CYCLE)/SLOT_LEN); }
+var EV = null;   // käynnissä oleva tapahtuma (ei tallenneta)
+function hostMult(idx){
+  var h = S.hostIn[idx]; if(!h || !S.hired[h]) return 1;
+  return (HOSTS[h].slot === idx ? HOSTS[h].bonus : 1.08) * (1 + 0.1*(S.hostLv[h]||0));
+}
+function evMult(g){
+  if(!EV || EV.left <= 0) return 1;
+  return EV.gm[g] !== undefined ? EV.gm[g] : EV.def;
+}
 function targetFor(idx, fatArr){
   var g = S.slots[idx];
   if(!g || !(S.owned[g]>0)) return 0;
   var f = (fatArr||S.fat)[g]||0;
-  return ANT_REACH[S.antenna] * SLOTS[idx].base * FIT[SLOTS[idx].id][g] * variety(g) * (1-f);
+  return ANT_REACH[S.antenna] * SLOTS[idx].base * FIT[SLOTS[idx].id][g] * variety(g) * (1-f)
+       * hostMult(idx) * AD_PEN[S.ads[idx]||0] * evMult(g);
 }
 function step(dt){
   var idx = slotIdx(S.clock);
@@ -299,7 +361,7 @@ function step(dt){
   for(var i=0;i<GORDER.length;i++){
     var k = GORDER[i], f = S.fat[k]||0;
     if(k === g && (S.owned[k]>0)){
-      f += dt * 0.010 / (1 + 0.3*(S.owned[k]||0));
+      f += dt * 0.010 / (1 + 0.3*(S.owned[k]||0)) * (S.hostIn[idx] && S.hired[S.hostIn[idx]] ? 0.8 : 1);
       if(f > 0.6) f = 0.6;
     } else {
       f -= dt * 0.004;
@@ -309,17 +371,17 @@ function step(dt){
   }
   var T = targetFor(idx);
   S.lis += (T - S.lis) * (1 - Math.exp(-dt/8));
-  var inc = S.lis * COIN_PER_LIS * coinMult() * dt;
+  var inc = S.lis * COIN_PER_LIS * coinMult() * (1 + AD_MULT[S.ads[idx]||0]) * dt;
   S.coins += inc; S.total += inc;
   S.ls += S.lis * dt;
   S.clock = (S.clock + dt) % CYCLE;
   return inc;
 }
-function incomePerSec(){ return S.lis * COIN_PER_LIS * coinMult(); }
+function incomePerSec(){ return S.lis * COIN_PER_LIS * coinMult() * (1 + AD_MULT[S.ads[slotIdx(S.clock)]||0]); }
 
 /* ---------- Kauppa ---------- */
-function songCost(){ return Math.round(10 * Math.pow(1.19, S.songsBought)); }
-function studioCost(){ return Math.round(90 * Math.pow(2.35, S.studio)); }
+function songCost(){ return Math.round(10 * Math.pow(1.2, S.songsBought)); }
+function studioCost(){ return Math.round(90 * Math.pow(2.6, S.studio)); }
 var STUDIO_MAX = 12;
 
 function buySong(g){
@@ -350,6 +412,28 @@ function buyStudio(){
   toast('Studio parani: tulot +30 %');
   render(true);
 }
+function hostTrainCost(h){ return Math.round(300 * Math.pow(2.6, S.hostLv[h]||0)); }
+function hireHost(h){
+  var H = HOSTS[h]; if(!H || S.hired[h] || S.coins < H.cost) return;
+  S.coins -= H.cost; S.hired[h] = true; if(!S.hostLv[h]) S.hostLv[h] = 0;
+  if(S.hostIn[H.slot] === null) S.hostIn[H.slot] = h;
+  toast(H.n + ' palkattu!'); render(true);
+}
+function trainHost(h){
+  if(!S.hired[h] || (S.hostLv[h]||0) >= HOST_MAX) return;
+  var c = hostTrainCost(h); if(S.coins < c) return;
+  S.coins -= c; S.hostLv[h] = (S.hostLv[h]||0) + 1;
+  toast(HOSTS[h].n + ' kehittyi: taso ' + S.hostLv[h]); render(true);
+}
+function setHost(i, h){
+  if(h){ if(!S.hired[h]) return; for(var k=0;k<4;k++){ if(S.hostIn[k] === h) S.hostIn[k] = null; } }
+  S.hostIn[i] = h || null; render(true);
+}
+function buyAds(){
+  if(S.adOn || S.coins < AD_UNLOCK) return;
+  S.coins -= AD_UNLOCK; S.adOn = true; toast('Mainosmyyjä palkattu!'); render(true);
+}
+function setAd(i, n){ if(!S.adOn) return; S.ads[i] = Math.max(0, Math.min(4, n)); render(true); }
 function setSlot(i, g){
   if(!S.unlocked[g]) return;
   S.slots[i] = g; render(true);
@@ -400,15 +484,30 @@ function render(force){
     card.classList.remove('silent');
     var n = S.owned[g];
     var ti = Math.floor(S.clock / 20 + idx*3) % n;
+    var hh = S.hostIn[idx] && S.hired[S.hostIn[idx]] ? S.hostIn[idx] : null;
     $('npT').textContent = GENRES[g].titles[ti % GENRES[g].titles.length];
-    $('npS').textContent = GENRES[g].n + ' · ' + SLOTS[idx].n.toLowerCase();
+    $('npS').textContent = (hh ? HOSTS[hh].n + ' juontaa · ' : '') + GENRES[g].n + ' · ' + SLOTS[idx].n.toLowerCase();
+    var av = $('npAv');
+    if(hh){
+      var ln = HOSTS[hh].lines, li = Math.floor(S.clock / 30) % ln.length;
+      $('npSay').textContent = '"' + ln[li] + '"';
+      if(av.getAttribute('src') !== HOST_IMG[hh]) av.setAttribute('src', HOST_IMG[hh]);
+      av.alt = HOSTS[hh].n; av.style.display = '';
+    } else { $('npSay').textContent = ''; av.style.display = 'none'; }
   } else {
     card.classList.add('silent');
     $('npT').textContent = 'Ei lähetystä'; $('npS').textContent = 'Valitse tyyli ohjelmapaikalle';
+    $('npSay').textContent = ''; $('npAv').style.display = 'none';
   }
+  // tapahtumabanneri
+  var eb = $('evBox');
+  if(EV && EV.left > 0){
+    eb.classList.add('on'); $('evT').textContent = EV.n; $('evX').textContent = EV.x;
+    $('evBar').style.transform = 'scaleX(' + Math.max(0, EV.left/EV.dur) + ')';
+  } else eb.classList.remove('on');
 
   // rakenteen muutos -> piirrä listat uudelleen
-  var sig = JSON.stringify([S.slots,S.owned,S.unlocked,S.antenna,S.studio,idx,Math.floor(S.coins)>=0, canBuyAny(), GORDER.map(function(k){return Math.round((S.fat[k]||0)*100);})]);
+  var sig = JSON.stringify([S.slots,S.owned,S.unlocked,S.antenna,S.studio,idx,S.hired,S.hostIn,S.hostLv,S.ads,S.adOn, canBuyAny(), GORDER.map(function(k){return Math.round((S.fat[k]||0)*100);})]);
   if(force || sig !== lastSig){
     lastSig = sig;
     drawSlots(idx);
@@ -419,6 +518,8 @@ function render(force){
 }
 function canBuyAny(){
   if(S.coins >= songCost()) return true;
+  if(!S.adOn && S.coins >= AD_UNLOCK) return true;
+  for(var q=0;q<HORDER.length;q++){ var hq=HORDER[q]; if(!S.hired[hq] && S.coins >= HOSTS[hq].cost) return true; }
   if(S.antenna+1 < ANT.length && S.coins >= ANT_COST[S.antenna+1]) return true;
   if(S.studio < STUDIO_MAX && S.coins >= studioCost()) return true;
   for(var i=0;i<GORDER.length;i++){ var k=GORDER[i]; if(!S.unlocked[k] && S.coins >= GENRES[k].cost) return true; }
@@ -433,7 +534,27 @@ function drawSlots(cur){
       var f = fitCls(FIT[SLOTS[i].id][k]);
       h += '<button class="chip'+(S.slots[i]===k?' sel':'')+'" data-slot="'+i+'" data-g="'+k+'">'+GENRES[k].n+' <span class="fit '+f[0]+'">'+f[1]+'</span></button>';
     }
-    h += '</div></div>';
+    h += '</div>';
+    // juontaja
+    var anyHost = false; for(var q=0;q<HORDER.length;q++){ if(S.hired[HORDER[q]]) anyHost = true; }
+    h += '<div class="sub">Juontaja</div>';
+    if(anyHost){
+      h += '<div class="chips"><button class="chip'+(!S.hostIn[i]?' sel':'')+'" data-hs="'+i+'" data-h="">Ei juontajaa</button>';
+      for(var q2=0;q2<HORDER.length;q2++){
+        var hk = HORDER[q2]; if(!S.hired[hk]) continue;
+        h += '<button class="chip hc'+(S.hostIn[i]===hk?' sel':'')+'" data-hs="'+i+'" data-h="'+hk+'"><img src="'+HOST_IMG[hk]+'" alt="">'+HOSTS[hk].n+(HOSTS[hk].slot===i?' <span class="star">★</span>':'')+'</button>';
+      }
+      h += '</div>';
+    } else h += '<div class="hint">Palkkaa juontaja kaupasta.</div>';
+    // mainokset
+    h += '<div class="sub">Mainokset</div>';
+    if(S.adOn){
+      var al = S.ads[i]||0;
+      h += '<div class="seg">';
+      for(var a=0;a<5;a++) h += '<button class="'+(al===a?'sel':'')+'" data-as="'+i+'" data-ad="'+a+'">'+a+'</button>';
+      h += '</div><div class="hint">'+AD_NAMES[al]+(al ? ' · tuotto ×'+(1+AD_MULT[al]).toFixed(1).replace('.',',')+' · kuuntelijat −'+Math.round((1-AD_PEN[al])*100)+' %' : '')+'</div>';
+    } else h += '<div class="hint">Avaa mainokset kaupasta (mainosmyyjä).</div>';
+    h += '</div>';
   }
   $('slots').innerHTML = h;
 }
@@ -449,6 +570,10 @@ function drawShop(){
   } else {
     h += '<div class="row"><div class="i"><b>Antenni</b><small>Koko Suomi kuuluu. Huippu saavutettu!</small></div></div>';
   }
+  // mainosmyyjä
+  if(!S.adOn){
+    h += '<div class="row"><div class="i"><b>Mainosmyyjä</b><small>Avaa mainokset: valitse paikkakohtainen mainostaso. Enemmän kolikoita, mutta kuuntelijat karkaavat.</small></div>'+buyBtn(AD_UNLOCK,'Palkkaa','ads')+'</div>';
+  }
   // studio
   if(S.studio < STUDIO_MAX){
     h += '<div class="row"><div class="i"><b>Studiolaitteet (taso '+S.studio+')</b><small>Tuotto kuuntelijaa kohti +30 % (kertyy)</small></div>'+buyBtn(studioCost(),'Päivitä','studio')+'</div>';
@@ -456,6 +581,18 @@ function drawShop(){
     h += '<div class="row"><div class="i"><b>Studiolaitteet (taso '+S.studio+')</b><small>Täysin päivitetty</small></div></div>';
   }
   $('ups').innerHTML = h;
+
+  var hs = '';
+  for(var q=0;q<HORDER.length;q++){
+    var hk = HORDER[q], H = HOSTS[hk], lv = S.hostLv[hk]||0;
+    hs += '<div class="hrow"><img src="'+HOST_IMG[hk]+'" alt=""><div class="i"><b>'+H.n+' · '+H.role+'</b><small>'+(S.hired[hk]
+        ? 'Taso '+lv+'/'+HOST_MAX+' · ' + SLOTS[H.slot].n.toLowerCase() + 'ssä ×'+(H.bonus*(1+0.1*lv)).toFixed(2).replace('.',',')+', muulloin ×'+(1.08*(1+0.1*lv)).toFixed(2).replace('.',',')
+        : SLOTS[H.slot].n+'-ohjelman ykkönen: kuuntelijat ×'+String(H.bonus).replace('.',',')+', kyllästyminen hitaampaa')+'</small></div>';
+    if(!S.hired[hk]) hs += buyBtn(H.cost,'Palkkaa','hire',hk);
+    else if(lv < HOST_MAX) hs += buyBtn(hostTrainCost(hk),'Kouluta','train',hk);
+    hs += '</div>';
+  }
+  $('hostsShop').innerHTML = hs;
 
   var g = '';
   for(var i=0;i<GORDER.length;i++){
@@ -477,6 +614,7 @@ function drawStats(){
     'Kolikoita ansaittu: ' + fmt(S.total) + '<br>' +
     'Kuuntelijasekunnit: ' + fmt(S.ls) + '<br>' +
     'Terveisiä luettu: ' + S.hearts + '<br>' +
+    'Häiriöitä korjattu: ' + (S.fixes||0) + '<br>' +
     'Kappaleita kirjastossa: ' + Object.keys(S.owned).reduce(function(a,k){return a+S.owned[k];},0) + '<br>' +
     'Pelannut: ' + (mins < 60 ? mins+' min' : Math.floor(mins/60)+' h '+(mins%60)+' min');
 }
@@ -490,33 +628,70 @@ var GREET = [
   'Terveisiä yövuoroon: "Kiitos kun olette seurana."',
   'Terveisiä Hilkalta: "Kuulin tämän radion naapurilta!"'
 ];
-var bubbleT = 0, bubbleOpen = false, nextBubble = 40 + Math.random()*40, bubbleLife = 0;
+var bubbleOpen = false, nextBubble = 40 + Math.random()*40, bubbleLife = 0, bType = 'greet';
 function bubbleTick(dt){
   if(bubbleOpen){
     bubbleLife -= dt;
-    $('bubTm').style.transform = 'scaleX(' + Math.max(0, bubbleLife/15) + ')';
-    if(bubbleLife <= 0) closeBubble();
+    $('bubTm').style.transform = 'scaleX(' + Math.max(0, bubbleLife/BUB_LIFE[bType]) + ')';
+    if(bubbleLife <= 0) closeBubble(true);
     return;
   }
   if(S.lis < 1) return;
   nextBubble -= dt;
-  if(nextBubble <= 0){
-    bubbleOpen = true; bubbleLife = 15;
-    $('bubTx').textContent = GREET[Math.floor(Math.random()*GREET.length)] + ' Napauta lukeaksesi!';
-    $('bubble').classList.add('on');
-  }
+  if(nextBubble <= 0) openBubble(S.total > 200 && Math.random() < 0.3 ? 'broken' : 'greet');
 }
-function closeBubble(){
+var BUB_LIFE = {greet:15, broken:10};
+function openBubble(t){
+  bType = t; bubbleOpen = true; bubbleLife = BUB_LIFE[t];
+  var b = $('bubble');
+  b.classList.toggle('bad', t === 'broken');
+  $('bubT').textContent = t === 'broken' ? 'Häiriö!' : 'Terveiset!';
+  $('bubTx').textContent = t === 'broken'
+    ? 'Kappale katkesi kesken! Napauta korjataksesi, ennen kuin kuulijat lähtevät.'
+    : GREET[Math.floor(Math.random()*GREET.length)] + ' Napauta lukeaksesi!';
+  b.classList.add('on');
+}
+function closeBubble(expired){
+  var wasBroken = bType === 'broken';
   bubbleOpen = false; $('bubble').classList.remove('on');
   nextBubble = 45 + Math.random()*60;
+  if(expired && wasBroken){ S.lis *= 0.8; toast('Kappale jäi korjaamatta: osa kuulijoista lähti'); }
 }
 function readGreeting(){
   if(!bubbleOpen) return;
-  var gain = Math.max(10, incomePerSec()*25);
-  S.coins += gain; S.total += gain; S.hearts++;
-  closeBubble();
-  toast('Terveiset luettu: +' + fmt(gain) + ' kolikkoa');
+  var gain;
+  if(bType === 'broken'){
+    gain = Math.max(8, incomePerSec()*12);
+    S.coins += gain; S.total += gain; S.fixes = (S.fixes||0) + 1;
+    closeBubble(false);
+    toast('Korjattu! Kiitokseksi +' + fmt(gain) + ' kolikkoa');
+  } else {
+    gain = Math.max(10, incomePerSec()*25);
+    S.coins += gain; S.total += gain; S.hearts++;
+    closeBubble(false);
+    toast('Terveiset luettu: +' + fmt(gain) + ' kolikkoa');
+  }
   render(true);
+}
+
+/* ---------- Tapahtumat (bannerit) ---------- */
+var evTimer = 70 + Math.random()*40;
+function evTick(dt){
+  if(EV && EV.left > 0){
+    EV.left -= dt;
+    if(EV.left <= 0){ EV = null; evTimer = 80 + Math.random()*60; }
+    return;
+  }
+  if(S.lis < 1) return;
+  evTimer -= dt;
+  if(evTimer <= 0){
+    var idx = slotIdx(S.clock), pool = [];
+    for(var i=0;i<EVENTS.length;i++){ if(EVENTS[i].slots.indexOf(idx) >= 0) pool.push(EVENTS[i]); }
+    if(!pool.length){ evTimer = 20; return; }
+    var e = pool[Math.floor(Math.random()*pool.length)];
+    EV = {id:e.id, n:e.n, x:e.x, gm:e.gm, def:e.def, dur:e.dur, left:e.dur};
+    toast(e.n + ': ' + e.x);
+  }
 }
 
 /* ---------- Poissaolotuotto ---------- */
@@ -524,6 +699,7 @@ function offline(){
   var gap = Math.floor((Date.now() - S.last)/1000);
   if(gap < 60) return;
   var sec = Math.min(gap, OFFLINE_CAP);
+  EV = null;
   var before = S.coins;
   var keepLs = S.ls;
   // simuloidaan karkeasti 5 s askelin
@@ -544,8 +720,10 @@ function offline(){
 
 /* ---------- Tapahtumat ---------- */
 document.addEventListener('click', function(e){
-  var t = e.target.closest('[data-slot],[data-act],[data-tab]');
+  var t = e.target.closest('[data-slot],[data-act],[data-tab],[data-hs],[data-as]');
   if(!t) return;
+  if(t.dataset.hs !== undefined){ setHost(+t.dataset.hs, t.dataset.h || null); save(); return; }
+  if(t.dataset.as !== undefined){ setAd(+t.dataset.as, +t.dataset.ad); save(); return; }
   if(t.dataset.slot !== undefined){ setSlot(+t.dataset.slot, t.dataset.g); return; }
   if(t.dataset.act){
     var a = t.dataset.act;
@@ -553,6 +731,9 @@ document.addEventListener('click', function(e){
     else if(a === 'genre') unlockGenre(t.dataset.arg);
     else if(a === 'ant') buyAntenna();
     else if(a === 'studio') buyStudio();
+    else if(a === 'hire') hireHost(t.dataset.arg);
+    else if(a === 'train') trainHost(t.dataset.arg);
+    else if(a === 'ads') buyAds();
     save(); return;
   }
   if(t.dataset.tab){
@@ -579,7 +760,7 @@ function frame(now){
   lastT = now;
   if(dt > 0){
     step(dt);
-    bubbleTick(dt);
+    bubbleTick(dt); evTick(dt);
     acc += dt; saveAcc += dt;
     if(acc >= 0.25){ acc = 0; render(false); }
     if(saveAcc >= 5){ saveAcc = 0; save(); }
@@ -596,7 +777,7 @@ document.addEventListener('visibilitychange', function(){
 window.addEventListener('pagehide', save);
 
 // testikoukku
-window.__taajuus = {state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, unlockGenre:unlockGenre, buyAntenna:buyAntenna, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
+window.__taajuus = {state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
 
 offline();
 render(true);
