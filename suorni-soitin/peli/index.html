@@ -196,6 +196,8 @@ details.fl li b{color:var(--tx);font-weight:500}
 .ach .i{flex:1;min-width:0}.ach .i b{display:block;font-size:14px}.ach .i small{display:block;color:var(--mu);font-size:12px;margin-top:2px}
 .ach.ok .i b{color:var(--ok)}
 @media (prefers-reduced-motion:reduce){.eq i{animation:none}}
+.chip.lock{opacity:.35}
+.slot .hd .live.nxt{color:#f5a623}
 </style>
 </head>
 <body>
@@ -415,7 +417,8 @@ var FIT = { /* sopivuus kellonaikaan */
   ilta: {iskelma:1.1,pop:1.2,rauhallinen:0.9,rock:1.4,metalli:1.1},
   yo:   {iskelma:0.7,pop:0.7,rauhallinen:1.5,rock:0.9,metalli:1.3}
 };
-var CYCLE = 240;            // pelipäivä sekunteina
+var FIT_SHOW = {}; (function(){ for(var k in FIT){ FIT_SHOW[k] = {}; for(var g in FIT[k]){ FIT_SHOW[k][g] = FIT[k][g]; FIT[k][g] = Math.pow(FIT[k][g], 1.5); } } })();  // tyylin vaikutus isompi
+var CYCLE = 240;            // pelipäivä sekunteina (ilman ääntä; äänen kanssa ohjelmapaikka = yksi kappale)
 var SLOT_LEN = CYCLE/4;
 var OFFLINE_CAP = 8*3600;   // s
 var OFFLINE_EFF = 0.6;
@@ -515,11 +518,34 @@ function step(dt){
   var inc = S.lis * COIN_PER_LIS * coinMult() * (1 + AD_MULT[S.ads[idx]||0]) * buffCoin() * dt;
   S.coins += inc; S.total += inc;
   S.ls += S.lis * dt;
-  S.clock = (S.clock + dt) % CYCLE;
+  slotAdvanceTick(dt, idx);
   if(S.sbLeft > 0) S.sbLeft = Math.max(0, S.sbLeft - dt);
   if(S.liveCd > 0) S.liveCd = Math.max(0, S.liveCd - dt);
   for(var bi=S.buffs.length-1; bi>=0; bi--){ S.buffs[bi].left -= dt; if(S.buffs[bi].left <= 0) S.buffs.splice(bi,1); }
   return inc;
+}
+var SLEN = SLOT_LEN;     // nykyisen ohjelmapaikan pituus s (äänen kanssa kappaleen kesto)
+var SLOT_NEW = false;
+function songHolds(){ return !!(AU.on && AU.cur && AU.el); }
+function slotFrac(){ return (S.clock % SLOT_LEN) / SLOT_LEN; }
+function slotLeft(){ return Math.max(0, (1 - slotFrac()) * SLEN); }
+function advanceSlot(){
+  var i = slotIdx(S.clock);
+  S.clock = ((i + 1) % 4) * SLOT_LEN; AU.capT = 0; SLOT_NEW = true;
+}
+function slotAdvanceTick(dt, idx){
+  var sf = slotFrac() + dt / (SLEN || SLOT_LEN);
+  if(sf >= 1){
+    if(songHolds()){                      // kappale soi loppuun
+      sf = 0.999; AU.capT = (AU.capT||0) + dt;
+      if(AU.capT > 20){ AU.capT = 0; try{ AU.el.pause(); }catch(e){} AU.cur = null; advanceSlot(); return; }
+    } else {
+      var steps = Math.floor(sf); sf -= steps;
+      S.clock = (((idx + steps) % 4) * SLOT_LEN + sf * SLOT_LEN); if(steps) SLOT_NEW = true;
+      return;
+    }
+  }
+  S.clock = idx * SLOT_LEN + sf * SLOT_LEN;
 }
 function incomePerSec(){ return S.lis * COIN_PER_LIS * coinMult() * (1 + AD_MULT[S.ads[slotIdx(S.clock)]||0]) * buffCoin(); }
 
@@ -622,6 +648,7 @@ function prestige(){
 }
 function setSlot(i, g){
   if(!S.unlocked[g]) return;
+  if(i === slotIdx(S.clock) && S.slots[i] && S.slots[i] !== g){ toast('Kappale on kesken. Vaihda seuraavan ohjelman tyyli.'); return; }
   S.slots[i] = g; render(true);
 }
 
@@ -661,7 +688,8 @@ function render(force){
   $('lis').textContent = fmt(S.lis);
   $('inc').textContent = '+' + fmt(incomePerSec()) + ' $ / s';
   $('clk').textContent = clockText();
-  $('clkSlot').textContent = SLOTS[idx].n;
+  $('clkSlot').textContent = SLOTS[idx].n + ' · ' + Math.ceil(slotLeft()) + ' s';
+  if(SLOT_NEW){ SLOT_NEW = false; var ng = S.slots[idx]; toast('Ohjelma vaihtui: ' + SLOTS[idx].n + (ng ? ' · ' + GENRES[ng].n : '') + '. Valitse nyt seuraava!', 2400); }
   $('stName').textContent = ANT[S.antenna].n;
   $('stSub').textContent = ANT[S.antenna].a + ' · ' + cityCount() + '/' + CITIES.length + ' kaupunkia · maine ' + fameLevel();
 
@@ -745,11 +773,11 @@ function canBuyAny(){
 function drawSlots(cur){
   var h = '';
   for(var i=0;i<4;i++){
-    h += '<div class="slot'+(i===cur?' now':'')+'"><div class="hd"><b>'+SLOTS[i].n+'</b><small>'+SLOTS[i].h+'</small>'+(i===cur?'<span class="live">● lähetyksessä</span>':'')+'</div><div class="chips">';
+    h += '<div class="slot'+(i===cur?' now':'')+'"><div class="hd"><b>'+SLOTS[i].n+'</b><small>'+SLOTS[i].h+'</small>'+(i===cur?'<span class="live">● lähetyksessä · lukittu kappaleen ajaksi</span>':(i===(cur+1)%4?'<span class="live nxt">▶ seuraavaksi: valitse tyyli</span>':''))+'</div><div class="chips">';
     for(var j=0;j<GORDER.length;j++){
       var k = GORDER[j]; if(!S.unlocked[k]) continue;
-      var f = fitCls(FIT[SLOTS[i].id][k]);
-      h += '<button class="chip'+(S.slots[i]===k?' sel':'')+'" data-slot="'+i+'" data-g="'+k+'">'+GENRES[k].n+' <span class="fit '+f[0]+'">'+f[1]+'</span></button>';
+      var f = fitCls(FIT_SHOW[SLOTS[i].id][k]);
+      h += '<button class="chip'+(S.slots[i]===k?' sel':'')+(i===cur&&S.slots[i]&&S.slots[i]!==k?' lock':'')+'" data-slot="'+i+'" data-g="'+k+'">'+GENRES[k].n+' <span class="fit '+f[0]+'">'+f[1]+'</span></button>';
     }
     h += '</div>';
     // juontaja
@@ -1476,7 +1504,7 @@ var AU = {on:false, el:null, cur:null, g:null, hist:[], bad:{}, fade:0};
 function auEl(){
   if(AU.el) return AU.el;
   var a = new Audio(); a.preload = 'auto';
-  a.addEventListener('ended', function(){ auNext(); });
+  a.addEventListener('ended', function(){ AU.cur = null; if(AU.on){ advanceSlot(); SLEN = SLOT_LEN; } auNext(); });
   a.addEventListener('error', function(){ if(AU.cur){ AU.bad[AU.cur.id] = 1; setTimeout(auNext, 500); } });
   AU.el = a; return a;
 }
@@ -1511,7 +1539,7 @@ function findReal(id){
 function auPlay(t, off, radio){
   var a = auEl();
   AU.cur = {title:t.title, artist:t.artist, info:t.info, id:t.id, real:true, radio:!!radio};
-  AU.sw = a.src;
+  AU.sw = a.src; SLEN = Math.max(20, t.dur || SLOT_LEN); AU.capT = 0;
   a.src = t.url; a.volume = 0; AU.fade = 0;
   if(off > 1){ var seek = function(){ a.removeEventListener('loadedmetadata', seek); try{ a.currentTime = off; }catch(e){} }; a.addEventListener('loadedmetadata', seek); }
   var pr = a.play(); if(pr && pr.catch) pr.catch(function(){ AU.on = false; syncSnd(); toast('Selain esti äänen: napauta äänikuvaketta uudelleen'); });
@@ -1528,7 +1556,7 @@ function auNext(){
   var g = curGenre(), pool = auPool(g), a = auEl();
   AU.g = g;
   var prev = AU.cur && AU.cur.id;
-  var haveRadio = AU.radioOk !== false;
+  var haveRadio = AU.radioOk !== false && !AU.started;
   if(!haveRadio){
     if(!pool.length){ a.pause(); AU.cur = null; return; }
     auPick(g, pool); return;
@@ -1539,15 +1567,15 @@ function auNext(){
     if(!AU.on) return;
     if(!d){ AU.radioOk = false; }
     var t = d && d.id ? findReal(d.id) : null;
-    if(t && d.age < 900 && t.id != prev){
+    if(t && d.age < 900 && t.id != prev && !AU.started){
       var off = d.age + Math.min(30, (t.dur||60)/2);
       if(off < (t.dur||0) - 8){
-        AU.g = curGenre(); auPlay(t, off, true);
+        AU.g = curGenre(); AU.started = true; auPlay(t, off, true);
         if(!AU.toasted){ AU.toasted = true; toast('Soi: ' + t.title + ' (sama kuin oikeassa radiossa)'); }
         return;
       }
     }
-    var g2 = curGenre(), p2 = auPool(g2); AU.g = g2;
+    var g2 = curGenre(), p2 = auPool(g2); AU.g = g2; AU.started = true;
     if(!p2.length){ a.pause(); AU.cur = null; return; }
     auPick(g2, p2);
   });
@@ -1556,8 +1584,8 @@ function auTick(dt){
   if(!AU.on || !AU.el) return;
   if(AU.fade < 1){ AU.fade = Math.min(1, AU.fade + dt/1.2); try{ AU.el.volume = AU.fade; }catch(e){} }
   var g = curGenre();
-  if(g !== AU.g && !(AU.cur && AU.cur.radio)) auNext();   // ohjelmapaikan tyyli vaihtui
-  else if(g !== AU.g) AU.g = g;
+  if(AU.cur){ AU.g = g; }                                   // kappale soi aina loppuun
+  else if(g !== AU.g) auNext();                              // uusi ohjelmapaikka alkoi
   else if(!AU.cur && !AU.busy && (auPool(g).length || AU.radioOk !== false)) auNext(); // uusi kappale ostettu tai radio alkoi soida
 }
 function syncSnd(){
@@ -1567,8 +1595,8 @@ function syncSnd(){
 function toggleSound(){
   if(!REAL_OK){ toast('Oikeat kappaleet ja ääni toimivat vasta suorni.fi/?peli=1 -osoitteessa.'); return; }
   AU.on = !AU.on; syncSnd();
-  if(AU.on){ auEl(); AU.g = null; AU.cur = null; AU.toasted = false; AU.radioOk = undefined; auNext(); toast('Ääni päällä: Radio Suornin oikeat kappaleet'); }
-  else if(AU.el){ AU.el.pause(); AU.cur = null; }
+  if(AU.on){ auEl(); AU.g = null; AU.cur = null; AU.toasted = false; AU.started = false; AU.radioOk = undefined; auNext(); toast('Ääni päällä: Radio Suornin oikeat kappaleet'); }
+  else if(AU.el){ AU.el.pause(); AU.cur = null; SLEN = SLOT_LEN; }
   render(true);
 }
 $('snd').addEventListener('click', toggleSound);
