@@ -158,6 +158,14 @@ nav .dot.has::after{content:"";position:absolute;right:-6px;top:-2px;width:7px;h
 .perk{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
 .perk .i{flex:1;font-size:13px}.perk .i b{display:block;font-size:14px}.perk .i small{color:var(--mu);font-size:12px}
 .tp{font-family:var(--mono);color:var(--warn)}
+.snd{width:38px;height:38px;border:1px solid var(--line);border-radius:var(--r);display:flex;align-items:center;justify-content:center;color:var(--mu);flex:none}
+.snd svg{width:20px;height:20px}
+.snd.on{border-color:var(--ok);color:var(--ok);background:rgba(61,220,151,.1)}
+.nfo{font-size:12px;color:var(--mu);margin-top:3px;line-height:1.35}
+details.fl{margin-top:6px}
+details.fl summary{font-family:var(--mono);font-size:11px;color:var(--a);cursor:pointer;letter-spacing:.06em}
+details.fl ol{margin:6px 0 0;padding-left:20px;font-size:12px;color:var(--mu);line-height:1.6}
+details.fl li b{color:var(--tx);font-weight:500}
 @media (prefers-reduced-motion:reduce){.eq i{animation:none}}
 </style>
 </head>
@@ -169,6 +177,9 @@ nav .dot.has::after{content:"";position:absolute;right:-6px;top:-2px;width:7px;h
       Taajuus
     </div>
     <div class="sp"></div>
+    <button class="snd" id="snd" aria-label="Ääni päälle / pois" title="Ääni">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path id="sndWave" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+    </button>
     <div class="res"><b id="hCoins">0</b><small>kolikkoa</small></div>
   </header>
 
@@ -184,7 +195,7 @@ nav .dot.has::after{content:"";position:absolute;right:-6px;top:-2px;width:7px;h
         <div class="ev" id="evBox"><b id="evT"></b><span id="evX"></span><div class="tb" id="evBar"></div></div>
         <div class="np">
           <div class="eq"><i></i><i></i><i></i><i></i></div>
-          <div class="t"><b id="npT">–</b><small id="npS">–</small><div class="say" id="npSay"></div></div>
+          <div class="t"><b id="npT">–</b><small id="npS">–</small><div class="say" id="npSay"></div><div class="nfo" id="npI"></div></div>
           <img class="av" id="npAv" alt="" style="display:none">
         </div>
       </div>
@@ -271,6 +282,53 @@ var GENRES = {
 };
 var GORDER = ['iskelma','pop','rauhallinen','rock','metalli'];
 
+/* ---------- Oikeat Suornin kappaleet ---------- */
+var REAL = {iskelma:[],pop:[],rauhallinen:[],rock:[],metalli:[]};
+var REAL_OK = false;
+function classify(t, listNames){
+  var L = listNames.join(' ').toLowerCase();
+  var T = ((t.style||'') + ' ' + (t.genre||'')).toLowerCase();
+  if(/metal/.test(L)) return 'metalli';
+  if(/iskelm/.test(L)) return 'iskelma';
+  if(/rauhall|yö/.test(L)) return 'rauhallinen';
+  if(/miesten/.test(L)) return 'rock';
+  if(/party/.test(L)) return 'pop';
+  if(/metal|doom|thrash|death|viikinki|black/.test(T)) return 'metalli';
+  if(/iskelm|tango|humppa|valssi|foksi|schlager/.test(T)) return 'iskelma';
+  if(/ballad|piano|akustinen|hidas|ambient|lullaby|rauhall/.test(T)) return 'rauhallinen';
+  if(/rock|punk|blues|stoner|grunge|kapakka/.test(T)) return 'rock';
+  return 'pop';
+}
+function hashId(id){ var x = (id * 2654435761) >>> 0; x ^= x >>> 15; return x; }
+function loadReal(){
+  if(location.protocol.indexOf('http') !== 0) return;
+  var urls = ['/wp-json/suorni/v1/tracks', '/?rest_route=/suorni/v1/tracks', '/index.php?rest_route=/suorni/v1/tracks'];
+  (function next(i){
+    if(i >= urls.length) return;
+    fetch(urls[i], {credentials:'omit'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(d){
+      if(!d || !d.tracks) throw 0;
+      var byList = {};
+      (d.lists||[]).forEach(function(l){ (l.ids||[]).forEach(function(id){ (byList[id] = byList[id] || []).push(l.name || ''); }); });
+      var out = {iskelma:[],pop:[],rauhallinen:[],rock:[],metalli:[]};
+      d.tracks.forEach(function(t){
+        if(t.ad || t.ann || !(t.dur > 0) || !t.url) return;
+        var g = classify(t, byList[t.id] || []);
+        out[g].push({id:t.id, title:t.title, artist:t.artist, url:t.url, dur:t.dur, info:t.info||''});
+      });
+      var total = 0;
+      for(var g in out){ out[g].sort(function(a,b){ return hashId(a.id) - hashId(b.id); }); total += out[g].length; }
+      if(!total) throw 0;
+      REAL = out; REAL_OK = true;
+      // varmista, ettei omistettuja ole yli oikean määrän
+      render(true);
+    }).catch(function(){ next(i+1); });
+  })(0);
+}
+function realCap(g){ return REAL_OK && REAL[g].length > 0 ? REAL[g].length : Infinity; }
+function songAt(g, i){
+  if(REAL_OK && REAL[g].length){ var t = REAL[g][i % REAL[g].length]; return {title:t.title, artist:t.artist, url:t.url, id:t.id, info:t.info, real:true}; }
+  var ti = GENRES[g].titles; return {title:ti[i % ti.length], artist:'Taajuus', real:false};
+}
 var HOST_IMG = {aino:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IkFpbm8sIGFhbXVqdW9udGFqYSI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZlNDlhIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmY4YTU1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxyZWN0IHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2IiBmaWxsPSJ1cmwoI2EpIi8+PGNpcmNsZSBjeD0iMjA0IiBjeT0iNTAiIHI9IjMwIiBmaWxsPSIjZmZmNmMyIiBvcGFjaXR5PSIuOTUiLz48Y2lyY2xlIGN4PSIyMDQiIGN5PSI1MCIgcj0iNDIiIGZpbGw9IiNmZmY2YzIiIG9wYWNpdHk9Ii4yNSIvPgo8cGF0aCBkPSJNMTY4IDc2QzIzNiA2NiAyNDggMTQyIDIwOCAxODJDMjIwIDEzNiAxOTggMTEyIDE2OCAxMTJaIiBmaWxsPSIjZjFiMDJlIi8+PGNpcmNsZSBjeD0iMTcyIiBjeT0iODYiIHI9IjciIGZpbGw9IiNlODQ0NWYiLz4KPHBhdGggZD0iTTM2IDI1NkMzNiAyMTQgNzggMTkyIDEyOCAxOTJDMTc4IDE5MiAyMjAgMjE0IDIyMCAyNTZaIiBmaWxsPSIjZmY1ZTdhIi8+PHBhdGggZD0iTTEwNiAxOTJMMTI4IDIyMkwxNTAgMTkyWiIgZmlsbD0iI2Y0YzE5YiIvPgo8cmVjdCB4PSIxMTIiIHk9IjE2MCIgd2lkdGg9IjMyIiBoZWlnaHQ9IjQwIiByeD0iMTIiIGZpbGw9IiNlZmI4OGYiLz4KPGVsbGlwc2UgY3g9IjEyOCIgY3k9IjExNiIgcng9IjUzIiByeT0iNjAiIGZpbGw9IiNmOGNmYWUiLz48ZWxsaXBzZSBjeD0iNzYiIGN5PSIxMjQiIHJ4PSI3IiByeT0iMTIiIGZpbGw9IiNmM2MxOWMiLz48ZWxsaXBzZSBjeD0iMTgwIiBjeT0iMTI0IiByeD0iNyIgcnk9IjEyIiBmaWxsPSIjZjNjMTljIi8+CjxwYXRoIGQ9Ik03MiAxMTRDNjYgNTQgMTA4IDM0IDE0MCAzOEMxODQgNDIgMTkyIDg0IDE4NCAxMTZDMTcyIDkyIDE1MiA4MCAxMjggODBDMTA0IDgwIDg4IDk0IDcyIDExNFoiIGZpbGw9IiNmNmJkM2IiLz48cGF0aCBkPSJNNzQgMTEyQzg0IDg0IDExMiA3MCAxNTIgNzZDMTIwIDg0IDk4IDk4IDkyIDEyNEM4NiAxMjQgNzggMTIwIDc0IDExMloiIGZpbGw9IiNlOWE1MmEiLz4KPGcgZmlsbD0iI2ZmZiI+PGVsbGlwc2UgY3g9IjEwNiIgY3k9IjEyNCIgcng9IjEyIiByeT0iMTQiLz48ZWxsaXBzZSBjeD0iMTUwIiBjeT0iMTI0IiByeD0iMTIiIHJ5PSIxNCIvPjwvZz4KPGcgZmlsbD0iIzVhM2ExZSI+PGNpcmNsZSBjeD0iMTA3IiBjeT0iMTI2IiByPSI4Ii8+PGNpcmNsZSBjeD0iMTQ5IiBjeT0iMTI2IiByPSI4Ii8+PC9nPjxnIGZpbGw9IiNmZmYiPjxjaXJjbGUgY3g9IjExMCIgY3k9IjEyMiIgcj0iMyIvPjxjaXJjbGUgY3g9IjE1MiIgY3k9IjEyMiIgcj0iMyIvPjwvZz4KPGcgc3Ryb2tlPSIjYzk4YTFjIiBzdHJva2Utd2lkdGg9IjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgZmlsbD0ibm9uZSI+PHBhdGggZD0iTTkyIDEwMFExMDYgODggMTIyIDk3Ii8+PHBhdGggZD0iTTEzNCA5N1ExNTAgODggMTY0IDEwMCIvPjwvZz4KPGNpcmNsZSBjeD0iOTIiIGN5PSIxNTAiIHI9IjEwIiBmaWxsPSIjZmY4ZjljIiBvcGFjaXR5PSIuNTUiLz48Y2lyY2xlIGN4PSIxNjQiIGN5PSIxNTAiIHI9IjEwIiBmaWxsPSIjZmY4ZjljIiBvcGFjaXR5PSIuNTUiLz4KPHBhdGggZD0iTTEwMCAxNDZRMTI4IDE4OCAxNTYgMTQ2WiIgZmlsbD0iIzhmMmEzZCIvPjxwYXRoIGQ9Ik0xMDMgMTQ3UTEyOCAxNTYgMTUzIDE0N0wxNTAgMTU2UTEyOCAxNjQgMTA2IDE1NloiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMTEzIDE2NlExMjggMTU2IDE0MyAxNjZRMTI4IDE4MCAxMTMgMTY2WiIgZmlsbD0iI2ZmN2I4YyIvPgo8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxNzIgMTkyKSI+PHBhdGggZD0iTTEyIC02cS02IC0xMCAwIC0yME0yNiAtNnEtNiAtMTAgMCAtMjAiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSI0IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIG9wYWNpdHk9Ii44Ii8+PHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjQ2IiBoZWlnaHQ9IjQ4IiByeD0iOSIgZmlsbD0iI2ZmZiIvPjxyZWN0IHg9IjAiIHk9IjE2IiB3aWR0aD0iNDYiIGhlaWdodD0iOSIgZmlsbD0iI2ZmOGE1NSIvPjxwYXRoIGQ9Ik00NiAxMmg4YTkgOSAwIDAgMSAwIDIyaC04IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNiIvPjwvZz48L3N2Zz4K',sanni:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IlNhbm5pLCBww6RpdsOkanVvbnRhamEiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0icyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzdmZDhmZiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmZjJhNiIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPgo8cmVjdCB3aWR0aD0iMjU2IiBoZWlnaHQ9IjI1NiIgZmlsbD0idXJsKCNzKSIvPjxnIGZpbGw9IiNmZmYiIG9wYWNpdHk9Ii45Ij48ZWxsaXBzZSBjeD0iNTIiIGN5PSI0OCIgcng9IjI2IiByeT0iMTEiLz48ZWxsaXBzZSBjeD0iNzAiIGN5PSI0MiIgcng9IjE4IiByeT0iMTAiLz48ZWxsaXBzZSBjeD0iMjA2IiBjeT0iNzgiIHJ4PSIyNCIgcnk9IjEwIi8+PGVsbGlwc2UgY3g9IjIyMCIgY3k9IjcyIiByeD0iMTQiIHJ5PSI4Ii8+PC9nPgo8cGF0aCBkPSJNNjQgMTEyQzU4IDU2IDk4IDM0IDEyOCAzNkMxNjAgMzQgMTk4IDU4IDE5MiAxMTJMMTk2IDE4MEMxODggMTkyIDE3MiAxOTAgMTY4IDE3OEw4OCAxNzhDODQgMTkwIDY4IDE5MiA2MCAxODBaIiBmaWxsPSIjNmEzYjI0Ii8+CjxwYXRoIGQ9Ik0zNiAyNTZDMzYgMjE0IDc4IDE5MiAxMjggMTkyQzE3OCAxOTIgMjIwIDIxNCAyMjAgMjU2WiIgZmlsbD0iI2ZmY2YzZiIvPjxwYXRoIGQ9Ik0xMDQgMTkyUTEyOCAyMTIgMTUyIDE5MiIgZmlsbD0iI2YxYzI5YiIvPjxwYXRoIGQ9Ik0xMTIgMjAwTDEwOCAyMzhNMTQ0IDIwMEwxNDggMjM4IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxyZWN0IHg9IjExMiIgeT0iMTYwIiB3aWR0aD0iMzIiIGhlaWdodD0iNDAiIHJ4PSIxMiIgZmlsbD0iI2U5YjQ4YyIvPgo8ZWxsaXBzZSBjeD0iMTI4IiBjeT0iMTE4IiByeD0iNTIiIHJ5PSI1OCIgZmlsbD0iI2Y0YzhhMyIvPgo8cGF0aCBkPSJNNzQgMTA4Qzc4IDY0IDExOCA0OCAxNDIgNTRDMTcwIDYwIDE4NCA4NCAxODIgMTEwQzE2MiA5MCAxNDIgODAgMTIwIDg0QzEwMCA4OCA4NCA5NiA3NCAxMDhaIiBmaWxsPSIjN2E0NTI5Ii8+CjxwYXRoIGQ9Ik03MCAxMjJDNjIgMzAgMTk0IDMwIDE4NiAxMjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzI1MzAzYyIgc3Ryb2tlLXdpZHRoPSI5IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHJlY3QgeD0iNTgiIHk9IjEwNiIgd2lkdGg9IjI2IiBoZWlnaHQ9IjQwIiByeD0iMTIiIGZpbGw9IiMyZWM0YjYiLz48cmVjdCB4PSIxNzIiIHk9IjEwNiIgd2lkdGg9IjI2IiBoZWlnaHQ9IjQwIiByeD0iMTIiIGZpbGw9IiMyZWM0YjYiLz48cmVjdCB4PSI1OCIgeT0iMTE0IiB3aWR0aD0iMTIiIGhlaWdodD0iMjQiIHJ4PSI2IiBmaWxsPSIjMjUzMDNjIi8+PHJlY3QgeD0iMTg2IiB5PSIxMTQiIHdpZHRoPSIxMiIgaGVpZ2h0PSIyNCIgcng9IjYiIGZpbGw9IiMyNTMwM2MiLz4KPGcgZmlsbD0iI2ZmZiI+PGVsbGlwc2UgY3g9IjEwNiIgY3k9IjEyNCIgcng9IjExIiByeT0iMTIiLz48L2c+PGNpcmNsZSBjeD0iMTA4IiBjeT0iMTI2IiByPSI3IiBmaWxsPSIjMmY1ZDhhIi8+PGNpcmNsZSBjeD0iMTEwIiBjeT0iMTIzIiByPSIyLjYiIGZpbGw9IiNmZmYiLz4KPHBhdGggZD0iTTEzOCAxMjZRMTUwIDExNCAxNjIgMTI2IiBmaWxsPSJub25lIiBzdHJva2U9IiMzYTI0MTciIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxnIHN0cm9rZT0iIzVjMzMyMCIgc3Ryb2tlLXdpZHRoPSI1IiBzdHJva2UtbGluZWNhcD0icm91bmQiIGZpbGw9Im5vbmUiPjxwYXRoIGQ9Ik05MiAxMDNRMTA2IDk0IDEyMCAxMDEiLz48cGF0aCBkPSJNMTM2IDk5UTE1MCA5MiAxNjQgMTAwIi8+PC9nPgo8ZyBmaWxsPSIjYzk4MzVhIiBvcGFjaXR5PSIuNyI+PGNpcmNsZSBjeD0iOTYiIGN5PSIxNDIiIHI9IjIiLz48Y2lyY2xlIGN4PSIxMDQiIGN5PSIxNDYiIHI9IjIiLz48Y2lyY2xlIGN4PSI5MiIgY3k9IjE0OCIgcj0iMiIvPjxjaXJjbGUgY3g9IjE1MiIgY3k9IjE0NiIgcj0iMiIvPjxjaXJjbGUgY3g9IjE2MCIgY3k9IjE0MiIgcj0iMiIvPjxjaXJjbGUgY3g9IjE2NCIgY3k9IjE0OCIgcj0iMiIvPjwvZz4KPHBhdGggZD0iTTEwNiAxNTJRMTI4IDE3NiAxNTIgMTUyIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNhODQ1M2YiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xMDYgMTUyUTEyOCAxNjAgMTUyIDE1MiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjYTg0NTNmIiBzdHJva2Utd2lkdGg9IjMiLz4KPHBhdGggZD0iTTQ0IDQwbDYgNk01MiAzNGwtNiA2IiBzdHJva2U9IiNmZjhhM2QiIHN0cm9rZS13aWR0aD0iMyIgb3BhY2l0eT0iMCIvPjwvc3ZnPgo=',eino:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IkVpbm8sIGlsdGFqdW9udGFqYSI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJlIiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjNGIzMDcwIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZTA4MDRkIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxyZWN0IHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2IiBmaWxsPSJ1cmwoI2UpIi8+PGNpcmNsZSBjeD0iNDYiIGN5PSI2MCIgcj0iNDAiIGZpbGw9IiNmZmQ3N2EiIG9wYWNpdHk9Ii4zIi8+PGNpcmNsZSBjeD0iNDYiIGN5PSI2MCIgcj0iMjAiIGZpbGw9IiNmZmQ3N2EiIG9wYWNpdHk9Ii40NSIvPgo8cGF0aCBkPSJNMzAgMjU2QzMwIDIxMiA3NiAxOTAgMTI4IDE5MEMxODAgMTkwIDIyNiAyMTIgMjI2IDI1NloiIGZpbGw9IiM4YjRhMmIiLz48cGF0aCBkPSJNMTA0IDE5MEwxMjggMjM2TDE1MiAxOTBaIiBmaWxsPSIjZjZlZmUwIi8+PHBhdGggZD0iTTkyIDE5MkwxMjggMjQwTDExNiAxOTJaIiBmaWxsPSIjZTdkY2M2Ii8+PHBhdGggZD0iTTE2NCAxOTJMMTI4IDI0MEwxNDAgMTkyWiIgZmlsbD0iI2U3ZGNjNiIvPgo8ZyBmaWxsPSIjNGUyYTE1Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIyMzIiIHI9IjQiLz48Y2lyY2xlIGN4PSIxMjgiIGN5PSIyNTAiIHI9IjQiLz48L2c+PHBhdGggZD0iTTEyOCAyMDZWMjU2IiBzdHJva2U9IiM2ZTNhMjAiIHN0cm9rZS13aWR0aD0iMyIvPgo8cmVjdCB4PSIxMTAiIHk9IjE2MCIgd2lkdGg9IjM2IiBoZWlnaHQ9IjQwIiByeD0iMTIiIGZpbGw9IiNkOWEwN2MiLz4KPGVsbGlwc2UgY3g9IjEyOCIgY3k9IjExOCIgcng9IjU2IiByeT0iNjIiIGZpbGw9IiNlYmI4OTQiLz48ZWxsaXBzZSBjeD0iNzIiIGN5PSIxMjYiIHJ4PSI5IiByeT0iMTUiIGZpbGw9IiNlMmFiODciLz48ZWxsaXBzZSBjeD0iMTg0IiBjeT0iMTI2IiByeD0iOSIgcnk9IjE1IiBmaWxsPSIjZTJhYjg3Ii8+CjxwYXRoIGQ9Ik03NiAxMDBDNjYgMTEyIDY4IDE0MCA3OCAxNTBDODIgMTM0IDg0IDExNiA4NiA5OFoiIGZpbGw9IiNjZmQyZDYiLz48cGF0aCBkPSJNMTgwIDEwMEMxOTAgMTEyIDE4OCAxNDAgMTc4IDE1MEMxNzQgMTM0IDE3MiAxMTYgMTcwIDk4WiIgZmlsbD0iI2NmZDJkNiIvPgo8ZWxsaXBzZSBjeD0iMTE2IiBjeT0iNzAiIHJ4PSIyMiIgcnk9IjkiIGZpbGw9IiNmZmYiIG9wYWNpdHk9Ii4zNSIvPgo8ZyBzdHJva2U9IiNhZWIyYjgiIHN0cm9rZS13aWR0aD0iOSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48cGF0aCBkPSJNODggOThRMTA0IDg4IDEyMiA5NiIvPjxwYXRoIGQ9Ik0xMzQgOTZRMTUyIDg4IDE2OCA5OCIvPjwvZz4KPGcgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iLjI1Ij48Y2lyY2xlIGN4PSIxMDYiIGN5PSIxMjIiIHI9IjE3Ii8+PGNpcmNsZSBjeD0iMTUwIiBjeT0iMTIyIiByPSIxNyIvPjwvZz4KPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNmIzYjIyIiBzdHJva2Utd2lkdGg9IjQiPjxjaXJjbGUgY3g9IjEwNiIgY3k9IjEyMiIgcj0iMTciLz48Y2lyY2xlIGN4PSIxNTAiIGN5PSIxMjIiIHI9IjE3Ii8+PHBhdGggZD0iTTEyMyAxMjBRMTI4IDExNiAxMzMgMTIwIi8+PHBhdGggZD0iTTg5IDEyMEw3NiAxMTZNMTY3IDEyMEwxODAgMTE2Ii8+PC9nPgo8Y2lyY2xlIGN4PSIxMDYiIGN5PSIxMjQiIHI9IjQuNSIgZmlsbD0iIzJhMmEzMCIvPjxjaXJjbGUgY3g9IjE1MCIgY3k9IjEyNCIgcj0iNC41IiBmaWxsPSIjMmEyYTMwIi8+CjxlbGxpcHNlIGN4PSIxMjgiIGN5PSIxNDIiIHJ4PSIxMiIgcnk9IjkiIGZpbGw9IiNkY2EwN2UiLz4KPGNpcmNsZSBjeD0iOTAiIGN5PSIxNDgiIHI9IjkiIGZpbGw9IiNlOTg3N2QiIG9wYWNpdHk9Ii40Ii8+PGNpcmNsZSBjeD0iMTY2IiBjeT0iMTQ4IiByPSI5IiBmaWxsPSIjZTk4NzdkIiBvcGFjaXR5PSIuNCIvPgo8cGF0aCBkPSJNMTE0IDE3NlExMjggMTg0IDE0MiAxNzYiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzhhNGIzYSIgc3Ryb2tlLXdpZHRoPSIzLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNODggMTU4UTEwOCAxNDAgMTI4IDE1MlExNDggMTQwIDE2OCAxNThRMTUwIDE3NCAxMjggMTY0UTEwNiAxNzQgODggMTU4WiIgZmlsbD0iI2NmZDJkNiIgc3Ryb2tlPSIjOWRhMWE4IiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4K',unto:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IlVudG8sIHnDtmp1b250YWphIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9InUiIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMwNjBhMjQiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMyZDM4NzciLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz4KPHJlY3Qgd2lkdGg9IjI1NiIgaGVpZ2h0PSIyNTYiIGZpbGw9InVybCgjdSkiLz48ZyBmaWxsPSIjZmZmIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjQwIiByPSIyIi8+PGNpcmNsZSBjeD0iNjQiIGN5PSI3NiIgcj0iMS42Ii8+PGNpcmNsZSBjeD0iNDYiIGN5PSIxMzAiIHI9IjEuOCIvPjxjaXJjbGUgY3g9IjIxNCIgY3k9IjE0MCIgcj0iMS42Ii8+PGNpcmNsZSBjeD0iMjAiIGN5PSIxOTAiIHI9IjEuNSIvPjxjaXJjbGUgY3g9IjIzNiIgY3k9IjIwMCIgcj0iMiIvPjxjaXJjbGUgY3g9IjE1MCIgY3k9IjE4IiByPSIxLjUiLz48L2c+CjxjaXJjbGUgY3g9IjIwNCIgY3k9IjU0IiByPSIzMiIgZmlsbD0iI2ZmZjBiOCIvPjxjaXJjbGUgY3g9IjIxOCIgY3k9IjQ2IiByPSIyOCIgZmlsbD0iIzBmMTY0MCIvPgo8ZyBmaWxsPSIjY2RkNmZmIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiIGZvbnQtc3R5bGU9Iml0YWxpYyIgZm9udC13ZWlnaHQ9IjcwMCI+PHRleHQgeD0iMTk2IiB5PSIxMjQiIGZvbnQtc2l6ZT0iMjIiPno8L3RleHQ+PHRleHQgeD0iMjEyIiB5PSIxMDgiIGZvbnQtc2l6ZT0iMTYiPno8L3RleHQ+PHRleHQgeD0iMjI0IiB5PSI5NiIgZm9udC1zaXplPSIxMiI+ejwvdGV4dD48L2c+CjxlbGxpcHNlIGN4PSIxMjgiIGN5PSIxNzAiIHJ4PSI3MCIgcnk9IjMwIiBmaWxsPSIjMjYyYTQ5Ii8+CjxwYXRoIGQ9Ik0zMCAyNTZDMzAgMjE0IDc0IDE5MiAxMjggMTkyQzE4MiAxOTIgMjI2IDIxNCAyMjYgMjU2WiIgZmlsbD0iIzM0Mzg1YyIvPjxwYXRoIGQ9Ik0xMDQgMTk2UTEyOCAyMTAgMTUyIDE5NiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMWUyMTQwIiBzdHJva2Utd2lkdGg9IjUiLz48cGF0aCBkPSJNMTE0IDIwNEwxMTIgMjQwTTE0MiAyMDRMMTQ0IDI0MCIgc3Ryb2tlPSIjZDlkZWY1IiBzdHJva2Utd2lkdGg9IjMuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxyZWN0IHg9IjExMiIgeT0iMTYwIiB3aWR0aD0iMzIiIGhlaWdodD0iNDAiIHJ4PSIxMiIgZmlsbD0iI2NmYTA3ZiIvPgo8ZWxsaXBzZSBjeD0iMTI4IiBjeT0iMTIwIiByeD0iNTMiIHJ5PSI1OCIgZmlsbD0iI2UwYjA4ZCIvPjxlbGxpcHNlIGN4PSI3NiIgY3k9IjEyNiIgcng9IjciIHJ5PSIxMiIgZmlsbD0iI2Q2YTQ4MiIvPjxlbGxpcHNlIGN4PSIxODAiIGN5PSIxMjYiIHJ4PSI3IiByeT0iMTIiIGZpbGw9IiNkNmE0ODIiLz4KPHBhdGggZD0iTTc2IDEyMkM3NiAxNzIgMTAwIDE5OCAxMjggMTk4QzE1NiAxOTggMTgwIDE3MiAxODAgMTIyQzE3MiAxNTAgMTUyIDE2MCAxMjggMTYwQzEwNCAxNjAgODQgMTUwIDc2IDEyMloiIGZpbGw9IiMyYjJiMzMiLz4KPHBhdGggZD0iTTEwNCAxNTZRMTI4IDE0OCAxNTIgMTU2UTE0MiAxNzAgMTI4IDE2OFExMTQgMTcwIDEwNCAxNTZaIiBmaWxsPSIjMmIyYjMzIi8+PGVsbGlwc2UgY3g9IjEyOCIgY3k9IjE3NCIgcng9IjgiIHJ5PSI5IiBmaWxsPSIjMWExMDE2Ii8+PGVsbGlwc2UgY3g9IjEyOCIgY3k9IjE3NyIgcng9IjUiIHJ5PSI1IiBmaWxsPSIjN2EyZjQ1Ii8+CjxwYXRoIGQ9Ik03MiA5OEM2OCA0MCAxMDAgMjQgMTI4IDI0QzE1OCAyNCAxODggNDAgMTg0IDk4WiIgZmlsbD0iIzJmNmY3MyIvPjxyZWN0IHg9IjY4IiB5PSI4MiIgd2lkdGg9IjEyMCIgaGVpZ2h0PSIyNiIgcng9IjEyIiBmaWxsPSIjM2Y4ZDkxIi8+PHBhdGggZD0iTTgyIDgyVjEwOE05OCA4MlYxMDhNMTE0IDgyVjEwOE0xMzAgODJWMTA4TTE0NiA4MlYxMDhNMTYyIDgyVjEwOE0xNzggODJWMTA4IiBzdHJva2U9IiMyZjZmNzMiIHN0cm9rZS13aWR0aD0iMyIgb3BhY2l0eT0iLjU1Ii8+PGNpcmNsZSBjeD0iMTI4IiBjeT0iMjIiIHI9IjEzIiBmaWxsPSIjZTRlYmYyIi8+CjxnIGZpbGw9IiNmZmYiPjxlbGxpcHNlIGN4PSIxMDgiIGN5PSIxMjYiIHJ4PSIxMSIgcnk9IjkiLz48ZWxsaXBzZSBjeD0iMTQ4IiBjeT0iMTI2IiByeD0iMTEiIHJ5PSI5Ii8+PC9nPjxnIGZpbGw9IiMzYTJhMjIiPjxjaXJjbGUgY3g9IjEwOCIgY3k9IjEzMCIgcj0iNS41Ii8+PGNpcmNsZSBjeD0iMTQ4IiBjeT0iMTMwIiByPSI1LjUiLz48L2c+CjxwYXRoIGQ9Ik05NSAxMjRRMTA4IDExNCAxMjEgMTI0WiBNMTM1IDEyNFExNDggMTE0IDE2MSAxMjRaIiBmaWxsPSIjZTBiMDhkIi8+PHBhdGggZD0iTTk1IDEyNEgxMjFNMTM1IDEyNEgxNjEiIHN0cm9rZT0iIzhiNWU0NiIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPGVsbGlwc2UgY3g9IjEwOCIgY3k9IjE0MCIgcng9IjEyIiByeT0iNSIgZmlsbD0iIzhmNmE5YSIgb3BhY2l0eT0iLjUiLz48ZWxsaXBzZSBjeD0iMTQ4IiBjeT0iMTQwIiByeD0iMTIiIHJ5PSI1IiBmaWxsPSIjOGY2YTlhIiBvcGFjaXR5PSIuNSIvPgo8ZyBzdHJva2U9IiMyYjJiMzMiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48cGF0aCBkPSJNOTIgMTEyTDEyMCAxMTYiLz48cGF0aCBkPSJNMTY0IDExMkwxMzYgMTE2Ii8+PC9nPjwvc3ZnPgo='};
 var HOSTS = {
   aino: {n:'Aino', role:'Aamuvirkku', slot:0, bonus:1.25, cost:250, lines:['Hyvää huomenta, kahvi on keitetty!','Aurinko nousee, ja me soitamme sille.','Mukavaa työmatkaa kaikille!','Aamu on parasta aikaa musiikille.','Pieni venyttely ja sitten musiikkia!']},
@@ -409,15 +467,16 @@ var STUDIO_MAX = 12;
 
 function buySong(g){
   var c = songCost();
-  if(S.coins < c || !S.unlocked[g]) return;
+  if(S.coins < c || !S.unlocked[g] || (S.owned[g]||0) >= realCap(g)) return;
   S.coins -= c; S.owned[g] = (S.owned[g]||0) + 1; S.songsBought++;
-  toast('Uusi kappale: ' + GENRES[g].titles[(S.owned[g]-1) % GENRES[g].titles.length]);
+  var sg = songAt(g, S.owned[g]-1);
+  toast('Uusi kappale: ' + sg.title + (sg.real ? ' – ' + sg.artist : ''));
   render(true);
 }
 function unlockGenre(g){
   var c = GENRES[g].cost;
   if(S.coins < c || S.unlocked[g]) return;
-  S.coins -= c; S.unlocked[g] = true; S.owned[g] = 2; S.songsBought += 2;
+  var st2 = Math.min(2, realCap(g)); S.coins -= c; S.unlocked[g] = true; S.owned[g] = st2; S.songsBought += st2;
   toast('Uusi tyyli: ' + GENRES[g].n);
   render(true);
 }
@@ -547,8 +606,10 @@ function render(force){
     card.classList.remove('silent');
     var n = S.owned[g];
     var ti = Math.floor(S.clock / 20 + idx*3) % n;
+    var cur = (AU.on && AU.cur && AU.g === g) ? AU.cur : songAt(g, ti);
     var hh = S.hostIn[idx] && S.hired[S.hostIn[idx]] ? S.hostIn[idx] : null;
-    $('npT').textContent = GENRES[g].titles[ti % GENRES[g].titles.length];
+    $('npT').textContent = cur.title;
+    $('npI').textContent = cur.real ? (cur.artist + (cur.info ? ' · ' + cur.info : '')) : '';
     $('npS').textContent = (hh ? HOSTS[hh].n + ' juontaa · ' : '') + GENRES[g].n + ' · ' + SLOTS[idx].n.toLowerCase();
     var av = $('npAv');
     if(hh){
@@ -560,7 +621,7 @@ function render(force){
   } else {
     card.classList.add('silent');
     $('npT').textContent = 'Ei lähetystä'; $('npS').textContent = 'Valitse tyyli ohjelmapaikalle';
-    $('npSay').textContent = ''; $('npAv').style.display = 'none';
+    $('npSay').textContent = ''; $('npAv').style.display = 'none'; $('npI').textContent = '';
   }
   // bonukset
   var bd = [];
@@ -582,7 +643,7 @@ function render(force){
   } else eb.classList.remove('on');
 
   // rakenteen muutos -> piirrä listat uudelleen
-  var sig = JSON.stringify([S.slots,S.owned,S.unlocked,S.antenna,S.studio,idx,S.hired,S.hostIn,S.hostLv,S.ads,S.adOn,S.tp,S.tpFree,S.perks,tpGain(), canBuyAny(), GORDER.map(function(k){return Math.round((S.fat[k]||0)*100);})]);
+  var sig = JSON.stringify([S.slots,S.owned,S.unlocked,S.antenna,S.studio,idx,REAL_OK,S.hired,S.hostIn,S.hostLv,S.ads,S.adOn,S.tp,S.tpFree,S.perks,tpGain(), canBuyAny(), GORDER.map(function(k){return Math.round((S.fat[k]||0)*100);})]);
   if(force || sig !== lastSig){
     lastSig = sig;
     drawSlots(idx);
@@ -691,13 +752,20 @@ function drawShop(){
     if(S.unlocked[k]){
       var n = S.owned[k]||0, f = S.fat[k]||0, fp = Math.round(f/0.6*100);
       g += '<div class="gl"><div class="h"><b>'+G.n+'</b><small>'+n+' kappaletta</small></div>'
-         + '<div class="row" style="border:0;padding:6px 0 0"><div class="i"><small>Kyllästyminen '+Math.round(f*100)+' %</small><div class="bar f'+(fp>66?' hi':'')+'"><i style="width:'+fp+'%"></i></div><div class="bar" style="margin-top:4px"><i style="width:'+Math.round(variety(k)*100)+'%"></i></div><small>Valikoima '+Math.round(variety(k)*100)+' %</small></div>'+buyBtn(songCost(),'+ kappale','song',k)+'</div></div>';
+         + '<div class="row" style="border:0;padding:6px 0 0"><div class="i"><small>Kyllästyminen '+Math.round(f*100)+' %</small><div class="bar f'+(fp>66?' hi':'')+'"><i style="width:'+fp+'%"></i></div><div class="bar" style="margin-top:4px"><i style="width:'+Math.round(variety(k)*100)+'%"></i></div><small>Valikoima '+Math.round(variety(k)*100)+' %</small></div>'+((S.owned[k]||0) >= realCap(k) ? '<span class="tp" style="min-width:92px;text-align:center;font-size:12px">Kaikki löydetty ✓</span>' : buyBtn(songCost(),'+ kappale','song',k))+'</div>'+foundList(k)+'</div>';
     } else {
       g += '<div class="gl lock"><div class="row" style="border:0;padding:0"><div class="i"><b>'+G.n+'</b><small>Avaa uusi musiikkityyli, mukana 2 kappaletta</small></div>'+buyBtn(G.cost,'Avaa','genre',k)+'</div></div>';
     }
   }
   $('gens').innerHTML = g;
 }
+function foundList(k){
+  if(!REAL_OK || !REAL[k].length) return '';
+  var n = Math.min(S.owned[k]||0, REAL[k].length), tot = REAL[k].length, li = '';
+  for(var i=0;i<n;i++){ var t = REAL[k][i]; li += '<li><b>'+esc(t.title)+'</b> · '+esc(t.artist)+'</li>'; }
+  return '<details class="fl"><summary>Löydetyt '+n+'/'+tot+'</summary><ol>'+li+'</ol></details>';
+}
+function esc(x){ return String(x).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function drawStats(){
   var mins = Math.floor((Date.now() - S.started)/60000);
   $('stats').innerHTML =
@@ -848,6 +916,56 @@ $('reset').addEventListener('click', function(){
   b.dataset.arm=''; b.textContent='Aloita alusta';
 });
 
+/* ---------- Ääni: oikeat kappaleet ---------- */
+var AU = {on:false, el:null, cur:null, g:null, hist:[], bad:{}, fade:0};
+function auEl(){
+  if(AU.el) return AU.el;
+  var a = new Audio(); a.preload = 'auto';
+  a.addEventListener('ended', function(){ auNext(); });
+  a.addEventListener('error', function(){ if(AU.cur){ AU.bad[AU.cur.id] = 1; setTimeout(auNext, 500); } });
+  AU.el = a; return a;
+}
+function curGenre(){ return S.slots[slotIdx(S.clock)]; }
+function auPool(g){
+  if(!REAL_OK || !g) return [];
+  var n = Math.min(S.owned[g]||0, REAL[g].length), out = [];
+  for(var i=0;i<n;i++){ if(!AU.bad[REAL[g][i].id]) out.push(REAL[g][i]); }
+  return out;
+}
+function auNext(){
+  if(!AU.on) return;
+  var g = curGenre(), pool = auPool(g), a = auEl();
+  AU.g = g;
+  if(!pool.length){ a.pause(); AU.cur = null; return; }
+  var cands = pool.filter(function(t){ return AU.hist.indexOf(t.id) < 0; });
+  if(!cands.length){ AU.hist = []; cands = pool; }
+  var t = cands[Math.floor(Math.random()*cands.length)];
+  AU.hist.push(t.id); if(AU.hist.length > Math.min(4, pool.length-1)) AU.hist.shift();
+  AU.cur = {title:t.title, artist:t.artist, info:t.info, id:t.id, real:true};
+  a.src = t.url; a.volume = 0; AU.fade = 0;
+  var pr = a.play(); if(pr && pr.catch) pr.catch(function(){ AU.on = false; syncSnd(); toast('Selain esti äänen: napauta äänikuvaketta uudelleen'); });
+}
+function auTick(dt){
+  if(!AU.on || !AU.el) return;
+  if(AU.fade < 1){ AU.fade = Math.min(1, AU.fade + dt/1.2); try{ AU.el.volume = AU.fade; }catch(e){} }
+  var g = curGenre();
+  if(g !== AU.g) auNext();                       // ohjelmapaikan tyyli vaihtui
+  else if(!AU.cur && auPool(g).length) auNext(); // uusi kappale ostettu
+}
+function syncSnd(){
+  var b = $('snd'); b.classList.toggle('on', AU.on);
+  $('sndWave').style.display = AU.on ? '' : 'none';
+}
+function toggleSound(){
+  if(!REAL_OK){ toast('Oikeat kappaleet ja ääni toimivat vasta suorni.fi/peli/ -osoitteessa.'); return; }
+  AU.on = !AU.on; syncSnd();
+  if(AU.on){ auEl(); AU.g = null; auNext(); toast('Ääni päällä: Radio Suornin oikeat kappaleet'); }
+  else if(AU.el){ AU.el.pause(); AU.cur = null; }
+  render(true);
+}
+$('snd').addEventListener('click', toggleSound);
+syncSnd();
+
 /* ---------- Silmukka ---------- */
 var lastT = performance.now(), acc = 0, saveAcc = 0;
 function frame(now){
@@ -855,7 +973,7 @@ function frame(now){
   lastT = now;
   if(dt > 0){
     step(dt);
-    bubbleTick(dt); evTick(dt);
+    bubbleTick(dt); evTick(dt); auTick(dt);
     acc += dt; saveAcc += dt;
     if(acc >= 0.25){ acc = 0; render(false); }
     if(saveAcc >= 5){ saveAcc = 0; save(); }
@@ -872,8 +990,9 @@ document.addEventListener('visibilitychange', function(){
 window.addEventListener('pagehide', save);
 
 // testikoukku
-window.__taajuus = {state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
+window.__taajuus = {state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
 
+loadReal();
 offline();
 render(true);
 requestAnimationFrame(frame);
