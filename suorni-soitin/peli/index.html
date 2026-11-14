@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Taajuus – radioimperiumi</title>
+<meta name="theme-color" content="#0b0e14">
+<meta name="description" content="Rakenna autotallilähettimestä Suomen kuunnelluin radioasema. Rento idle-peli.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+:root{
+  --bg:#0b0e14; --bg2:#121722; --bg3:#1a2130; --line:#26304a; --tx:#e8edf7; --mu:#8a97b3;
+  --a:#4da3ff; --a2:#2f6bff; --ok:#3ddc97; --warn:#ffb84d; --bad:#ff6b6b;
+  --r:2px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--sans);overscroll-behavior:none}
+body{min-height:100vh;min-height:100dvh;display:flex;justify-content:center}
+#app{width:100%;max-width:520px;min-height:100dvh;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;touch-action:manipulation}
+.mono{font-family:var(--mono)}
+
+/* ylapalkki */
+.top{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--bg)}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.14em;font-size:15px;text-transform:uppercase}
+.logo svg{width:26px;height:26px}
+.top .sp{flex:1}
+.res{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.res b{font-family:var(--mono);font-size:16px}
+.res small{font-family:var(--mono);color:var(--mu);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+
+main{flex:1;overflow-y:auto;padding:14px 14px 96px}
+.tab{display:none}
+.tab.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 10px;font-size:11px;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mu);font-weight:600}
+
+/* asema */
+.station{position:relative;overflow:hidden}
+.stname{font-size:20px;font-weight:800;margin:0}
+.stsub{font-family:var(--mono);font-size:11px;color:var(--mu);margin-top:2px}
+.bigl{display:flex;align-items:baseline;gap:8px;margin:14px 0 4px}
+.bigl b{font-family:var(--mono);font-size:44px;line-height:1;color:var(--a)}
+.bigl span{color:var(--mu);font-size:13px}
+.inc{font-family:var(--mono);font-size:12px;color:var(--ok)}
+.clock{position:absolute;right:14px;top:14px;text-align:right;font-family:var(--mono)}
+.clock b{display:block;font-size:22px}
+.clock small{font-size:10px;letter-spacing:.1em;color:var(--mu);text-transform:uppercase}
+.np{display:flex;align-items:center;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.eq{display:flex;align-items:flex-end;gap:3px;height:22px;width:26px;flex:none}
+.eq i{flex:1;background:var(--a);height:30%;animation:eq 0.9s ease-in-out infinite}
+.eq i:nth-child(2){animation-delay:-.3s}.eq i:nth-child(3){animation-delay:-.6s}.eq i:nth-child(4){animation-delay:-.15s}
+@keyframes eq{0%,100%{height:25%}50%{height:100%}}
+.np .t{min-width:0}
+.np .t b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.np .t small{font-family:var(--mono);font-size:11px;color:var(--mu)}
+.silent .eq i{animation:none;height:10%;background:var(--mu)}
+
+/* paikat */
+.slot{border:1px solid var(--line);border-radius:var(--r);padding:10px;margin-bottom:8px;background:var(--bg)}
+.slot.now{border-color:var(--a);box-shadow:inset 3px 0 0 var(--a)}
+.slot .hd{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.slot .hd b{font-size:14px}
+.slot .hd small{font-family:var(--mono);color:var(--mu);font-size:11px}
+.slot .hd .live{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--a);text-transform:uppercase}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);border-radius:var(--r);padding:6px 9px;font-size:13px;background:var(--bg2);display:flex;align-items:center;gap:6px}
+.chip.sel{border-color:var(--a);background:rgba(77,163,255,.14)}
+.chip .fit{font-family:var(--mono);font-size:10px;letter-spacing:-1px}
+.fit.g3{color:var(--ok)}.fit.g2{color:var(--a)}.fit.g1{color:var(--warn)}.fit.g0{color:var(--bad)}
+
+/* kauppa */
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0;padding-top:0}
+.row .i{flex:1;min-width:0}
+.row .i b{display:block;font-size:14px}
+.row .i small{display:block;color:var(--mu);font-size:12px;margin-top:2px}
+.buy{flex:none;min-width:92px;border:1px solid var(--a);color:var(--a);border-radius:var(--r);padding:8px 10px;font-family:var(--mono);font-size:13px;text-align:center}
+.buy:disabled{border-color:var(--line);color:var(--mu);cursor:default}
+.buy.ok{background:var(--a);color:#06101f;font-weight:700}
+.bar{height:6px;background:var(--bg3);border-radius:var(--r);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--ok);transition:width .4s}
+.bar.f i{background:var(--warn)}
+.bar.f.hi i{background:var(--bad)}
+.gl{padding:10px 0;border-top:1px solid var(--line)}
+.gl:first-of-type{border-top:0;padding-top:0}
+.gl .h{display:flex;justify-content:space-between;align-items:baseline;font-size:14px}
+.gl .h small{font-family:var(--mono);color:var(--mu);font-size:11px}
+.lock{opacity:.7}
+
+/* suorni */
+.suorni{border-color:var(--a2);background:linear-gradient(180deg,rgba(47,107,255,.14),var(--bg2))}
+.btn{display:block;text-align:center;background:var(--a);color:#06101f;font-weight:700;border-radius:var(--r);padding:12px;text-decoration:none;margin-top:10px}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--mu);font-weight:500}
+p{line-height:1.5;margin:0 0 8px}
+.mu{color:var(--mu);font-size:13px}
+
+/* navi */
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;background:var(--bg);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav .in{width:100%;max-width:520px;display:flex}
+nav button{flex:1;padding:12px 4px 11px;font-size:12px;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mu);border-top:2px solid transparent;display:flex;flex-direction:column;align-items:center;gap:4px}
+nav button svg{width:20px;height:20px}
+nav button.on{color:var(--a);border-top-color:var(--a)}
+nav .dot{position:relative}
+nav .dot.has::after{content:"";position:absolute;right:-6px;top:-2px;width:7px;height:7px;background:var(--ok);border-radius:50%}
+
+/* kupla */
+#bubble{position:fixed;z-index:9;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom));max-width:calc(100% - 28px);width:340px;background:var(--bg3);border:1px solid var(--ok);border-radius:var(--r);padding:12px 14px;display:none;text-align:left}
+#bubble.on{display:block;animation:pop .25s}
+#bubble b{display:block;font-size:13px;color:var(--ok);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+#bubble span{font-size:14px}
+#bubble .tm{height:3px;background:var(--ok);margin:8px -14px -12px;transform-origin:left}
+@keyframes pop{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+
+#toast{position:fixed;z-index:10;left:50%;top:calc(64px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--a);color:#06101f;font-weight:700;padding:8px 14px;border-radius:var(--r);font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s;max-width:90%;text-align:center}
+#toast.on{opacity:1}
+
+#modal{position:fixed;inset:0;z-index:20;background:rgba(5,7,12,.82);display:none;align-items:center;justify-content:center;padding:20px}
+#modal.on{display:flex}
+#modal .box{background:var(--bg2);border:1px solid var(--a);border-radius:var(--r);padding:20px;max-width:360px;width:100%}
+#modal h3{margin:0 0 8px;font-size:18px}
+#modal .big{font-family:var(--mono);font-size:30px;color:var(--ok);margin:6px 0 12px}
+@media (prefers-reduced-motion:reduce){.eq i{animation:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="logo">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="7" width="28" height="18" rx="2" fill="none" stroke="#4da3ff" stroke-width="2"/><circle cx="10.5" cy="16" r="3.2" fill="none" stroke="#4da3ff" stroke-width="2"/><circle cx="21.5" cy="16" r="3.2" fill="none" stroke="#4da3ff" stroke-width="2"/><path d="M10.5 21h11" stroke="#4da3ff" stroke-width="2"/></svg>
+      Taajuus
+    </div>
+    <div class="sp"></div>
+    <div class="res"><b id="hCoins">0</b><small>kolikkoa</small></div>
+  </header>
+
+  <main>
+    <section id="t-asema" class="tab on">
+      <div class="card station" id="stCard">
+        <div class="clock"><b id="clk">06:00</b><small id="clkSlot">Aamu</small></div>
+        <h1 class="stname" id="stName">Autotallilähetin</h1>
+        <div class="stsub" id="stSub">kuuluvuus: oma katu</div>
+        <div class="bigl"><b id="lis">0</b><span>kuuntelijaa</span></div>
+        <div class="inc" id="inc">+0 / s</div>
+        <div class="np">
+          <div class="eq"><i></i><i></i><i></i><i></i></div>
+          <div class="t"><b id="npT">–</b><small id="npS">–</small></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Ohjelmapaikat</h2>
+        <div id="slots"></div>
+        <p class="mu" style="margin:6px 0 0">Valitse jokaiselle ajalle musiikkityyli. Nuolet kertovat, sopiiko tyyli kellonaikaan. Sama tyyli pitkään ja pieni kappalemäärä kyllästyttää kuulijat.</p>
+      </div>
+    </section>
+
+    <section id="t-kauppa" class="tab">
+      <div class="card">
+        <h2>Parannukset</h2>
+        <div id="ups"></div>
+      </div>
+      <div class="card">
+        <h2>Kappaleet ja tyylit</h2>
+        <div id="gens"></div>
+      </div>
+    </section>
+
+    <section id="t-suorni" class="tab">
+      <div class="card suorni">
+        <h2>Oikea Radio Suorni</h2>
+        <p>Taajuus on tehty Radio Suornin kyljessä. Suorni on oikea nettiradio, joka soittaa omaa teostovapaata musiikkia – kuuntele ilmaiseksi missä vain.</p>
+        <a class="btn" id="suorniLink" href="https://suorni.fi/?src=peli" target="_blank" rel="noopener">Kuuntele Radio Suornia →</a>
+      </div>
+      <div class="card">
+        <h2>Tilasto</h2>
+        <div id="stats" class="mono" style="font-size:13px;line-height:1.9"></div>
+      </div>
+      <div class="card">
+        <h2>Peli</h2>
+        <p class="mu">Peli tallentuu automaattisesti tämän laitteen selaimeen. Kun olet poissa, lähetys jatkuu ja kolikot kertyvät (enintään 8 tuntia).</p>
+        <button class="btn ghost" id="reset" style="width:100%">Aloita alusta</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="bubble" role="button" tabindex="0"><b>Terveiset!</b><span id="bubTx"></span><div class="tm" id="bubTm"></div></div>
+  <div id="toast"></div>
+
+  <nav><div class="in">
+    <button data-tab="asema" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9a8 8 0 0 1 16 0M7 12a5 5 0 0 1 10 0"/><circle cx="12" cy="15" r="1.6" fill="currentColor"/><path d="M12 17v4"/></svg>Asema</button>
+    <button data-tab="kauppa"><span class="dot" id="shopDot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16l-1.5 11a2 2 0 0 1-2 1.7H7.5a2 2 0 0 1-2-1.7L4 7zM9 7a3 3 0 0 1 6 0"/></svg></span>Kauppa</button>
+    <button data-tab="suorni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5-6-3.5z" fill="currentColor"/></svg>Suorni</button>
+  </div></nav>
+</div>
+
+<div id="modal"><div class="box">
+  <h3>Tervetuloa takaisin!</h3>
+  <p class="mu" id="mdTx"></p>
+  <div class="big" id="mdAmt">+0</div>
+  <button class="btn" id="mdOk" style="width:100%">Kerää kolikot</button>
+</div></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- Pelin data ---------- */
+var GENRES = {
+  iskelma:    {n:'Iskelmä',     cost:0,    titles:['Kesäilta kaupungissa','Tanssi torilla','Sinä ja minä ja ilta','Laiturin päässä','Vanha kitara','Lauantaisauna','Valot ikkunassa','Torin kello','Pieni kahvila','Kotiin kuljen kaiken yli','Haitari soi','Kulmakapakan kuningatar']},
+  pop:        {n:'Pop',         cost:120,  titles:['Neonvalot','Taas sun kanssa','Kesä ei lopu','Sykkivä sydän','Heijastus','Yöbussi','Ilmapallo','Kirkas aamu','Kaiku','Tanssilattian tähti','Hymy huuliin','Pikselit']},
+  rauhallinen:{n:'Rauhallinen', cost:450,  titles:['Hiljainen järvi','Sade ikkunassa','Kynttilän valo','Unen rannalla','Aamusumu','Tuuli koivuissa','Hidas virta','Tähtitaivas','Villasukat','Pehmeä hämärä','Laineet','Syksyn lämpö']},
+  rock:       {n:'Rock',        cost:1600, titles:['Moottoritie','Rautaa ja rakkautta','Savuinen baari','Tulta tuulessa','Viimeinen veto','Hiekkatie','Kitaran kieli','Rämisevä ilta','Pyörät pyörii','Äänet kaakkoon','Mustat nahkatakit','Keikkabussi']},
+  metalli:    {n:'Metalli',     cost:6000, titles:['Pohjoisen myrsky','Teräksen tahto','Jäinen valtaistuin','Musta metsä','Harmaa rajamaa','Kuilun kuningas','Rautakorppi','Yön verikuu','Ukkosen vartijat','Rummut ja ruoska','Talven sotaherra','Vuoren syvyys']}
+};
+var GORDER = ['iskelma','pop','rauhallinen','rock','metalli'];
+
+var SLOTS = [
+  {id:'aamu', n:'Aamu', h:'06–12', base:1.0},
+  {id:'paiva',n:'Päivä',h:'12–18', base:1.0},
+  {id:'ilta', n:'Ilta', h:'18–24', base:1.25},
+  {id:'yo',   n:'Yö',   h:'00–06', base:0.6}
+];
+var FIT = { /* sopivuus kellonaikaan */
+  aamu: {iskelma:1.3,pop:1.4,rauhallinen:1.0,rock:0.9,metalli:0.5},
+  paiva:{iskelma:1.4,pop:1.3,rauhallinen:0.8,rock:1.1,metalli:0.7},
+  ilta: {iskelma:1.1,pop:1.2,rauhallinen:0.9,rock:1.4,metalli:1.1},
+  yo:   {iskelma:0.7,pop:0.7,rauhallinen:1.5,rock:0.9,metalli:1.3}
+};
+var CYCLE = 240;            // pelipäivä sekunteina
+var SLOT_LEN = CYCLE/4;
+var OFFLINE_CAP = 8*3600;   // s
+var OFFLINE_EFF = 0.6;
+var COIN_PER_LIS = 0.5;     // kolikkoa / kuuntelija / s
+
+var ANT = [
+  {n:'Autotallilähetin', a:'oma katu'},
+  {n:'Kulmakunnan asema', a:'koko kortteli'},
+  {n:'Kaupunginosan radio', a:'kaupunginosa'},
+  {n:'Kaupunkiradio', a:'koko kaupunki'},
+  {n:'Maakuntaradio', a:'koko maakunta'},
+  {n:'Valtakunnan taajuus', a:'koko Suomi'}
+];
+var ANT_REACH = [4, 9, 20, 46, 105, 240];
+var ANT_COST  = [0, 45, 300, 2200, 16000, 120000];
+
+/* ---------- Tila ---------- */
+var KEY = 'taajuus_v1';
+function fresh(){
+  return {
+    v:1, coins:20, lis:0, clock:0,
+    owned:{iskelma:3}, unlocked:{iskelma:true}, fat:{},
+    slots:['iskelma','iskelma','iskelma','iskelma'],
+    antenna:0, studio:0,
+    ls:0, total:20, hearts:0, songsBought:0,
+    last:Date.now(), started:Date.now()
+  };
+}
+var S = load() || fresh();
+
+function load(){
+  try{
+    var r = localStorage.getItem(KEY);
+    if(!r) return null;
+    var o = JSON.parse(r);
+    if(!o || o.v !== 1) return null;
+    var f = fresh();
+    for(var k in f){ if(!(k in o)) o[k] = f[k]; }
+    return o;
+  }catch(e){ return null; }
+}
+function save(){
+  S.last = Date.now();
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
+}
+
+/* ---------- Laskenta ---------- */
+function fameLevel(){ return Math.floor(Math.sqrt(S.ls/200)); }
+function coinMult(){ return (1 + 0.3*S.studio) * (1 + 0.01*fameLevel()); }
+function variety(g){ var n = S.owned[g]||0; return 1 - Math.exp(-n/5); }
+function slotIdx(clock){ return Math.floor((clock % CYCLE)/SLOT_LEN); }
+function targetFor(idx, fatArr){
+  var g = S.slots[idx];
+  if(!g || !(S.owned[g]>0)) return 0;
+  var f = (fatArr||S.fat)[g]||0;
+  return ANT_REACH[S.antenna] * SLOTS[idx].base * FIT[SLOTS[idx].id][g] * variety(g) * (1-f);
+}
+function step(dt){
+  var idx = slotIdx(S.clock);
+  var g = S.slots[idx];
+  // kyllästyminen
+  for(var i=0;i<GORDER.length;i++){
+    var k = GORDER[i], f = S.fat[k]||0;
+    if(k === g && (S.owned[k]>0)){
+      f += dt * 0.010 / (1 + 0.3*(S.owned[k]||0));
+      if(f > 0.6) f = 0.6;
+    } else {
+      f -= dt * 0.004;
+      if(f < 0) f = 0;
+    }
+    S.fat[k] = f;
+  }
+  var T = targetFor(idx);
+  S.lis += (T - S.lis) * (1 - Math.exp(-dt/8));
+  var inc = S.lis * COIN_PER_LIS * coinMult() * dt;
+  S.coins += inc; S.total += inc;
+  S.ls += S.lis * dt;
+  S.clock = (S.clock + dt) % CYCLE;
+  return inc;
+}
+function incomePerSec(){ return S.lis * COIN_PER_LIS * coinMult(); }
+
+/* ---------- Kauppa ---------- */
+function songCost(){ return Math.round(10 * Math.pow(1.19, S.songsBought)); }
+function studioCost(){ return Math.round(90 * Math.pow(2.35, S.studio)); }
+var STUDIO_MAX = 12;
+
+function buySong(g){
+  var c = songCost();
+  if(S.coins < c || !S.unlocked[g]) return;
+  S.coins -= c; S.owned[g] = (S.owned[g]||0) + 1; S.songsBought++;
+  toast('Uusi kappale: ' + GENRES[g].titles[(S.owned[g]-1) % GENRES[g].titles.length]);
+  render(true);
+}
+function unlockGenre(g){
+  var c = GENRES[g].cost;
+  if(S.coins < c || S.unlocked[g]) return;
+  S.coins -= c; S.unlocked[g] = true; S.owned[g] = 2; S.songsBought += 2;
+  toast('Uusi tyyli: ' + GENRES[g].n);
+  render(true);
+}
+function buyAntenna(){
+  var nx = S.antenna + 1;
+  if(nx >= ANT.length || S.coins < ANT_COST[nx]) return;
+  S.coins -= ANT_COST[nx]; S.antenna = nx;
+  toast('Kuuluvuus kasvoi: ' + ANT[nx].a);
+  render(true);
+}
+function buyStudio(){
+  var c = studioCost();
+  if(S.studio >= STUDIO_MAX || S.coins < c) return;
+  S.coins -= c; S.studio++;
+  toast('Studio parani: tulot +30 %');
+  render(true);
+}
+function setSlot(i, g){
+  if(!S.unlocked[g]) return;
+  S.slots[i] = g; render(true);
+}
+
+/* ---------- Apu ---------- */
+function $(id){ return document.getElementById(id); }
+function fmt(n){
+  if(n < 1000) return n < 10 && n !== Math.floor(n) ? n.toFixed(1).replace('.',',') : String(Math.floor(n));
+  var u = [['k',1e3],['M',1e6],['mrd',1e9],['bn',1e12]], i;
+  for(i=u.length-1;i>=0;i--){ if(n >= u[i][1]){
+    var v = n/u[i][1];
+    return String(parseFloat(v<10 ? v.toFixed(2) : v<100 ? v.toFixed(1) : Math.floor(v))).replace('.',',') + ' ' + u[i][0];
+  } }
+  return String(Math.floor(n));
+}
+function clockText(){
+  var h = (6 + S.clock/10) % 24;
+  var hh = Math.floor(h), mm = Math.floor((h - hh) * 60);
+  return (hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
+}
+var toastT;
+function toast(t){
+  var e = $('toast'); e.textContent = t; e.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(function(){ e.classList.remove('on'); }, 2200);
+}
+function fitCls(m){
+  return m >= 1.3 ? ['g3','▲▲▲'] : m >= 1.05 ? ['g2','▲▲'] : m >= 0.8 ? ['g1','▲'] : ['g0','▽'];
+}
+
+/* ---------- Piirto ---------- */
+var lastSig = '';
+function render(force){
+  var idx = slotIdx(S.clock);
+  var g = S.slots[idx];
+
+  $('hCoins').textContent = fmt(S.coins);
+  $('lis').textContent = fmt(S.lis);
+  $('inc').textContent = '+' + fmt(incomePerSec()) + ' kolikkoa / s';
+  $('clk').textContent = clockText();
+  $('clkSlot').textContent = SLOTS[idx].n;
+  $('stName').textContent = ANT[S.antenna].n;
+  $('stSub').textContent = 'kuuluvuus: ' + ANT[S.antenna].a + ' · maine ' + fameLevel();
+
+  // soi parhaillaan
+  var card = $('stCard');
+  if(g && S.owned[g] > 0){
+    card.classList.remove('silent');
+    var n = S.owned[g];
+    var ti = Math.floor(S.clock / 20 + idx*3) % n;
+    $('npT').textContent = GENRES[g].titles[ti % GENRES[g].titles.length];
+    $('npS').textContent = GENRES[g].n + ' · ' + SLOTS[idx].n.toLowerCase();
+  } else {
+    card.classList.add('silent');
+    $('npT').textContent = 'Ei lähetystä'; $('npS').textContent = 'Valitse tyyli ohjelmapaikalle';
+  }
+
+  // rakenteen muutos -> piirrä listat uudelleen
+  var sig = JSON.stringify([S.slots,S.owned,S.unlocked,S.antenna,S.studio,idx,Math.floor(S.coins)>=0, canBuyAny(), GORDER.map(function(k){return Math.round((S.fat[k]||0)*100);})]);
+  if(force || sig !== lastSig){
+    lastSig = sig;
+    drawSlots(idx);
+    drawShop();
+    drawStats();
+  }
+  $('shopDot').classList.toggle('has', canBuyAny());
+}
+function canBuyAny(){
+  if(S.coins >= songCost()) return true;
+  if(S.antenna+1 < ANT.length && S.coins >= ANT_COST[S.antenna+1]) return true;
+  if(S.studio < STUDIO_MAX && S.coins >= studioCost()) return true;
+  for(var i=0;i<GORDER.length;i++){ var k=GORDER[i]; if(!S.unlocked[k] && S.coins >= GENRES[k].cost) return true; }
+  return false;
+}
+function drawSlots(cur){
+  var h = '';
+  for(var i=0;i<4;i++){
+    h += '<div class="slot'+(i===cur?' now':'')+'"><div class="hd"><b>'+SLOTS[i].n+'</b><small>'+SLOTS[i].h+'</small>'+(i===cur?'<span class="live">● lähetyksessä</span>':'')+'</div><div class="chips">';
+    for(var j=0;j<GORDER.length;j++){
+      var k = GORDER[j]; if(!S.unlocked[k]) continue;
+      var f = fitCls(FIT[SLOTS[i].id][k]);
+      h += '<button class="chip'+(S.slots[i]===k?' sel':'')+'" data-slot="'+i+'" data-g="'+k+'">'+GENRES[k].n+' <span class="fit '+f[0]+'">'+f[1]+'</span></button>';
+    }
+    h += '</div></div>';
+  }
+  $('slots').innerHTML = h;
+}
+function buyBtn(cost, label, act, arg){
+  var ok = S.coins >= cost;
+  return '<button class="buy'+(ok?' ok':'')+'" '+(ok?'':'disabled ')+'data-act="'+act+'"'+(arg?' data-arg="'+arg+'"':'')+'>'+label+'<br><small>'+fmt(cost)+'</small></button>';
+}
+function drawShop(){
+  var h = '';
+  // antenni
+  if(S.antenna+1 < ANT.length){
+    h += '<div class="row"><div class="i"><b>Antenni</b><small>Seuraava: '+ANT[S.antenna+1].n+' ('+ANT[S.antenna+1].a+'). Kuuntelijoita ×'+(ANT_REACH[S.antenna+1]/ANT_REACH[S.antenna]).toFixed(1).replace('.',',')+'</small></div>'+buyBtn(ANT_COST[S.antenna+1],'Osta','ant')+'</div>';
+  } else {
+    h += '<div class="row"><div class="i"><b>Antenni</b><small>Koko Suomi kuuluu. Huippu saavutettu!</small></div></div>';
+  }
+  // studio
+  if(S.studio < STUDIO_MAX){
+    h += '<div class="row"><div class="i"><b>Studiolaitteet (taso '+S.studio+')</b><small>Tuotto kuuntelijaa kohti +30 % (kertyy)</small></div>'+buyBtn(studioCost(),'Päivitä','studio')+'</div>';
+  } else {
+    h += '<div class="row"><div class="i"><b>Studiolaitteet (taso '+S.studio+')</b><small>Täysin päivitetty</small></div></div>';
+  }
+  $('ups').innerHTML = h;
+
+  var g = '';
+  for(var i=0;i<GORDER.length;i++){
+    var k = GORDER[i], G = GENRES[k];
+    if(S.unlocked[k]){
+      var n = S.owned[k]||0, f = S.fat[k]||0, fp = Math.round(f/0.6*100);
+      g += '<div class="gl"><div class="h"><b>'+G.n+'</b><small>'+n+' kappaletta</small></div>'
+         + '<div class="row" style="border:0;padding:6px 0 0"><div class="i"><small>Kyllästyminen '+Math.round(f*100)+' %</small><div class="bar f'+(fp>66?' hi':'')+'"><i style="width:'+fp+'%"></i></div><div class="bar" style="margin-top:4px"><i style="width:'+Math.round(variety(k)*100)+'%"></i></div><small>Valikoima '+Math.round(variety(k)*100)+' %</small></div>'+buyBtn(songCost(),'+ kappale','song',k)+'</div></div>';
+    } else {
+      g += '<div class="gl lock"><div class="row" style="border:0;padding:0"><div class="i"><b>'+G.n+'</b><small>Avaa uusi musiikkityyli, mukana 2 kappaletta</small></div>'+buyBtn(G.cost,'Avaa','genre',k)+'</div></div>';
+    }
+  }
+  $('gens').innerHTML = g;
+}
+function drawStats(){
+  var mins = Math.floor((Date.now() - S.started)/60000);
+  $('stats').innerHTML =
+    'Maine: ' + fameLevel() + '<br>' +
+    'Kolikoita ansaittu: ' + fmt(S.total) + '<br>' +
+    'Kuuntelijasekunnit: ' + fmt(S.ls) + '<br>' +
+    'Terveisiä luettu: ' + S.hearts + '<br>' +
+    'Kappaleita kirjastossa: ' + Object.keys(S.owned).reduce(function(a,k){return a+S.owned[k];},0) + '<br>' +
+    'Pelannut: ' + (mins < 60 ? mins+' min' : Math.floor(mins/60)+' h '+(mins%60)+' min');
+}
+
+/* ---------- Tapahtuma: terveiset ---------- */
+var GREET = [
+  'Terveisiä Pirkko Hämeenlinnasta: "Hyvää työmatkaa kaikille!"',
+  'Terveisiä Jorma kuorma-autosta: "Soita vähän lisää tangoa!"',
+  'Terveisiä mökiltä: "Sauna on lämmin, kiitos musiikista!"',
+  'Terveisiä Kaisa ja Make kahvilasta: "Teidän radio soi koko päivän."',
+  'Terveisiä yövuoroon: "Kiitos kun olette seurana."',
+  'Terveisiä Hilkalta: "Kuulin tämän radion naapurilta!"'
+];
+var bubbleT = 0, bubbleOpen = false, nextBubble = 40 + Math.random()*40, bubbleLife = 0;
+function bubbleTick(dt){
+  if(bubbleOpen){
+    bubbleLife -= dt;
+    $('bubTm').style.transform = 'scaleX(' + Math.max(0, bubbleLife/15) + ')';
+    if(bubbleLife <= 0) closeBubble();
+    return;
+  }
+  if(S.lis < 1) return;
+  nextBubble -= dt;
+  if(nextBubble <= 0){
+    bubbleOpen = true; bubbleLife = 15;
+    $('bubTx').textContent = GREET[Math.floor(Math.random()*GREET.length)] + ' Napauta lukeaksesi!';
+    $('bubble').classList.add('on');
+  }
+}
+function closeBubble(){
+  bubbleOpen = false; $('bubble').classList.remove('on');
+  nextBubble = 45 + Math.random()*60;
+}
+function readGreeting(){
+  if(!bubbleOpen) return;
+  var gain = Math.max(10, incomePerSec()*25);
+  S.coins += gain; S.total += gain; S.hearts++;
+  closeBubble();
+  toast('Terveiset luettu: +' + fmt(gain) + ' kolikkoa');
+  render(true);
+}
+
+/* ---------- Poissaolotuotto ---------- */
+function offline(){
+  var gap = Math.floor((Date.now() - S.last)/1000);
+  if(gap < 60) return;
+  var sec = Math.min(gap, OFFLINE_CAP);
+  var before = S.coins;
+  var keepLs = S.ls;
+  // simuloidaan karkeasti 5 s askelin
+  var st = 5, n = Math.floor(sec/st), earned = 0;
+  var coinsBefore = S.coins;
+  for(var i=0;i<n;i++){ step(st); }
+  earned = (S.coins - coinsBefore);
+  // tehokkuus 60 %
+  var pay = earned * OFFLINE_EFF;
+  S.coins = coinsBefore + pay; S.total = S.total - earned + pay; S.ls = keepLs + (S.ls-keepLs)*OFFLINE_EFF;
+  if(pay >= 1){
+    var hrs = Math.floor(sec/3600), mins = Math.floor((sec%3600)/60);
+    $('mdTx').textContent = 'Lähetys jatkui ' + (hrs ? hrs+' h ' : '') + mins + ' min ajan, kun olit poissa.' + (gap > OFFLINE_CAP ? ' (Enintään 8 tuntia lasketaan.)' : '');
+    $('mdAmt').textContent = '+' + fmt(pay) + ' kolikkoa';
+    $('modal').classList.add('on');
+  }
+}
+
+/* ---------- Tapahtumat ---------- */
+document.addEventListener('click', function(e){
+  var t = e.target.closest('[data-slot],[data-act],[data-tab]');
+  if(!t) return;
+  if(t.dataset.slot !== undefined){ setSlot(+t.dataset.slot, t.dataset.g); return; }
+  if(t.dataset.act){
+    var a = t.dataset.act;
+    if(a === 'song') buySong(t.dataset.arg);
+    else if(a === 'genre') unlockGenre(t.dataset.arg);
+    else if(a === 'ant') buyAntenna();
+    else if(a === 'studio') buyStudio();
+    save(); return;
+  }
+  if(t.dataset.tab){
+    var tabs = document.querySelectorAll('.tab'), btns = document.querySelectorAll('nav button');
+    for(var i=0;i<tabs.length;i++) tabs[i].classList.toggle('on', tabs[i].id === 't-'+t.dataset.tab);
+    for(var j=0;j<btns.length;j++) btns[j].classList.toggle('on', btns[j] === t);
+    render(true);
+  }
+});
+$('bubble').addEventListener('click', readGreeting);
+$('bubble').addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' ') readGreeting(); });
+$('mdOk').addEventListener('click', function(){ $('modal').classList.remove('on'); render(true); save(); });
+$('reset').addEventListener('click', function(){
+  var b = $('reset');
+  if(b.dataset.arm !== '1'){ b.dataset.arm = '1'; b.textContent = 'Napauta uudelleen: kaikki nollautuu'; setTimeout(function(){ b.dataset.arm=''; b.textContent='Aloita alusta'; }, 4000); return; }
+  S = fresh(); lastSig=''; save(); render(true); toast('Uusi alku!');
+  b.dataset.arm=''; b.textContent='Aloita alusta';
+});
+
+/* ---------- Silmukka ---------- */
+var lastT = performance.now(), acc = 0, saveAcc = 0;
+function frame(now){
+  var dt = Math.min((now - lastT)/1000, 1);   // yli 1 s hypyt hoitaa visibilitychange
+  lastT = now;
+  if(dt > 0){
+    step(dt);
+    bubbleTick(dt);
+    acc += dt; saveAcc += dt;
+    if(acc >= 0.25){ acc = 0; render(false); }
+    if(saveAcc >= 5){ saveAcc = 0; save(); }
+  }
+  requestAnimationFrame(frame);
+}
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden){ save(); }
+  else {
+    // palattaessa lasketaan poissaolo, jos se kesti yli minuutin
+    offline(); lastT = performance.now(); render(true);
+  }
+});
+window.addEventListener('pagehide', save);
+
+// testikoukku
+window.__taajuus = {state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, unlockGenre:unlockGenre, buyAntenna:buyAntenna, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
+
+offline();
+render(true);
+requestAnimationFrame(frame);
+
+try{
+  if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  }
+}catch(e){}
+})();
+</script>
+</body>
+</html>
