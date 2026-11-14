@@ -50,9 +50,10 @@ function suorni_peli_score( $req ) {
 	set_transient( $k, 1, 20 );
 	$l = suorni_peli_top_list();
 	$old = isset( $l[ $pid ] ) ? $l[ $pid ] : null;
-	if ( $old && ! empty( $old['x'] ) ) { return suorni_json( array( 'ok' => true ) ); } /* piilotettu: ei päivitetä */
 	if ( $old && $sc < (float) $old['s'] ) { $sc = (float) $old['s']; }
-	$l[ $pid ] = array( 'n' => $nm, 's' => $sc, 't' => time(), 'x' => 0 );
+	$same = $old && 0 === strcmp( $old['n'], $nm );
+	/* uusi tai vaihdettu nimimerkki odottaa ylläpidon hyväksyntää */
+	$l[ $pid ] = array( 'n' => $nm, 's' => $sc, 't' => time(), 'ok' => ( $same && ! empty( $old['ok'] ) ) ? 1 : 0, 'x' => ( $same && ! empty( $old['x'] ) ) ? 1 : 0 );
 	uasort( $l, function ( $a, $b ) { return $b['s'] <=> $a['s']; } );
 	$l = array_slice( $l, 0, 200, true );
 	update_option( 'suorni_peli_top', $l, false );
@@ -60,13 +61,18 @@ function suorni_peli_score( $req ) {
 }
 function suorni_peli_top( $req ) {
 	$pid = preg_replace( '/[^a-z0-9]/', '', strtolower( (string) $req->get_param( 'pid' ) ) );
-	$l = array_filter( suorni_peli_top_list(), function ( $e ) { return empty( $e['x'] ); } );
+	$all = suorni_peli_top_list();
+	$l = array_filter( $all, function ( $e ) { return ! empty( $e['ok'] ) && empty( $e['x'] ); } );
 	uasort( $l, function ( $a, $b ) { return $b['s'] <=> $a['s']; } );
 	$top = array(); $me = null; $i = 0;
 	foreach ( $l as $k => $e ) {
 		$i++;
 		if ( $i <= 10 ) { $top[] = array( 'n' => $e['n'], 's' => $e['s'], 'me' => ( $pid && $k === $pid ) ); }
 		if ( $pid && $k === $pid ) { $me = array( 'rank' => $i, 's' => $e['s'] ); }
+	}
+	if ( $pid && ! $me && isset( $all[ $pid ] ) ) {
+		$e  = $all[ $pid ];
+		$me = array( 'rank' => 0, 's' => $e['s'], 'state' => ! empty( $e['x'] ) ? 'hylatty' : 'odottaa' );
 	}
 	return suorni_json( array( 'top' => $top, 'me' => $me, 'n' => count( $l ) ) );
 }
@@ -83,3 +89,51 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'suorni/v1', '/peli/top', array( 'methods' => 'GET', 'callback' => 'suorni_peli_top', 'permission_callback' => '__return_true' ) );
 	register_rest_route( 'suorni/v1', '/peli/hide', array( 'methods' => 'POST', 'callback' => 'suorni_peli_hide', 'permission_callback' => 'suorni_can' ) );
 } );
+
+/* Moderointi: Työkalut > Taajuus-nimimerkit (vaatii upload_files-oikeuden) */
+add_action( 'admin_menu', function () {
+	add_management_page( 'Taajuus-nimimerkit', 'Taajuus-nimimerkit', 'upload_files', 'suorni-peli-nimet', 'suorni_peli_admin_page' );
+} );
+add_action( 'admin_post_suorni_peli_mod', function () {
+	if ( ! current_user_can( 'upload_files' ) ) { wp_die( 'Ei oikeutta' ); }
+	check_admin_referer( 'suorni_peli_mod' );
+	$pid = isset( $_POST['pid'] ) ? preg_replace( '/[^a-z0-9]/', '', strtolower( wp_unslash( $_POST['pid'] ) ) ) : '';
+	$do  = isset( $_POST['do'] ) ? sanitize_key( wp_unslash( $_POST['do'] ) ) : '';
+	$l   = suorni_peli_top_list();
+	if ( $pid && isset( $l[ $pid ] ) ) {
+		if ( 'ok' === $do ) { $l[ $pid ]['ok'] = 1; $l[ $pid ]['x'] = 0; }
+		if ( 'no' === $do ) { $l[ $pid ]['ok'] = 0; $l[ $pid ]['x'] = 1; }
+		if ( 'del' === $do ) { unset( $l[ $pid ] ); }
+		update_option( 'suorni_peli_top', $l, false );
+	}
+	wp_safe_redirect( admin_url( 'tools.php?page=suorni-peli-nimet' ) );
+	exit;
+} );
+function suorni_peli_admin_page() {
+	if ( ! current_user_can( 'upload_files' ) ) { return; }
+	$l = suorni_peli_top_list();
+	uasort( $l, function ( $a, $b ) { return $b['s'] <=> $a['s']; } );
+	$groups = array( 'Odottaa hyväksyntää' => array(), 'Hyväksytyt' => array(), 'Hylätyt' => array() );
+	foreach ( $l as $k => $e ) {
+		if ( ! empty( $e['x'] ) ) { $groups['Hylätyt'][ $k ] = $e; }
+		elseif ( ! empty( $e['ok'] ) ) { $groups['Hyväksytyt'][ $k ] = $e; }
+		else { $groups['Odottaa hyväksyntää'][ $k ] = $e; }
+	}
+	echo '<div class="wrap"><h1>Taajuus-nimimerkit</h1><p>Uudet nimimerkit näkyvät Top 10 -listalla vasta hyväksynnän jälkeen. Pisteet ovat pelaajan itse ilmoittamia.</p>';
+	foreach ( $groups as $title => $rows ) {
+		echo '<h2>' . esc_html( $title ) . ' (' . count( $rows ) . ')</h2>';
+		if ( ! $rows ) { echo '<p>Ei ketään.</p>'; continue; }
+		echo '<table class="widefat striped" style="max-width:720px"><thead><tr><th>Nimimerkki</th><th>Pisteet</th><th></th></tr></thead><tbody>';
+		foreach ( $rows as $k => $e ) {
+			echo '<tr><td>' . esc_html( $e['n'] ) . '</td><td>' . esc_html( number_format_i18n( $e['s'] ) ) . '</td><td>';
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline">';
+			wp_nonce_field( 'suorni_peli_mod' );
+			echo '<input type="hidden" name="action" value="suorni_peli_mod"><input type="hidden" name="pid" value="' . esc_attr( $k ) . '">';
+			if ( 'Hyväksytyt' !== $title ) { echo '<button class="button button-primary" name="do" value="ok">Hyväksy</button> '; }
+			if ( 'Hylätyt' !== $title ) { echo '<button class="button" name="do" value="no">Hylkää</button> '; }
+			echo '<button class="button-link-delete" name="do" value="del">Poista</button></form></td></tr>';
+		}
+		echo '</tbody></table>';
+	}
+	echo '</div>';
+}

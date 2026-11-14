@@ -1043,7 +1043,13 @@ function drawLb(){
     h += '</div>';
     if(LBD.me && LBD.me.rank > 10) h += '<p class="hint">Sijasi: '+LBD.me.rank+'. ($ '+fmt(LBD.me.s)+')</p>';
   }
-  if(S.nick) h += '<p class="hint">Pelaat nimellä <b>'+escH(S.nick)+'</b> · tuottosi yhteensä $ '+fmt(myScore())+'</p>';
+  if(S.nick){
+    var stt = LBD && LBD.me && LBD.me.state;
+    h += '<p class="hint">Pelaat nimellä <b>'+escH(S.nick)+'</b> · tuottosi yhteensä $ '+fmt(myScore())+'</p>';
+    if(stt === 'odottaa') h += '<p class="hint">Nimimerkkisi odottaa ylläpidon hyväksyntää. Se näkyy listalla hyväksynnän jälkeen.</p>';
+    if(stt === 'hylatty') h += '<p class="hint">Nimimerkkiä ei hyväksytty. Valitse toinen.</p>';
+    h += '<button class="btn" data-act="nickchg" style="border:0;padding:8px 14px;font-size:13px">Vaihda nimimerkki</button>';
+  }
   else h += '<div class="nickrow"><input id="nickIn" maxlength="16" placeholder="Nimimerkki (2–16 merkkiä)" autocomplete="off"><button class="btn" data-act="nick">Liity listalle</button></div><p class="hint" id="nickMsg"></p>';
   box.innerHTML = h;
 }
@@ -1074,6 +1080,7 @@ document.addEventListener('click', function(e){
     else if(a === 'studio') buyStudio();
     else if(a === 'city') buyCity(t.dataset.arg);
     else if(a === 'nick'){ saveNick(); return; }
+    else if(a === 'nickchg'){ S.nick = ''; save(); drawLb(); return; }
     else if(a === 'hire') hireHost(t.dataset.arg);
     else if(a === 'train') trainHost(t.dataset.arg);
     else if(a === 'ads') buyAds();
