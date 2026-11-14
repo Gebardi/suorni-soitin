@@ -197,6 +197,8 @@ details.fl li b{color:var(--tx);font-weight:500}
 .ach.ok .i b{color:var(--ok)}
 @media (prefers-reduced-motion:reduce){.eq i{animation:none}}
 .chip.lock{opacity:.35}
+.pbar{height:5px;background:var(--line);border-radius:3px;margin-top:5px;overflow:hidden}.pbar i{display:block;height:100%;background:var(--a)}
+.colc{font-size:11px;padding:4px 8px;cursor:default}
 .slot .hd .live.nxt{color:#f5a623}
 </style>
 </head>
@@ -273,6 +275,8 @@ details.fl li b{color:var(--tx);font-weight:500}
     </section>
 
     <section id="t-saav" class="tab">
+      <div class="card"><h2>Päivän tehtävät</h2><div id="dqBox"></div></div>
+      <div class="card"><h2 id="colH">Kokoelma</h2><div id="colBox"></div></div>
       <div class="card"><h2>Top 10 -pelaajat</h2><div id="lbBox"></div></div>
       <div class="card"><h2 id="mapH">Kuuluvuuskartta</h2><div id="mapBox"></div></div>
       <div class="card"><h2 id="achH">Saavutukset</h2><div id="achList"></div></div>
@@ -447,6 +451,7 @@ function fresh(){
     tp:0, tpFree:0, perks:{}, runs:0, sbLeft:0, sbNext:0,
     buffs:[], cities:{}, nick:'', pid:'', bank:0, lastSent:-1, votes:{}, fails:0, luck:0, ach:{}, liveCd:0, lives:0, liveBest:0, wishes:0, choices:0, choice:null,
     ls:0, total:20, hearts:0, songsBought:0,
+    earn:0, heard:{}, heardN:0, voteN:0, sbN:0, dq:null, streak:0, streakDay:'', dqDays:0,
     last:Date.now(), started:Date.now()
   };
 }
@@ -516,7 +521,7 @@ function step(dt){
   var T = targetFor(idx);
   S.lis += (T - S.lis) * (1 - Math.exp(-dt/8));
   var inc = S.lis * COIN_PER_LIS * coinMult() * (1 + AD_MULT[S.ads[idx]||0]) * buffCoin() * dt;
-  S.coins += inc; S.total += inc;
+  S.coins += inc; S.total += inc; S.earn += inc;
   S.ls += S.lis * dt;
   slotAdvanceTick(dt, idx);
   if(S.sbLeft > 0) S.sbLeft = Math.max(0, S.sbLeft - dt);
@@ -608,7 +613,7 @@ function setAd(i, n){ if(!S.adOn) return; S.ads[i] = Math.max(0, Math.min(4, n))
 function giveSuorni(){
   var now = Date.now();
   if(now >= S.sbNext){
-    S.sbLeft = 900; S.sbNext = now + 4*3600*1000;
+    S.sbLeft = 900; S.sbNext = now + 4*3600*1000; S.sbN++;
     toast('Suorni-bonus: kuuntelijat ×1,25 15 min ajan!');
     save();
   }
@@ -628,7 +633,7 @@ function prestige(){
   if(S.antenna < 5 || gain < 1) return;
   var old = S, n = fresh();
   n.tp = old.tp + gain; n.tpFree = old.tpFree + gain; n.perks = old.perks; n.runs = (old.runs||0) + 1;
-  n.ach = old.ach; n.lives = old.lives; n.liveBest = old.liveBest; n.wishes = old.wishes; n.choices = old.choices; n.liveCd = old.liveCd;
+  n.earn = old.earn; n.heard = old.heard; n.heardN = old.heardN; n.voteN = old.voteN; n.sbN = old.sbN; n.dq = old.dq; n.streak = old.streak; n.streakDay = old.streakDay; n.dqDays = old.dqDays; n.ach = old.ach; n.lives = old.lives; n.liveBest = old.liveBest; n.wishes = old.wishes; n.choices = old.choices; n.liveCd = old.liveCd;
   n.votes = old.votes; n.fails = old.fails; n.luck = old.luck; n.nick = old.nick; n.pid = old.pid; n.bank = (old.bank||0) + old.total; n.lastSent = old.lastSent; n.hearts = old.hearts; n.fixes = old.fixes; n.started = old.started; n.sbNext = old.sbNext; n.sbLeft = old.sbLeft;
   n.coins = 20; n.total = 20;
   if(old.perks.p1) n.antenna = 1;
@@ -970,7 +975,7 @@ function offline(){
   var sec = Math.min(gap, OFFLINE_CAP);
   EV = null;
   var before = S.coins;
-  var keepLs = S.ls;
+  var keepLs = S.ls, keepEarn = S.earn;
   // simuloidaan karkeasti 5 s askelin
   var st = 5, n = Math.floor(sec/st), earned = 0;
   var coinsBefore = S.coins;
@@ -978,7 +983,7 @@ function offline(){
   earned = (S.coins - coinsBefore);
   // tehokkuus 60 %
   var pay = earned * OFFLINE_EFF;
-  S.coins = coinsBefore + pay; S.total = S.total - earned + pay; S.ls = keepLs + (S.ls-keepLs)*OFFLINE_EFF;
+  S.coins = coinsBefore + pay; S.earn = keepEarn + pay; S.total = S.total - earned + pay; S.ls = keepLs + (S.ls-keepLs)*OFFLINE_EFF;
   if(pay >= 1){
     var hrs = Math.floor(sec/3600), mins = Math.floor((sec%3600)/60);
     $('mdTx').textContent = 'Lähetys jatkui ' + (hrs ? hrs+' h ' : '') + mins + ' min ajan, kun olit poissa.' + (gap > OFFLINE_CAP ? ' (Enintään 8 tuntia lasketaan.)' : '');
@@ -1058,7 +1063,8 @@ function voteNow(v){
   var c = AU.on && AU.cur && AU.cur.real ? AU.cur : null; if(!c) return;
   ensurePid();
   var old = S.votes[c.id] || 0, nv = (old === v) ? 0 : v;
-  if(nv === 0) delete S.votes[c.id]; else S.votes[c.id] = nv;
+  if(nv === 0) delete S.votes[c.id]; else { S.votes[c.id] = nv; S.voteN++; }
+  lastSig = '';
   api('peli/vote', {body:{pid:S.pid, tid:c.id, v:nv}}, function(){});
   toast(nv === 1 ? 'Peukku ylös! Kiitos, kerromme sen oikealle radiolle.' : nv === -1 ? 'Peukku alas kirjattu. Kiitos palautteesta.' : 'Äänesi peruttu', 2600);
   save(); drawVote();
@@ -1477,10 +1483,15 @@ var ACH = [
   {id:'w5',  n:'Toiveiden täyttäjä', x:'Toteuta 5 kuuntelijatoivetta', t:function(){ return S.wishes >= 5; }},
   {id:'c5',  n:'Päättäväinen', x:'Tee 5 päätöstä', t:function(){ return S.choices >= 5; }},
   {id:'sb',  n:'Oikean Suornin ystävä', x:'Käytä Suorni-bonus', t:function(){ return S.sbNext > 0; }},
+  {id:'h10', n:'Kuunteluharrastus', x:'Kuule 10 eri kappaletta pelissä (ääni päällä)', t:function(){ return Object.keys(S.heard).length >= 10; }},
+  {id:'h30', n:'Radion kuuntelija', x:'Kuule 30 eri kappaletta pelissä', t:function(){ return Object.keys(S.heard).length >= 30; }},
+  {id:'d3',  n:'Tapa', x:'Tee päivän tehtäviä 3 päivänä putkeen', t:function(){ return S.streak >= 3; }},
+  {id:'d7',  n:'Viikon putki', x:'Tee päivän tehtäviä 7 päivänä putkeen', t:function(){ return S.streak >= 7; }},
   {id:'p1',  n:'Uusi taajuus', x:'Aloita alusta taajuuspisteillä', t:function(){ return S.runs >= 1; }}
 ];
 var achNew = false;
 function achTick(){
+  dailyTick();
   for(var i=0;i<ACH.length;i++){
     var a = ACH[i];
     if(!S.ach[a.id] && a.t()){
@@ -1496,7 +1507,93 @@ function drawAch(){
   var h = '', n = 0;
   for(var i=0;i<ACH.length;i++){ var a = ACH[i], ok = !!S.ach[a.id]; if(ok) n++;
     h += '<div class="ach'+(ok?' ok':'')+'"><div class="ic">'+(ok?'✓':'·')+'</div><div class="i"><b>'+a.n+'</b><small>'+a.x+'</small></div></div>'; }
+  drawDaily(); drawCol();
   $('achList').innerHTML = h; $('achH').textContent = 'Saavutukset ' + n + '/' + ACH.length;
+}
+
+
+/* ---------- Päivän tehtävät ---------- */
+function dayKey(off){ var d = new Date(Date.now() + (off||0)*86400000); return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2); }
+function hashStr(t){ var h = 7; for(var i=0;i<t.length;i++) h = (h*31 + t.charCodeAt(i)) >>> 0; return h; }
+var DQ_POOL = [
+  {id:'earn', n:function(q){ return 'Ansaitse ' + fmt(q.tg) + ' $'; }, cur:function(b){ return S.earn - b.earn; }},
+  {id:'live', n:function(){ return 'Pelaa yksi live-lähetys'; }, tg:1, cur:function(b){ return S.lives - b.lives; }},
+  {id:'choice', n:function(){ return 'Tee 2 päätöstä'; }, tg:2, cur:function(b){ return S.choices - b.choices; }},
+  {id:'wish', n:function(){ return 'Toteuta kuuntelijatoive'; }, tg:1, cur:function(b){ return S.wishes - b.wishes; }},
+  {id:'hear', n:function(){ return 'Kuule 3 kappaletta (laita ääni päälle)'; }, tg:3, cur:function(b){ return S.heardN - b.heardN; }},
+  {id:'vote', n:function(){ return 'Peukuta 2 kappaletta'; }, tg:2, cur:function(b){ return S.voteN - b.voteN; }},
+  {id:'sb', n:function(){ return 'Käy kuuntelemassa oikeaa Suornia (Suorni-välilehti)'; }, tg:1, cur:function(b){ return S.sbN - b.sbN; }}
+];
+function dqDef(id){ for(var i=0;i<DQ_POOL.length;i++) if(DQ_POOL[i].id === id) return DQ_POOL[i]; return null; }
+function dqNew(day){
+  var ids = ['earn'], pool = DQ_POOL.slice(1), h = hashStr(day);
+  while(ids.length < 3){ var k = h % pool.length; ids.push(pool[k].id); pool.splice(k,1); h = Math.floor(h/7) + 3; }
+  var tgs = {}; ids.forEach(function(id){ var d = dqDef(id); tgs[id] = id === 'earn' ? Math.max(300, Math.round(incomePerSec()*900/100)*100) : d.tg; });
+  S.dq = {d:day, ids:ids, tg:tgs, done:{}, all:false,
+    b:{earn:S.earn, lives:S.lives, choices:S.choices, wishes:S.wishes, heardN:S.heardN, voteN:S.voteN, sbN:S.sbN}};
+}
+function dqReward(){ return Math.max(150, Math.round(incomePerSec()*150)) * (1 + 0.1*Math.min(S.streak, 10)); }
+function dailyTick(){
+  var day = dayKey();
+  if(!S.dq || S.dq.d !== day) dqNew(day);
+  var q = S.dq, any = false;
+  q.ids.forEach(function(id){
+    if(q.done[id]) return;
+    var d = dqDef(id), cur = d.cur(q.b);
+    if(cur >= q.tg[id]){
+      q.done[id] = true; any = true;
+      if(S.streakDay !== day){
+        S.streak = (S.streakDay === dayKey(-1)) ? S.streak + 1 : 1; S.streakDay = day; S.dqDays++;
+      }
+      var g = Math.round(dqReward()); S.coins += g; S.total += g;
+      toast('Päivän tehtävä valmis: +' + fmt(g) + ' $' + (S.streak > 1 ? ' · putki ' + S.streak + ' pv' : ''), 2800);
+    }
+  });
+  if(!q.all && q.ids.every(function(id){ return q.done[id]; })){
+    q.all = true; any = true;
+    var b = Math.round(Math.max(500, incomePerSec()*600) * (1 + 0.1*Math.min(S.streak, 10)));
+    S.coins += b; S.total += b; addBuff('Päivän putki', 600, 1.15, 1);
+    toast('Kaikki päivän tehtävät tehty: +' + fmt(b) + ' $ ja kuuntelijabonus 10 min!', 3500);
+  }
+  if(any){ lastSig = ''; save(); }
+  drawDaily();
+}
+function drawDaily(){
+  var box = $('dqBox'); if(!box || !S.dq) return;
+  var q = S.dq, h = '';
+  q.ids.forEach(function(id){
+    var d = dqDef(id), cur = Math.max(0, Math.min(q.tg[id], d.cur(q.b))), ok = !!q.done[id], pct = Math.round(100*cur/q.tg[id]);
+    h += '<div class="ach'+(ok?' ok':'')+'"><div class="ic">'+(ok?'✓':'·')+'</div><div class="i"><b>'+d.n({tg:q.tg[id]})+'</b><small>'+(id==='earn' ? fmt(cur)+' / '+fmt(q.tg[id])+' $' : cur+' / '+q.tg[id])+'</small><div class="pbar"><i style="width:'+pct+'%"></i></div></div></div>';
+  });
+  h += '<p class="mu" style="margin:8px 0 0">' + (S.streak ? 'Putki: <b>' + S.streak + ' pv</b> · ' : '') + 'Palkinto kasvaa putken mukana. Uudet tehtävät joka päivä.</p>';
+  box.innerHTML = h;
+}
+
+/* ---------- Kokoelma ---------- */
+function heardSong(t){
+  if(!t || !t.id || !REAL_OK) return;
+  var first = !S.heard[t.id];
+  S.heard[t.id] = (S.heard[t.id]||0) + 1; S.heardN++;
+  if(first){ var g = Math.max(50, Math.round(incomePerSec()*30)); S.coins += g; S.total += g; toast('Uusi kokoelmaan: ' + t.title + ' (+' + fmt(g) + ' $)', 2600); }
+  lastSig = '';
+}
+function drawCol(){
+  var box = $('colBox'); if(!box) return;
+  var h = '', all = 0, got = 0, heard = 0;
+  GORDER.forEach(function(g){
+    var tot = REAL_OK ? REAL[g].length : GENRES[g].titles.length; if(!tot) return;
+    var n = Math.min(S.owned[g]||0, tot); all += tot; got += n;
+    h += '<div class="sub">' + GENRES[g].n + ' ' + n + '/' + tot + '</div><div class="chips">';
+    for(var i=0;i<tot;i++){
+      if(i < n && S.unlocked[g]){
+        var sg = songAt(g, i), hc = sg.id ? (S.heard[sg.id]||0) : 0, v = sg.id ? (S.votes[sg.id]||0) : 0; if(hc) heard++;
+        h += '<span class="chip colc'+(hc?' sel':'')+'" title="'+(sg.artist||'')+'">' + sg.title + (hc ? ' ♪'+hc : '') + (v===1?' 👍':v===-1?' 👎':'') + '</span>';
+      } else h += '<span class="chip colc lock">???</span>';
+    }
+    h += '</div>';
+  });
+  $('colH').textContent = 'Kokoelma ' + got + '/' + all;
+  box.innerHTML = '<p class="mu" style="margin:0 0 6px">' + (REAL_OK ? 'Kuultu pelissä: <b>' + Object.keys(S.heard).length + '</b> eri kappaletta. Laita ääni päälle ja kuule uudet kappaleet kokoelmaan: ensimmäinen kuuntelu antaa palkinnon.' : 'Oikeat kappaleet näkyvät osoitteessa suorni.fi/?peli=1.') + '</p>' + h;
 }
 
 /* ---------- Ääni: oikeat kappaleet ---------- */
@@ -1539,6 +1636,7 @@ function findReal(id){
 function auPlay(t, off, radio){
   var a = auEl();
   AU.cur = {title:t.title, artist:t.artist, info:t.info, id:t.id, real:true, radio:!!radio};
+  heardSong(t);
   AU.sw = a.src; SLEN = Math.max(20, t.dur || SLOT_LEN); AU.capT = 0;
   a.src = t.url; a.volume = 0; AU.fade = 0;
   if(off > 1){ var seek = function(){ a.removeEventListener('loadedmetadata', seek); try{ a.currentTime = off; }catch(e){} }; a.addEventListener('loadedmetadata', seek); }
@@ -1628,7 +1726,7 @@ document.addEventListener('visibilitychange', function(){
 window.addEventListener('pagehide', save);
 
 // testikoukku
-window.__taajuus = {state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, voteNow:voteNow, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
+window.__taajuus = {dq:function(){return S.dq;}, dailyTick:dailyTick, heardSong:heardSong, drawCol:drawCol, state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, voteNow:voteNow, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
 
 loadReal();
 drawLb(); setTimeout(function(){ lbSend(false); lbFetch(); }, 1500);
