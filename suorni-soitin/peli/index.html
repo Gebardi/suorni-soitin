@@ -186,6 +186,7 @@ details.fl li b{color:var(--tx);font-weight:500}
 #lvTap{width:100%;max-width:420px;padding:26px 12px;font-size:16px;font-weight:700;letter-spacing:.14em;background:var(--a);color:#06101f;border-radius:var(--r)}
 #lvRes{width:100%;max-width:420px;text-align:center}
 #lvRes .big{font-family:var(--mono);font-size:34px;color:var(--ok);margin:8px 0}
+.fmap{width:100%;max-width:300px;display:block;margin:0 auto 8px}.fmap .land{fill:#141a28;stroke:var(--line);stroke-width:1.5}.fmap .cov{fill:rgba(77,163,255,.10)}.fmap .cov2{fill:rgba(77,163,255,.14)}.fmap .cty{cursor:pointer}.fmap .hit{fill:transparent}.fmap .dt{fill:var(--mu)}.fmap .cty.on .dt{fill:var(--a)}.fmap .cty.lock .dt{fill:#2a3246}.fmap .cty.sel .dt{stroke:#fff;stroke-width:2}
 .ach{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--line);align-items:center}
 .ach:first-of-type{border-top:0;padding-top:0}
 .ach .ic{width:30px;height:30px;border:1px solid var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;color:var(--mu);font-size:14px}
@@ -268,6 +269,7 @@ details.fl li b{color:var(--tx);font-weight:500}
     </section>
 
     <section id="t-saav" class="tab">
+      <div class="card"><h2 id="mapH">Kuuluvuuskartta</h2><div id="mapBox"></div></div>
       <div class="card"><h2 id="achH">Saavutukset</h2><div id="achList"></div></div>
     </section>
 
@@ -436,7 +438,7 @@ function fresh(){
     antenna:0, studio:0,
     hired:{}, hostIn:[null,null,null,null], hostLv:{}, ads:[0,0,0,0], adOn:false,
     tp:0, tpFree:0, perks:{}, runs:0, sbLeft:0, sbNext:0,
-    buffs:[], ach:{}, liveCd:0, lives:0, liveBest:0, wishes:0, choices:0, choice:null,
+    buffs:[], cities:{}, ach:{}, liveCd:0, lives:0, liveBest:0, wishes:0, choices:0, choice:null,
     ls:0, total:20, hearts:0, songsBought:0,
     last:Date.now(), started:Date.now()
   };
@@ -486,7 +488,7 @@ function targetFor(idx, fatArr){
   if(!g || !(S.owned[g]>0)) return 0;
   var f = (fatArr||S.fat)[g]||0;
   return ANT_REACH[S.antenna] * SLOTS[idx].base * FIT[SLOTS[idx].id][g] * variety(g) * (1-f)
-       * hostMult(idx) * AD_PEN[S.ads[idx]||0] * evMult(g) * (partner() ? 1.1 : 1) * sbMult() * buffLis();
+       * hostMult(idx) * AD_PEN[S.ads[idx]||0] * evMult(g) * (partner() ? 1.1 : 1) * sbMult() * buffLis() * cityMult(g);
 }
 function step(dt){
   var idx = slotIdx(S.clock);
@@ -655,7 +657,7 @@ function render(force){
   $('clk').textContent = clockText();
   $('clkSlot').textContent = SLOTS[idx].n;
   $('stName').textContent = ANT[S.antenna].n;
-  $('stSub').textContent = 'kuuluvuus: ' + ANT[S.antenna].a + ' · maine ' + fameLevel();
+  $('stSub').textContent = 'kuuluvuus: ' + ANT[S.antenna].a + ' · ' + cityCount() + '/' + CITIES.length + ' kaupunkia · maine ' + fameLevel();
 
   // soi parhaillaan
   var card = $('stCard');
@@ -709,7 +711,7 @@ function render(force){
   } else eb.classList.remove('on');
 
   // rakenteen muutos -> piirrä listat uudelleen
-  var sig = JSON.stringify([S.slots,S.owned,S.unlocked,S.antenna,S.studio,idx,S.choice, choiceSig(), REAL_OK,S.hired,S.hostIn,S.hostLv,S.ads,S.adOn,S.tp,S.tpFree,S.perks,tpGain(), canBuyAny(), GORDER.map(function(k){return Math.round((S.fat[k]||0)*100);})]);
+  var sig = JSON.stringify([S.slots,S.owned,S.unlocked,S.antenna,S.studio,idx,S.choice, choiceSig(), REAL_OK,S.hired,S.hostIn,S.hostLv,S.ads,S.adOn,S.tp,S.tpFree,S.perks,S.cities,cityOpen,tpGain(), canBuyAny(), GORDER.map(function(k){return Math.round((S.fat[k]||0)*100);})]);
   if(force || sig !== lastSig){
     lastSig = sig;
     drawSlots(idx);
@@ -717,11 +719,13 @@ function render(force){
     drawStats();
     drawChoice();
     drawAch();
+    drawMap();
   }
   $('shopDot').classList.toggle('has', canBuyAny());
   $('achDot').classList.toggle('has', achNew);
 }
 function canBuyAny(){
+  if(cityAfford()) return true;
   if(S.coins >= songCost()) return true;
   if(!S.adOn && S.coins >= AD_UNLOCK) return true;
   for(var q=0;q<HORDER.length;q++){ var hq=HORDER[q]; if(!S.hired[hq] && S.coins >= HOSTS[hq].cost) return true; }
@@ -947,11 +951,75 @@ function offline(){
   }
 }
 
+
+/* ---------- Kartta: kuuluvuusalueet ---------- */
+var CITIES = [
+  {id:'tre', n:'Tampere',      lon:23.76, lat:61.50, ant:1, cost:60,     g:'rock',        x:'Tampere kuuntelee rockia.'},
+  {id:'tku', n:'Turku',        lon:22.27, lat:60.45, ant:2, cost:400,    g:'pop',         x:'Turku tykkää popista.'},
+  {id:'jkl', n:'Jyväskylä',    lon:25.74, lat:62.24, ant:2, cost:500,    g:'rauhallinen', x:'Jyväskylä rentoutuu rauhallisen äärellä.'},
+  {id:'hki', n:'Helsinki',     lon:24.94, lat:60.17, ant:3, cost:4000,   g:'pop',         x:'Helsinki janoaa popia.'},
+  {id:'kuo', n:'Kuopio',       lon:27.68, lat:62.89, ant:3, cost:4500,   g:'iskelma',     x:'Kuopio rakastaa iskelmää.'},
+  {id:'oul', n:'Oulu',         lon:25.47, lat:65.01, ant:3, cost:5500,   g:'metalli',     x:'Oulu jyrää metallia.'},
+  {id:'vaa', n:'Vaasa',        lon:21.62, lat:63.10, ant:4, cost:45000,  g:'iskelma',     x:'Vaasa pitää iskelmästä.'},
+  {id:'jns', n:'Joensuu',      lon:29.76, lat:62.60, ant:4, cost:50000,  g:'rock',        x:'Joensuu kuuntelee rockia.'},
+  {id:'kaj', n:'Kajaani',      lon:27.73, lat:64.22, ant:4, cost:55000,  g:'metalli',     x:'Kajaani tykkää metallista.'},
+  {id:'lpr', n:'Lappeenranta', lon:28.19, lat:61.06, ant:4, cost:65000,  g:'iskelma',     x:'Lappeenranta laulaa iskelmää mukana.'},
+  {id:'rov', n:'Rovaniemi',    lon:25.72, lat:66.50, ant:4, cost:80000,  g:'rauhallinen', x:'Rovaniemellä kaivataan rauhallista.'},
+  {id:'iva', n:'Ivalo',        lon:27.55, lat:68.66, ant:5, cost:600000, g:'rauhallinen', x:'Ivalossa kuunnellaan rauhallista tunturissa.'}
+];
+var FIN = [[22.95,59.82],[25.0,60.15],[26.9,60.45],[28.0,60.55],[28.8,61.1],[29.6,62.0],[30.5,62.9],[29.9,63.9],[30.0,65.0],[29.6,66.0],[28.7,66.8],[29.1,67.5],[30.0,68.2],[28.9,68.9],[28.8,69.9],[28.0,70.1],[26.5,69.9],[25.0,68.7],[23.5,68.6],[21.0,69.05],[20.6,68.9],[21.6,68.5],[23.6,67.9],[23.9,66.8],[24.15,65.85],[25.4,65.0],[24.5,64.2],[23.1,63.85],[21.6,63.1],[21.2,62.3],[21.4,61.5],[21.5,61.1],[21.3,60.7],[22.0,60.3]];
+function mx(lon){ return Math.round((lon-19.8)*26*10)/10; }
+function my(lat){ return Math.round((70.3-lat)*42*10)/10; }
+function cityCount(){ var n=0; for(var k in S.cities) if(S.cities[k]) n++; return n; }
+function cityMult(g){
+  var n = 0, fav = 0;
+  for(var i=0;i<CITIES.length;i++){ if(S.cities[CITIES[i].id]){ n++; if(CITIES[i].g === g) fav++; } }
+  return (1 + 0.04*n) * (1 + 0.03*fav);
+}
+var cityOpen = null;
+function cityBy(id){ for(var i=0;i<CITIES.length;i++) if(CITIES[i].id===id) return CITIES[i]; return null; }
+function buyCity(id){
+  var c = cityBy(id);
+  if(!c || S.cities[id] || S.antenna < c.ant || S.coins < c.cost) return;
+  S.coins -= c.cost; S.cities[id] = true; lastSig = '';
+  toast(c.n + ' kuuluu nyt! Kuuntelijat +4 %');
+  render(true);
+}
+function cityAfford(){
+  for(var i=0;i<CITIES.length;i++){ var c = CITIES[i]; if(!S.cities[c.id] && S.antenna >= c.ant && S.coins >= c.cost) return true; }
+  return false;
+}
+function drawMap(){
+  var poly = FIN.map(function(q){ return mx(q[0])+','+my(q[1]); }).join(' ');
+  var svg = '<svg viewBox="0 0 300 470" class="fmap" role="img" aria-label="Suomen kartta kuuluvuusalueista"><polygon points="'+poly+'" class="land"/>';
+  for(var i=0;i<CITIES.length;i++){
+    var c = CITIES[i], on = !!S.cities[c.id], lock = S.antenna < c.ant, x = mx(c.lon), y = my(c.lat);
+    if(on) svg += '<circle cx="'+x+'" cy="'+y+'" r="26" class="cov"/><circle cx="'+x+'" cy="'+y+'" r="15" class="cov2"/>';
+  }
+  for(var j=0;j<CITIES.length;j++){
+    var d = CITIES[j], o = !!S.cities[d.id], l = S.antenna < d.ant, xx = mx(d.lon), yy = my(d.lat);
+    svg += '<g data-city="'+d.id+'" class="cty'+(o?' on':'')+(l?' lock':'')+(cityOpen===d.id?' sel':'')+'"><circle cx="'+xx+'" cy="'+yy+'" r="14" class="hit"/><circle cx="'+xx+'" cy="'+yy+'" r="'+(o?5:4)+'" class="dt"/></g>';
+  }
+  svg += '</svg>';
+  var info = '';
+  if(cityOpen){
+    var c2 = cityBy(cityOpen);
+    info = '<div class="row"><div class="i"><b>'+c2.n+'</b><small>'+c2.x+' Suosikkityyli: '+GENRES[c2.g].n+'.</small></div>';
+    if(S.cities[c2.id]) info += '<span class="mu" style="font-size:13px">Kuuluu ✓</span>';
+    else if(S.antenna < c2.ant) info += '<span class="mu" style="font-size:12px;text-align:right">Vaatii: '+ANT[c2.ant].n+'</span>';
+    else info += buyBtn(c2.cost,'Rakenna','city',c2.id);
+    info += '</div>';
+  } else info = '<p class="hint">Napauta kaupunkia. Jokainen kaupunki antaa +4 % kuuntelijoita ja lisäksi +3 %, kun ohjelmassa soi sen suosikkityyli.</p>';
+  $('mapBox').innerHTML = svg + info;
+  $('mapH').textContent = 'Kuuluvuuskartta ' + cityCount() + '/' + CITIES.length;
+}
+
 /* ---------- Tapahtumat ---------- */
 document.addEventListener('click', function(e){
   if(e.target.closest && e.target.closest('a.sl')) giveSuorni();
-  var t = e.target.closest('[data-slot],[data-act],[data-tab],[data-hs],[data-as],[data-ch]');
+  var t = e.target.closest('[data-slot],[data-act],[data-tab],[data-hs],[data-as],[data-ch],[data-city]');
   if(!t) return;
+  if(t.getAttribute && t.getAttribute('data-city') && !(t.dataset && t.dataset.act)){ cityOpen = (cityOpen === t.getAttribute('data-city')) ? null : t.getAttribute('data-city'); lastSig=''; render(true); return; }
   if(t.dataset.ch !== undefined){ choose(t.dataset.ch); return; }
   if(t.dataset.hs !== undefined){ setHost(+t.dataset.hs, t.dataset.h || null); save(); return; }
   if(t.dataset.as !== undefined){ setAd(+t.dataset.as, +t.dataset.ad); save(); return; }
@@ -962,6 +1030,7 @@ document.addEventListener('click', function(e){
     else if(a === 'genre') unlockGenre(t.dataset.arg);
     else if(a === 'ant') buyAntenna();
     else if(a === 'studio') buyStudio();
+    else if(a === 'city') buyCity(t.dataset.arg);
     else if(a === 'hire') hireHost(t.dataset.arg);
     else if(a === 'train') trainHost(t.dataset.arg);
     else if(a === 'ads') buyAds();
@@ -1167,6 +1236,9 @@ var ACH = [
   {id:'ad',  n:'Kaupallinen asema', x:'Palkkaa mainosmyyjä', t:function(){ return S.adOn; }},
   {id:'a3',  n:'Kaupunkiradio', x:'Hanki Kaupunkiradion antenni', t:function(){ return S.antenna >= 3; }},
   {id:'a5',  n:'Koko Suomi kuuluu', x:'Hanki Valtakunnan taajuus', t:function(){ return S.antenna >= 5; }},
+  {id:'k1',  n:'Ensimmäinen kaupunki', x:'Rakenna kuuluvuus ensimmäiseen kaupunkiin', t:function(){ return cityCount() >= 1; }},
+  {id:'k6',  n:'Puoli Suomea', x:'Rakenna kuuluvuus 6 kaupunkiin', t:function(){ return cityCount() >= 6; }},
+  {id:'k12', n:'Koko kartta', x:'Kuulu kaikissa 12 kaupungissa', t:function(){ return cityCount() >= CITIES.length; }},
   {id:'lv1', n:'Ensimmäinen live', x:'Pelaa live-lähetys', t:function(){ return S.lives >= 1; }},
   {id:'lv9', n:'Rytmimestari', x:'Live-lähetys 90 % tai paremmin', t:function(){ return S.liveBest >= 0.9; }},
   {id:'w5',  n:'Toiveiden täyttäjä', x:'Toteuta 5 kuuntelijatoivetta', t:function(){ return S.wishes >= 5; }},
@@ -1269,7 +1341,7 @@ document.addEventListener('visibilitychange', function(){
 window.addEventListener('pagehide', save);
 
 // testikoukku
-window.__taajuus = {state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
+window.__taajuus = {state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
 
 loadReal();
 offline();
