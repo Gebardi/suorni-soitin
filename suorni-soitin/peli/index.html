@@ -180,6 +180,10 @@ details.fl li b{color:var(--tx);font-weight:500}
 .lvtop b{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu)}
 .lvtop span{font-size:26px;color:var(--a)}
 #lvStage{position:relative;flex:1;width:100%;max-width:420px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#lvBird{position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;background:var(--a);color:#06101f;font-weight:700;font-size:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 18px rgba(77,163,255,.6);z-index:2;will-change:transform}
+#lvBird.flap{background:#7cc0ff}
+.lvpipe{position:absolute;left:0;background:linear-gradient(90deg,#123a2b,#1d6b4b);border:2px solid var(--ok);border-radius:6px;will-change:transform}
+.lvpipe.bad{border-color:#ff6b6b;background:#4a1c1c}
 #lvTarget{width:96px;height:96px;border:3px solid var(--a);border-radius:50%;position:absolute;box-shadow:0 0 24px rgba(77,163,255,.4)}
 .lvring{position:absolute;width:96px;height:96px;border:3px solid var(--ok);border-radius:50%;pointer-events:none}
 #lvJudge{position:absolute;top:18%;font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:.1em;text-align:center;opacity:0;transition:opacity .25s}
@@ -313,9 +317,9 @@ details.fl li b{color:var(--tx);font-weight:500}
 </div>
 
 <div id="live"><div class="lvtop"><b>Live-lähetys</b><span id="lvScore">0</span></div>
-  <div id="lvStage"><div id="lvTarget"></div><div id="lvJudge"></div></div>
+  <div id="lvStage"><div id="lvBird">♪</div><div id="lvJudge"></div></div>
   <div id="lvCombo"></div>
-  <button id="lvTap">NAPAUTA RYTMISSÄ</button>
+  <button id="lvTap">LENNÄ</button>
   <div id="lvRes" style="display:none"><h3 style="margin:0 0 4px">Live päättyi</h3><div class="big" id="lvPct"></div><p class="mu" id="lvTxt"></p><button class="btn" id="lvDone" style="width:100%;border:0">Valmis</button></div>
 </div>
 
@@ -741,7 +745,7 @@ function render(force){
   else wb.classList.remove('on');
   // live
   var lb = $('liveBtn');
-  if(liveReady()){ lb.disabled = false; lb.textContent = 'Aloita live'; $('liveTx').textContent = 'Napauta rytmissä, kun rengas osuu ympyrään. Hyvä suoritus antaa kolikoita ja kahden minuutin bonuksen.'; }
+  if(liveReady()){ lb.disabled = false; lb.textContent = 'Aloita live'; $('liveTx').textContent = 'Lennä nuotilla putkien aukoista musiikin tahdissa: napauta pomppuun. Hyvä suoritus antaa kolikoita ja kahden minuutin bonuksen.'; }
   else { lb.disabled = true; lb.textContent = 'Live valmis ' + Math.ceil(S.liveCd) + ' s kuluttua'; $('liveTx').textContent = 'Studio jäähtyy seuraavaa lähetystä varten.'; }
   // tapahtumabanneri
   var eb = $('evBox');
@@ -1308,8 +1312,8 @@ function wishTick(dt){
   }
 }
 
-/* ---------- Live-lähetys (rytmipeli) ---------- */
-var LV = {on:false, t0:0, N:24, gap:0.9, lead:1.2, beats:[], state:[], rings:[], pts:0, combo:0, maxCombo:0, perfect:0, raf:0};
+/* ---------- Live-lähetys (Flappy-tyylinen rytmipeli) ---------- */
+var LV = {on:false, t0:0, N:20, gap:1.0, lead:1.2, beats:[], state:[], rings:[], pts:0, combo:0, maxCombo:0, perfect:0, raf:0};
 function liveReady(){ return S.liveCd <= 0; }
 var LB = {ctx:null, el:null, src:null, an:null, buf:null, prev:0};
 function sameOrigin(u){ try{ return new URL(u, location.href).origin === location.origin; }catch(e){ return false; } }
@@ -1387,60 +1391,95 @@ function liveOpen(){
   $('lvStage').style.visibility = ''; $('lvScore').textContent = '0'; $('lvCombo').textContent = 'Valmistaudu…'; $('lvJudge').style.opacity = 0;
   LV.beats = []; LV.state = []; LV.rings = []; LV.samples = []; LV.bpm = 0;
   LV.music = lvAudioStart(); LV.phase = LV.music ? 'listen' : 'play';
-  for(var i=0;i<LV.N;i++){ LV.beats.push(2 + i*LV.gap); LV.state.push(0); }   // 0 odottaa, 1 osuttu, 2 hukkaan
-  if(LV.music){ LV.beats = []; $('lvCombo').textContent = 'Kuuntele rytmiä…'; }
+  for(var i=0;i<LV.N;i++){ LV.beats.push(3 + i*LV.gap); LV.state.push(0); }   // 0 odottaa, 1 osuttu, 2 hukkaan
+  if(LV.music){ LV.beats = []; $('lvCombo').textContent = 'Kuunnellaan tahtia… harjoittele lentoa'; }
   LV.pts = 0; LV.combo = 0; LV.maxCombo = 0; LV.perfect = 0; LV.on = true; LV.t0 = performance.now();
-  var st = $('lvStage'); var old = st.querySelectorAll('.lvring'); for(var o=0;o<old.length;o++) old[o].remove();
+  LV.hits = 0; $('lvStage').style.visibility = ''; flSetup();
   LV.raf = requestAnimationFrame(liveLoop);
 }
 function lvBuildBeats(tNow, r){
   var P = r ? r.P : LV.gap, first = r ? r.phase : 0, k = Math.ceil((tNow + 1.6 - first)/P);
-  LV.beats = []; for(var i=0;i<LV.N;i++) LV.beats.push(first + (k+i)*P);
+  var stp = P < 0.8 ? 2 : 1; k = Math.ceil((tNow + 2.2 - first)/P); LV.beats = []; for(var i=0;i<LV.N;i++) LV.beats.push(first + (k+i*stp)*P);
   LV.bpm = r ? Math.round(r.bpm) : 0;
 }
 function judge(txt, col){ var j = $('lvJudge'); j.textContent = txt; j.style.color = col; j.style.opacity = 1; clearTimeout(judge.t); judge.t = setTimeout(function(){ j.style.opacity = 0; }, 350); }
-function liveTap(tt){
-  if(!LV.on || LV.phase === 'listen') return;
-  var t = (tt !== undefined) ? tt : (performance.now() - LV.t0)/1000, best = -1, bd = 9;
-  for(var i=0;i<LV.N;i++){ if(LV.state[i] === 0){ var d = Math.abs(LV.beats[i] - t); if(d < bd){ bd = d; best = i; } } }
-  if(best < 0 || bd > 0.3){ LV.combo = 0; judge('HUKKA', '#ff6b6b'); $('lvCombo').textContent = ''; return; }
-  LV.state[best] = 1;
-  var p, txt, col;
-  if(bd < 0.09){ p = 3; txt = 'TÄYDELLINEN'; col = '#3ddc97'; LV.perfect++; }
-  else if(bd < 0.18){ p = 2; txt = 'HYVÄ'; col = '#4da3ff'; }
-  else { p = 1; txt = 'OK'; col = '#ffb84d'; }
-  LV.combo++; if(LV.combo > LV.maxCombo) LV.maxCombo = LV.combo;
-  LV.pts += p; judge(txt, col);
-  $('lvScore').textContent = Math.round(Math.min(1, LV.pts/(LV.N*3))*100) + ' %';
-  $('lvCombo').textContent = LV.combo >= 3 ? 'Putki ×' + LV.combo : '';
+var FL = {W:0, H:0, bx:0, by:0, vy:0, gw:54, br:15, gapH:0, gaps:[], pipes:[], last:0, inv:0};
+function liveTap(){
+  if(!LV.on || !FL.H) return;
+  FL.vy = -0.68 * FL.H;
+  var bd = $('lvBird'); bd.classList.add('flap'); setTimeout(function(){ bd.classList.remove('flap'); }, 120);
+}
+function flSetup(){
+  var st = $('lvStage'); FL.W = st.clientWidth || 360; FL.H = st.clientHeight || 420;
+  FL.bx = FL.W * 0.28; FL.by = FL.H * 0.5; FL.vy = 0; FL.gapH = FL.H * 0.34; FL.inv = 0; FL.last = 0;
+  FL.v = (FL.W + FL.gw - FL.bx) / LV.lead;
+  FL.gaps = []; var c = 0.5, sd = (Date.now() % 997) + 1;
+  for(var i=0;i<LV.N;i++){ sd = (sd*9301 + 49297) % 233280; var r = sd/233280; c = Math.max(0.3, Math.min(0.7, c + (r-0.5)*0.36)); FL.gaps.push(c); }
+  var old = st.querySelectorAll('.lvpipe'); for(var o=0;o<old.length;o++) old[o].remove();
+  FL.pipes = [];
+}
+function flPipe(i){
+  var st = $('lvStage'), top = FL.gaps[i]*FL.H - FL.gapH/2, bot = FL.gaps[i]*FL.H + FL.gapH/2;
+  var a = document.createElement('div'), b = document.createElement('div');
+  a.className = b.className = 'lvpipe'; a.style.top = '0'; a.style.height = top + 'px'; b.style.top = bot + 'px'; b.style.height = (FL.H - bot) + 'px';
+  a.style.width = b.style.width = FL.gw + 'px'; st.appendChild(a); st.appendChild(b); FL.pipes[i] = [a, b];
 }
 function liveLoop(now){
   if(!LV.on) return;
-  var t = (now - LV.t0)/1000, st = $('lvStage'), done = true;
+  var t = (now - LV.t0)/1000, dt = Math.min(0.05, Math.max(0, t - (FL.last || t))); FL.last = t;
   if(LV.phase === 'listen'){
     lvSample(t);
-    if(t < 5){ LV.raf = requestAnimationFrame(liveLoop); return; }
-    var br = btCompute(LV.samples); lvBuildBeats(t, br); LV.phase = 'play';
-    $('lvCombo').textContent = br ? ('Tahti ' + LV.bpm + ' / min') : '';
+    if(t >= 5){
+      var br = btCompute(LV.samples); lvBuildBeats(t, br); LV.phase = 'play';
+      $('lvCombo').textContent = br ? ('Tahti ' + LV.bpm + ' / min') : '';
+    }
   }
-  for(var i=0;i<LV.N;i++){
-    var b = LV.beats[i];
-    if(LV.state[i] === 0){
-      done = false;
-      if(t > b + 0.3){ LV.state[i] = 2; LV.combo = 0; $('lvCombo').textContent = ''; if(LV.rings[i]){ LV.rings[i].remove(); LV.rings[i] = null; } continue; }
-      if(t >= b - LV.lead){
-        if(!LV.rings[i]){ var r = document.createElement('div'); r.className = 'lvring'; st.appendChild(r); LV.rings[i] = r; }
-        var k = Math.max(0, (b - t)/LV.lead);
-        LV.rings[i].style.transform = 'scale(' + (1 + k*1.7).toFixed(3) + ')';
-        LV.rings[i].style.opacity = String(Math.min(1, 1.2 - k*0.7));
+  // lintu
+  FL.vy += 2.3 * FL.H * dt; FL.by += FL.vy * dt;
+  if(FL.by > FL.H - FL.br){ FL.by = FL.H - FL.br; FL.vy = -0.35 * FL.H; }
+  if(FL.by < FL.br){ FL.by = FL.br; if(FL.vy < 0) FL.vy = 0; }
+  if(FL.inv > 0) FL.inv -= dt;
+  var bird = $('lvBird');
+  bird.style.transform = 'translate(' + (FL.bx - FL.br).toFixed(1) + 'px,' + (FL.by - FL.br).toFixed(1) + 'px) rotate(' + Math.max(-25, Math.min(55, FL.vy/FL.H*45)).toFixed(0) + 'deg)';
+  bird.style.opacity = FL.inv > 0 ? (Math.floor(t*12)%2 ? 0.35 : 1) : 1;
+  var done = LV.phase === 'play';
+  if(LV.phase === 'play'){
+    for(var i=0;i<LV.N;i++){
+      var bt = LV.beats[i], st0 = LV.state[i];
+      if(st0 !== 0 && !FL.pipes[i]) continue;
+      if(st0 === 0) done = false;
+      if(!FL.pipes[i] && t >= bt - LV.lead) flPipe(i);
+      var p = FL.pipes[i]; if(!p) continue;
+      var gx = FL.bx + (bt - t) * FL.v;                           // putken keskikohta
+      var x = gx - FL.gw/2;
+      p[0].style.transform = p[1].style.transform = 'translateX(' + x.toFixed(1) + 'px)';
+      if(st0 === 0){
+        var top = FL.gaps[i]*FL.H - FL.gapH/2, bot = FL.gaps[i]*FL.H + FL.gapH/2;
+        if(Math.abs(gx - FL.bx) < FL.gw/2 + FL.br*0.8 && (FL.by - FL.br*0.8 < top || FL.by + FL.br*0.8 > bot)){
+          LV.state[i] = 2; LV.combo = 0; LV.hits = (LV.hits||0) + 1; FL.inv = 0.8; FL.vy = Math.abs(FL.vy) * 0.3;
+          p[0].classList.add('bad'); p[1].classList.add('bad'); judge('OSUMA', '#ff6b6b'); $('lvCombo').textContent = '';
+        } else if(gx + FL.gw/2 + FL.br < FL.bx){
+          LV.state[i] = 1;
+          var off = Math.abs(FL.by - FL.gaps[i]*FL.H) / (FL.gapH/2), pts, txt, col;
+          if(off < 0.35){ pts = 3; txt = 'TÄYDELLINEN'; col = '#3ddc97'; LV.perfect++; }
+          else if(off < 0.7){ pts = 2; txt = 'HYVÄ'; col = '#4da3ff'; }
+          else { pts = 1; txt = 'OK'; col = '#ffb84d'; }
+          LV.combo++; if(LV.combo > LV.maxCombo) LV.maxCombo = LV.combo;
+          LV.pts += pts; judge(txt, col);
+          $('lvScore').textContent = Math.round(Math.min(1, LV.pts/(LV.N*3))*100) + ' %';
+          $('lvCombo').textContent = LV.combo >= 3 ? 'Putki ×' + LV.combo : '';
+        }
       }
-    } else if(LV.rings[i]){ LV.rings[i].remove(); LV.rings[i] = null; }
+      if(x < -FL.gw - 4 && st0 !== 0){ p[0].remove(); p[1].remove(); FL.pipes[i] = null; LV.state[i] = LV.state[i]; }
+      if(st0 !== 0 && FL.pipes[i]) { /* vielä näkyvissä */ }
+    }
+    if(done){ for(var k=0;k<LV.N;k++){ if(FL.pipes[k]){ done = false; break; } } }
   }
-  if(done){ liveEnd(); return; }
+  if(LV.phase === 'play' && done){ liveEnd(); return; }
   LV.raf = requestAnimationFrame(liveLoop);
 }
 function liveEnd(){
-  LV.on = false; cancelAnimationFrame(LV.raf); lvAudioStop();
+  LV.on = false; cancelAnimationFrame(LV.raf); lvAudioStop(); var op = $('lvStage').querySelectorAll('.lvpipe'); for(var q=0;q<op.length;q++) op[q].remove();
   var r = Math.min(1, LV.pts/(LV.N*3));
   var gain = Math.round(Math.max(30, incomePerSec()*80) * (0.3 + 1.2*r));
   S.coins += gain; S.total += gain; S.liveCd = 180; S.lives++; if(r > S.liveBest) S.liveBest = r;
@@ -1448,12 +1487,13 @@ function liveEnd(){
   if(r >= 0.15){ addBuff('Live-bonus', 120, 1 + 0.5*r, 1 + 0.4*r); buffTxt = ' Live-bonus: kuuntelijat ×' + (1+0.5*r).toFixed(2).replace('.',',') + ' ja tulot ×' + (1+0.4*r).toFixed(2).replace('.',',') + ' kahden minuutin ajan.'; }
   $('lvTap').style.display = 'none'; $('lvStage').style.visibility = 'hidden'; $('lvCombo').textContent = '';
   $('lvPct').textContent = Math.round(r*100) + ' %';
-  $('lvTxt').textContent = 'Pisin putki ' + LV.maxCombo + ', täydellisiä ' + LV.perfect + '. Palkkio +' + fmt(gain) + ' $.' + buffTxt;
+  $('lvTxt').textContent = 'Pisin putki ' + LV.maxCombo + ', täydellisiä ' + LV.perfect + ', osumia ' + (LV.hits||0) + '. Palkkio +' + fmt(gain) + ' $.' + buffTxt;
   $('lvRes').style.display = '';
   render(true); save();
 }
 $('liveBtn').addEventListener('click', liveOpen);
 $('lvTap').addEventListener('pointerdown', function(e){ e.preventDefault(); liveTap(); });
+$('lvStage').addEventListener('pointerdown', function(e){ e.preventDefault(); liveTap(); });
 document.addEventListener('keydown', function(e){ if(LV.on && (e.code === 'Space' || e.key === ' ')){ e.preventDefault(); liveTap(); } });
 $('lvDone').addEventListener('click', function(){ $('live').classList.remove('on'); render(true); });
 
@@ -1636,18 +1676,21 @@ function findReal(id){
 function auPlay(t, off, radio){
   var a = auEl();
   AU.cur = {title:t.title, artist:t.artist, info:t.info, id:t.id, real:true, radio:!!radio};
-  heardSong(t);
+  heardSong(t); AU.plays = AU.plays || {}; AU.plays[t.id] = (AU.plays[t.id]||0) + 1; AU.lastId = t.id;
   AU.sw = a.src; SLEN = Math.max(20, t.dur || SLOT_LEN); AU.capT = 0;
   a.src = t.url; a.volume = 0; AU.fade = 0;
   if(off > 1){ var seek = function(){ a.removeEventListener('loadedmetadata', seek); try{ a.currentTime = off; }catch(e){} }; a.addEventListener('loadedmetadata', seek); }
   var pr = a.play(); if(pr && pr.catch) pr.catch(function(){ AU.on = false; syncSnd(); toast('Selain esti äänen: napauta äänikuvaketta uudelleen'); });
 }
 function auPick(g, pool){
-  var cands = pool.filter(function(t){ return AU.hist.indexOf(t.id) < 0; });
-  if(!cands.length){ AU.hist = []; cands = pool; }
-  var t = cands[Math.floor(Math.random()*cands.length)];
-  AU.hist.push(t.id); if(AU.hist.length > Math.min(4, pool.length-1)) AU.hist.shift();
-  auPlay(t, 0, false);
+  // kierrätys: vähiten soitettu ensin, ei samaa kappaletta peräkkäin
+  AU.plays = AU.plays || {};
+  var last = AU.cur ? AU.cur.id : AU.lastId;
+  var cands = pool.filter(function(t){ return t.id !== last; });
+  if(!cands.length) cands = pool;
+  var min = 1e9; cands.forEach(function(t){ var c = AU.plays[t.id]||0; if(c < min) min = c; });
+  cands = cands.filter(function(t){ return (AU.plays[t.id]||0) === min; });
+  auPlay(cands[Math.floor(Math.random()*cands.length)], 0, false);
 }
 function auNext(){
   if(!AU.on || AU.busy) return;
@@ -1726,7 +1769,7 @@ document.addEventListener('visibilitychange', function(){
 window.addEventListener('pagehide', save);
 
 // testikoukku
-window.__taajuus = {dq:function(){return S.dq;}, dailyTick:dailyTick, heardSong:heardSong, drawCol:drawCol, state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, voteNow:voteNow, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
+window.__taajuus = {FL:FL, dq:function(){return S.dq;}, dailyTick:dailyTick, heardSong:heardSong, drawCol:drawCol, state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, voteNow:voteNow, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
 
 loadReal();
 drawLb(); setTimeout(function(){ lbSend(false); lbFetch(); }, 1500);
