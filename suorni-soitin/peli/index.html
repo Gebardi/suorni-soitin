@@ -475,7 +475,8 @@ function addBuff(n, left, lis, coin){
   for(var i=0;i<S.buffs.length;i++){ if(S.buffs[i].n === n){ S.buffs[i] = {n:n,left:left,lis:lis,coin:coin}; return; } }
   S.buffs.push({n:n,left:left,lis:lis,coin:coin});
 }
-function sbMult(){ return S.sbLeft > 0 ? 1.25 : 1; }
+function sbMult(){ return (S.sbLeft > 0 ? 1.25 : 1) * sndMult(); }
+function sndMult(){ return (AU.on && REAL_OK) ? 1.2 : 1; }   // Oikea Radio Suorni -bonus: ääni päällä
 function variety(g){ var n = S.owned[g]||0; return 1 - Math.exp(-n/5); }
 function slotIdx(clock){ return Math.floor((clock % CYCLE)/SLOT_LEN); }
 var EV = null;   // käynnissä oleva tapahtuma (ei tallenneta)
@@ -690,6 +691,7 @@ function render(force){
   // bonukset
   var bd = [];
   if(S.sbLeft > 0) bd.push('Suorni-bonus ×1,25 · ' + Math.floor(S.sbLeft/60) + ':' + ('0'+Math.floor(S.sbLeft%60)).slice(-2));
+  if(sndMult() > 1) bd.push('Oikea Radio Suorni (ääni päällä) ×1,2');
   if(partner()) bd.push('Suorni-kumppani +10 %');
   if(S.tp > 0) bd.push('Taajuuspisteet +' + (S.tp*5) + ' %');
   for(var bq=0; bq<S.buffs.length; bq++){ bd.push(S.buffs[bq].n + ' ' + Math.ceil(S.buffs[bq].left) + ' s'); }
