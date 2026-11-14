@@ -184,6 +184,8 @@ details.fl li b{color:var(--tx);font-weight:500}
 #lvBird.flap{background:#7cc0ff}
 .lvpipe{position:absolute;left:0;background:linear-gradient(90deg,#123a2b,#1d6b4b);border:2px solid var(--ok);border-radius:6px;will-change:transform}
 .lvpipe.bad{border-color:#ff6b6b;background:#4a1c1c}
+#updBar{position:fixed;top:calc(8px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:40;display:none;background:var(--a);color:#06101f;font-weight:700;font-size:12px;padding:8px 12px;border-radius:999px;max-width:92vw}
+#updBar.on{display:block}
 #lvTarget{width:96px;height:96px;border:3px solid var(--a);border-radius:50%;position:absolute;box-shadow:0 0 24px rgba(77,163,255,.4)}
 .lvring{position:absolute;width:96px;height:96px;border:3px solid var(--ok);border-radius:50%;pointer-events:none}
 #lvJudge{position:absolute;top:18%;font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:.1em;text-align:center;opacity:0;transition:opacity .25s}
@@ -307,6 +309,7 @@ details.fl li b{color:var(--tx);font-weight:500}
 
   <div id="bubble" role="button" tabindex="0"><b id="bubT">Terveiset!</b><span id="bubTx"></span><div class="tm" id="bubTm"></div></div>
   <div id="toast"></div>
+  <button id="updBar">Uusi versio valmis. Napauta päivittääksesi (pelisi säilyy)</button>
 
   <nav><div class="in">
     <button data-tab="asema" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9a8 8 0 0 1 16 0M7 12a5 5 0 0 1 10 0"/><circle cx="12" cy="15" r="1.6" fill="currentColor"/><path d="M12 17v4"/></svg>Asema</button>
@@ -1779,9 +1782,37 @@ requestAnimationFrame(frame);
 
 try{
   if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0){
-    navigator.serviceWorker.register('sw.js').catch(function(){});
+    navigator.serviceWorker.register('sw.js', {updateViaCache:'none'}).then(function(reg){ setInterval(function(){ try{ reg.update(); }catch(e){} }, 600000); }).catch(function(){});
   }
 }catch(e){}
+
+/* ---------- Automaattinen päivitys: tila säilyy (tallennus selaimessa), vain koodi vaihtuu ---------- */
+var UPD = {base:null, pending:false, busy:false};
+function hashTxt(t){ var h = 5381; for(var i=0;i<t.length;i++) h = ((h*33) ^ t.charCodeAt(i)) >>> 0; return h + ':' + t.length; }
+function updCheck(){
+  if(UPD.busy || location.protocol.indexOf('http') !== 0) return;
+  UPD.busy = true;
+  fetch('index.html?chk=' + Date.now(), {cache:'no-store', credentials:'omit'}).then(function(r){ if(!r.ok) throw 0; return r.text(); }).then(function(t){
+    UPD.busy = false; var h = hashTxt(t);
+    if(UPD.base === null){ UPD.base = h; return; }
+    if(h !== UPD.base){ UPD.pending = true; updApply(); }
+  }).catch(function(){ UPD.busy = false; });
+}
+function updApply(){
+  if(!UPD.pending) return;
+  var busy = LV.on || (AU.on && !document.hidden);
+  if(busy){ $('updBar').classList.add('on'); return; }       // ei katkaista live-peliä eikä ääntä
+  var last = 0; try{ last = +sessionStorage.getItem('taajuus_upd') || 0; }catch(e){}
+  if(Date.now() - last < 60000) return;                       // ei reload-silmukkaa
+  try{ sessionStorage.setItem('taajuus_upd', String(Date.now())); }catch(e){}
+  save(); location.reload();
+}
+$('updBar').addEventListener('click', function(){ UPD.busy = false; try{ sessionStorage.removeItem('taajuus_upd'); }catch(e){} UPD.pending = true; save(); location.reload(); });
+setTimeout(updCheck, 4000);
+setInterval(function(){ updCheck(); }, 300000);
+setInterval(function(){ if(UPD.pending) updApply(); }, 5000);
+document.addEventListener('visibilitychange', function(){ if(!document.hidden) updCheck(); });
+window.__upd = {check:updCheck, state:function(){ return UPD; }};
 })();
 </script>
 </body>
