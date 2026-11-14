@@ -340,15 +340,16 @@ var REAL_OK = false;
 function classify(t, listNames){
   var L = listNames.join(' ').toLowerCase();
   var T = ((t.style||'') + ' ' + (t.genre||'')).toLowerCase();
+  // tyylikuvaus ratkaisee ensin raskaat ja selvät tyylit (soittolista Metalli sisältää myös hard rockia ja bluesia)
+  if(/metal|doom|thrash|death|viikinki|black'?n|sludge/.test(T)) return 'metalli';
+  if(/iskelm|tango|humppa|schlager|kapakkalaulu/.test(T)) return 'iskelma';
+  if(/rock|punk|grunge|blues/.test(T)) return 'rock';
   if(/metal/.test(L)) return 'metalli';
   if(/iskelm/.test(L)) return 'iskelma';
   if(/rauhall|yö/.test(L)) return 'rauhallinen';
   if(/miesten/.test(L)) return 'rock';
   if(/party/.test(L)) return 'pop';
-  if(/metal|doom|thrash|death|viikinki|black/.test(T)) return 'metalli';
-  if(/iskelm|tango|humppa|valssi|foksi|schlager/.test(T)) return 'iskelma';
-  if(/ballad|piano|akustinen|hidas|ambient|lullaby|rauhall/.test(T)) return 'rauhallinen';
-  if(/rock|punk|blues|stoner|grunge|kapakka/.test(T)) return 'rock';
+  if(/ballad|piano|akustinen|hidas|ambient|lullaby|rauhall|jazz|folk/.test(T)) return 'rauhallinen';
   return 'pop';
 }
 function hashId(id){ var x = (id * 2654435761) >>> 0; x ^= x >>> 15; return x; }
