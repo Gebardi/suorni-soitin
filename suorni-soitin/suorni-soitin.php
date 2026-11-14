@@ -828,6 +828,7 @@ function suorni_play_post( $req ) {
 	if ( ! $id || 0 !== strpos( (string) get_post_mime_type( $id ), 'audio' ) ) {
 		return suorni_json( array( 'ok' => false ) );
 	}
+	set_transient( 'suorni_now', array( 'id' => $id, 't' => time() ), 1800 ); /* Taajuus-peli: viimeksi kuunneltu kappale */
 	$ip  = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
 	$key = 'suorni_p_' . md5( $ip . '|' . $id );
 	if ( get_transient( $key ) ) { return suorni_json( array( 'ok' => true ) ); }

@@ -187,6 +187,7 @@ details.fl li b{color:var(--tx);font-weight:500}
 #lvRes{width:100%;max-width:420px;text-align:center}
 #lvRes .big{font-family:var(--mono);font-size:34px;color:var(--ok);margin:8px 0}
 .fmap{width:100%;max-width:300px;display:block;margin:0 auto 8px}.fmap .land{fill:#141a28;stroke:var(--line);stroke-width:1.5}.fmap .cov{fill:rgba(77,163,255,.10)}.fmap .cov2{fill:rgba(77,163,255,.14)}.fmap .cty{cursor:pointer}.fmap .hit{fill:transparent}.fmap .dt{fill:var(--mu)}.fmap .cty.on .dt{fill:var(--a)}.fmap .cty.lock .dt{fill:#2a3246}.fmap .cty.sel .dt{stroke:#fff;stroke-width:2}
+.lb{display:flex;flex-direction:column}.lbr{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}.lbr:first-child{border-top:0}.lbr.me{color:var(--a)}.lbn{width:26px;color:var(--mu);font-family:var(--mono)}.lbt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lbs{font-family:var(--mono)}.nickrow{display:flex;gap:8px;margin-top:8px}.nickrow input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:inherit;padding:10px;font:inherit;font-size:14px}.nickrow .btn{border:0;padding:0 14px}
 .ach{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--line);align-items:center}
 .ach:first-of-type{border-top:0;padding-top:0}
 .ach .ic{width:30px;height:30px;border:1px solid var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;color:var(--mu);font-size:14px}
@@ -207,7 +208,7 @@ details.fl li b{color:var(--tx);font-weight:500}
     <button class="snd" id="snd" aria-label="Ääni päälle / pois" title="Ääni">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path id="sndWave" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
     </button>
-    <div class="res"><b id="hCoins">0</b><small>kolikkoa</small></div>
+    <div class="res"><b id="hCoins">0</b><small>saldo</small></div>
   </header>
 
   <main>
@@ -269,6 +270,7 @@ details.fl li b{color:var(--tx);font-weight:500}
     </section>
 
     <section id="t-saav" class="tab">
+      <div class="card"><h2>Top 10 -pelaajat</h2><div id="lbBox"></div></div>
       <div class="card"><h2 id="mapH">Kuuluvuuskartta</h2><div id="mapBox"></div></div>
       <div class="card"><h2 id="achH">Saavutukset</h2><div id="achList"></div></div>
     </section>
@@ -314,7 +316,7 @@ details.fl li b{color:var(--tx);font-weight:500}
   <h3>Tervetuloa takaisin!</h3>
   <p class="mu" id="mdTx"></p>
   <div class="big" id="mdAmt">+0</div>
-  <button class="btn" id="mdOk" style="width:100%">Kerää kolikot</button>
+  <button class="btn" id="mdOk" style="width:100%">Kerää tulot</button>
 </div></div>
 
 <script>
@@ -438,7 +440,7 @@ function fresh(){
     antenna:0, studio:0,
     hired:{}, hostIn:[null,null,null,null], hostLv:{}, ads:[0,0,0,0], adOn:false,
     tp:0, tpFree:0, perks:{}, runs:0, sbLeft:0, sbNext:0,
-    buffs:[], cities:{}, ach:{}, liveCd:0, lives:0, liveBest:0, wishes:0, choices:0, choice:null,
+    buffs:[], cities:{}, nick:'', pid:'', bank:0, lastSent:-1, ach:{}, liveCd:0, lives:0, liveBest:0, wishes:0, choices:0, choice:null,
     ls:0, total:20, hearts:0, songsBought:0,
     last:Date.now(), started:Date.now()
   };
@@ -598,7 +600,7 @@ function prestige(){
   var old = S, n = fresh();
   n.tp = old.tp + gain; n.tpFree = old.tpFree + gain; n.perks = old.perks; n.runs = (old.runs||0) + 1;
   n.ach = old.ach; n.lives = old.lives; n.liveBest = old.liveBest; n.wishes = old.wishes; n.choices = old.choices; n.liveCd = old.liveCd;
-  n.hearts = old.hearts; n.fixes = old.fixes; n.started = old.started; n.sbNext = old.sbNext; n.sbLeft = old.sbLeft;
+  n.nick = old.nick; n.pid = old.pid; n.bank = (old.bank||0) + old.total; n.lastSent = old.lastSent; n.hearts = old.hearts; n.fixes = old.fixes; n.started = old.started; n.sbNext = old.sbNext; n.sbLeft = old.sbLeft;
   n.coins = 20; n.total = 20;
   if(old.perks.p1) n.antenna = 1;
   if(old.perks.p2){ n.hired = old.hired; n.hostLv = old.hostLv; n.hostIn = old.hostIn.slice(); }
@@ -623,11 +625,12 @@ function setSlot(i, g){
 /* ---------- Apu ---------- */
 function $(id){ return document.getElementById(id); }
 function fmt(n){
-  if(n < 1000) return n < 10 && n !== Math.floor(n) ? n.toFixed(1).replace('.',',') : String(Math.floor(n));
+  if(n < 10) return n !== Math.floor(n) ? n.toFixed(1).replace('.',',') : String(Math.floor(n));
+  if(n < 10000){ var f = String(Math.floor(n)); return f.length > 3 ? f.slice(0,-3) + '\u00a0' + f.slice(-3) : f; }
   var u = [['k',1e3],['M',1e6],['mrd',1e9],['bn',1e12]], i;
   for(i=u.length-1;i>=0;i--){ if(n >= u[i][1]){
     var v = n/u[i][1];
-    return String(parseFloat(v<10 ? v.toFixed(2) : v<100 ? v.toFixed(1) : Math.floor(v))).replace('.',',') + ' ' + u[i][0];
+    return String(parseFloat(v<10 ? v.toFixed(2) : v<100 ? v.toFixed(1) : Math.floor(v))).replace('.',',') + '\u00a0' + u[i][0];
   } }
   return String(Math.floor(n));
 }
@@ -651,9 +654,9 @@ function render(force){
   var idx = slotIdx(S.clock);
   var g = S.slots[idx];
 
-  $('hCoins').textContent = fmt(S.coins);
+  $('hCoins').textContent = '$ ' + fmt(S.coins);
   $('lis').textContent = fmt(S.lis);
-  $('inc').textContent = '+' + fmt(incomePerSec()) + ' kolikkoa / s';
+  $('inc').textContent = '+' + fmt(incomePerSec()) + ' $ / s';
   $('clk').textContent = clockText();
   $('clkSlot').textContent = SLOTS[idx].n;
   $('stName').textContent = ANT[S.antenna].n;
@@ -668,7 +671,7 @@ function render(force){
     var cur = (AU.on && AU.cur && AU.g === g) ? AU.cur : songAt(g, ti);
     var hh = S.hostIn[idx] && S.hired[S.hostIn[idx]] ? S.hostIn[idx] : null;
     $('npT').textContent = cur.title;
-    $('npI').textContent = cur.real ? (cur.artist + (cur.info ? ' · ' + cur.info : '')) : '';
+    $('npI').textContent = cur.real ? (cur.artist + (cur.radio ? ' · soi nyt oikeassa radiossa' : (cur.info ? ' · ' + cur.info : ''))) : '';
     $('npS').textContent = (hh ? HOSTS[hh].n + ' juontaa · ' : '') + GENRES[g].n + ' · ' + SLOTS[idx].n.toLowerCase();
     var av = $('npAv');
     if(hh){
@@ -769,7 +772,7 @@ function drawSlots(cur){
 }
 function buyBtn(cost, label, act, arg){
   var ok = S.coins >= cost;
-  return '<button class="buy'+(ok?' ok':'')+'" '+(ok?'':'disabled ')+'data-act="'+act+'"'+(arg?' data-arg="'+arg+'"':'')+'>'+label+'<br><small>'+fmt(cost)+'</small></button>';
+  return '<button class="buy'+(ok?' ok':'')+'" '+(ok?'':'disabled ')+'data-act="'+act+'"'+(arg?' data-arg="'+arg+'"':'')+'>'+label+'<br><small>'+fmt(cost)+' $</small></button>';
 }
 function drawShop(){
   var h = '';
@@ -897,12 +900,12 @@ function readGreeting(){
     gain = Math.max(8, incomePerSec()*12);
     S.coins += gain; S.total += gain; S.fixes = (S.fixes||0) + 1;
     closeBubble(false);
-    toast('Korjattu! Kiitokseksi +' + fmt(gain) + ' kolikkoa');
+    toast('Korjattu! Kiitokseksi +' + fmt(gain) + ' $');
   } else {
     gain = Math.max(10, incomePerSec()*25);
     S.coins += gain; S.total += gain; S.hearts++;
     closeBubble(false);
-    toast('Terveiset luettu: +' + fmt(gain) + ' kolikkoa');
+    toast('Terveiset luettu: +' + fmt(gain) + ' $');
   }
   render(true);
 }
@@ -946,7 +949,7 @@ function offline(){
   if(pay >= 1){
     var hrs = Math.floor(sec/3600), mins = Math.floor((sec%3600)/60);
     $('mdTx').textContent = 'Lähetys jatkui ' + (hrs ? hrs+' h ' : '') + mins + ' min ajan, kun olit poissa.' + (gap > OFFLINE_CAP ? ' (Enintään 8 tuntia lasketaan.)' : '');
-    $('mdAmt').textContent = '+' + fmt(pay) + ' kolikkoa';
+    $('mdAmt').textContent = '+' + fmt(pay) + ' $';
     $('modal').classList.add('on');
   }
 }
@@ -1014,6 +1017,45 @@ function drawMap(){
   $('mapH').textContent = 'Kuuluvuuskartta ' + cityCount() + '/' + CITIES.length;
 }
 
+
+/* ---------- Top 10 ja nimimerkki ---------- */
+var LBD = null, lbAcc = 50, lbBusy = false;
+function myScore(){ return Math.floor((S.bank||0) + S.total); }
+function nickOk(n){ return /^[\p{L}\p{N} _.\-]{2,16}$/u.test(n); }
+function lbSend(force){
+  if(!S.nick || !S.pid) return;
+  var sc = myScore(); if(!force && sc === S.lastSent) return;
+  api('peli/score', {body:{pid:S.pid, name:S.nick, score:sc}}, function(d){ if(d && d.ok) S.lastSent = sc; });
+}
+function lbFetch(){
+  if(lbBusy) return; lbBusy = true;
+  api('peli/top', {qs:'pid=' + encodeURIComponent(S.pid || '')}, function(d){ lbBusy = false; LBD = d; drawLb(); });
+}
+function drawLb(){
+  var box = $('lbBox'); if(!box) return;
+  var h = '';
+  if(!LBD){ h += '<p class="hint">Lista avautuu, kun peli on suorni.fi:n päivityksessä. Valitse nimimerkki jo nyt.</p>'; }
+  else if(!LBD.top.length){ h += '<p class="hint">Lista on vielä tyhjä. Ole ensimmäinen!</p>'; }
+  else {
+    h += '<div class="lb">';
+    for(var i=0;i<LBD.top.length;i++){ var e = LBD.top[i];
+      h += '<div class="lbr'+(e.me?' me':'')+'"><span class="lbn">'+(i+1)+'.</span><span class="lbt">'+escH(e.n)+'</span><span class="lbs">$ '+fmt(e.s)+'</span></div>'; }
+    h += '</div>';
+    if(LBD.me && LBD.me.rank > 10) h += '<p class="hint">Sijasi: '+LBD.me.rank+'. ($ '+fmt(LBD.me.s)+')</p>';
+  }
+  if(S.nick) h += '<p class="hint">Pelaat nimellä <b>'+escH(S.nick)+'</b> · tuottosi yhteensä $ '+fmt(myScore())+'</p>';
+  else h += '<div class="nickrow"><input id="nickIn" maxlength="16" placeholder="Nimimerkki (2–16 merkkiä)" autocomplete="off"><button class="btn" data-act="nick">Liity listalle</button></div><p class="hint" id="nickMsg"></p>';
+  box.innerHTML = h;
+}
+function escH(t){ return String(t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function saveNick(){
+  var inp = $('nickIn'); if(!inp) return;
+  var v = inp.value.replace(/\s+/g,' ').trim();
+  if(!nickOk(v)){ $('nickMsg').textContent = 'Nimimerkissä 2–16 kirjainta, numeroa, väliä tai merkkejä _ . -'; return; }
+  S.nick = v; if(!S.pid){ S.pid = ''; for(var i=0;i<16;i++) S.pid += '0123456789abcdef'.charAt(Math.floor(Math.random()*16)); }
+  S.lastSent = -1; save(); lbSend(true); setTimeout(lbFetch, 1200); drawLb(); toast('Tervetuloa listalle, ' + v + '!');
+}
+
 /* ---------- Tapahtumat ---------- */
 document.addEventListener('click', function(e){
   if(e.target.closest && e.target.closest('a.sl')) giveSuorni();
@@ -1031,6 +1073,7 @@ document.addEventListener('click', function(e){
     else if(a === 'ant') buyAntenna();
     else if(a === 'studio') buyStudio();
     else if(a === 'city') buyCity(t.dataset.arg);
+    else if(a === 'nick'){ saveNick(); return; }
     else if(a === 'hire') hireHost(t.dataset.arg);
     else if(a === 'train') trainHost(t.dataset.arg);
     else if(a === 'ads') buyAds();
@@ -1039,6 +1082,7 @@ document.addEventListener('click', function(e){
     save(); return;
   }
   if(t.dataset.tab){
+    if(t.dataset.tab === 'saav') lbFetch();
     var tabs = document.querySelectorAll('.tab'), btns = document.querySelectorAll('nav button');
     if(t.dataset.tab === 'saav') achNew = false;
     for(var i=0;i<tabs.length;i++) tabs[i].classList.toggle('on', tabs[i].id === 't-'+t.dataset.tab);
@@ -1073,7 +1117,7 @@ var CHOICES = [
    b:{l:'Reilumpaa mainontaa', d:'Kolikot ×1,25', buff:['Mainosviikko',120,1,1.25]}},
   {t:'Toimittaja haluaa haastattelun', x:'Juttu ilmestyisi huomenna.',
    a:{l:'Suostu', d:'Kuulijat ×1,3, tulot ×0,9', buff:['Haastattelu lehdessä',180,1.3,0.9]},
-   b:{l:'Kieltäydy', d:'Pieni kolikkopalkkio kiireettömyydestä', gain:30}},
+   b:{l:'Kieltäydy', d:'Pieni palkkio kiireettömyydestä', gain:30}},
   {t:'Sähkökatko lähettimen luona', x:'Varavoima voisi pelastaa lähetyksen.',
    a:{l:'Käynnistä aggregaatti', d:'Maksaa, lähetys jatkuu', cost:50},
    b:{l:'Odota sähkön palaamista', d:'Kuulijat ×0,6 minuutin ajan', buff:['Sähkökatko',60,0.6,1]}},
@@ -1113,7 +1157,7 @@ function drawChoice(){
   var c = CHOICES[S.choice]; cc.style.display = '';
   function opt(k, o){
     var cost = optCost(o), dis = cost && S.coins < cost;
-    var gain = o.gain ? ' · +' + fmt(choiceAmt(o.gain)) + ' kolikkoa' : '';
+    var gain = o.gain ? ' · +' + fmt(choiceAmt(o.gain)) + ' $' : '';
     return '<button class="opt" data-ch="'+k+'" '+(dis?'disabled':'')+'><b>'+o.l+(cost ? ' (−'+fmt(cost)+')' : '')+'</b><small>'+o.d+gain+'</small></button>';
   }
   $('choiceBody').innerHTML = '<p style="margin:0 0 2px"><b>'+c.t+'</b></p><p class="mu" style="margin:0">'+c.x+'</p><div class="opts">'+opt('a',c.a)+opt('b',c.b)+'</div>';
@@ -1138,7 +1182,7 @@ function wishTick(dt){
     if(curGenre() === WISH.g && S.owned[WISH.g] > 0){
       var g = choiceAmt(45); S.coins += g; S.total += g; S.wishes++;
       addBuff('Toive toteutettu', 60, 1.2, 1);
-      toast('Toive toteutettu! +' + fmt(g) + ' kolikkoa'); WISH = null; wishTimer = 90 + Math.random()*60; render(true); return;
+      toast('Toive toteutettu! +' + fmt(g) + ' $'); WISH = null; wishTimer = 90 + Math.random()*60; render(true); return;
     }
     if(WISH.left <= 0){ WISH = null; wishTimer = 70 + Math.random()*50; }
     return;
@@ -1158,19 +1202,96 @@ function wishTick(dt){
 /* ---------- Live-lähetys (rytmipeli) ---------- */
 var LV = {on:false, t0:0, N:24, gap:0.9, lead:1.2, beats:[], state:[], rings:[], pts:0, combo:0, maxCombo:0, perfect:0, raf:0};
 function liveReady(){ return S.liveCd <= 0; }
+var LB = {ctx:null, el:null, src:null, an:null, buf:null, prev:0};
+function sameOrigin(u){ try{ return new URL(u, location.href).origin === location.origin; }catch(e){ return false; } }
+function lvAudioStart(){
+  if(!REAL_OK || location.protocol.indexOf('http') !== 0) return false;
+  var t = AU.on && AU.cur && AU.el && !AU.el.paused ? findReal(AU.cur.id) : null, pos = 0;
+  if(t && sameOrigin(t.url)) pos = AU.el.currentTime; else {
+    t = null;
+    var g = curGenre(), pool = auPool(g).concat(REAL[g] || []);
+    for(var i=0;i<pool.length;i++){ if(sameOrigin(pool[i].url)){ t = pool[i]; break; } }
+  }
+  if(!t) return false;
+  try{
+    if(!LB.el){
+      var AC = window.AudioContext || window.webkitAudioContext; if(!AC) return false;
+      LB.el = new Audio(); LB.el.preload = 'auto'; LB.ctx = new AC();
+      LB.src = LB.ctx.createMediaElementSource(LB.el); LB.an = LB.ctx.createAnalyser();
+      LB.an.fftSize = 1024; LB.an.smoothingTimeConstant = 0;
+      LB.src.connect(LB.an); LB.an.connect(LB.ctx.destination); LB.buf = new Uint8Array(LB.an.frequencyBinCount);
+    }
+    if(LB.ctx.state === 'suspended') LB.ctx.resume();
+    if(AU.el && !AU.el.paused){ AU.el.pause(); AU.hold = true; }
+    LB.el.src = t.url; LB.el.volume = 1; LB.cur = t;
+    if(pos > 1){ var sk = function(){ LB.el.removeEventListener('loadedmetadata', sk); try{ LB.el.currentTime = pos; }catch(e){} }; LB.el.addEventListener('loadedmetadata', sk); }
+    var pr = LB.el.play(); if(pr && pr.catch) pr.catch(function(){});
+    return true;
+  }catch(e){ return false; }
+}
+function lvAudioStop(){
+  if(LB.el){ var pos = LB.el.currentTime, ended = LB.el.ended; LB.el.pause();
+    if(AU.hold && AU.el){ AU.hold = false; try{ if(!ended && pos > 0) AU.el.currentTime = pos; }catch(e){} if(AU.on){ var pr = AU.el.play(); if(pr && pr.catch) pr.catch(function(){}); } }
+  }
+  AU.hold = false;
+}
+function lvSample(t){
+  if(!LB.an) return;
+  LB.an.getByteFrequencyData(LB.buf);
+  var e = 0, k; for(k=1;k<=8;k++) e += LB.buf[k]; e /= 8;
+  var f = Math.max(0, e - LB.prev); LB.prev = e;
+  LV.samples.push({t:t, f:f, e:e});
+}
+// Tahdin arvio: onsetin autokorrelaatio, jakso taitetaan 0,5-1,0 s:iin
+function btCompute(samples){
+  var n = samples.length; if(n < 40) return null;
+  var T = samples[n-1].t, R = 50, m = Math.floor(T*R) + 1, env = new Float32Array(m), emax = 0, i, j;
+  for(i=0;i<n;i++){ var x = Math.floor(samples[i].t*R); if(x >= 0 && x < m && samples[i].f > env[x]) env[x] = samples[i].f; if(samples[i].e > emax) emax = samples[i].e; }
+  if(emax < 8) return null;                       // ei ääntä (esim. CORS tai mykistys)
+  var mean = 0; for(i=0;i<m;i++) mean += env[i]; mean /= m;
+  var sd = 0; for(i=0;i<m;i++) sd += (env[i]-mean)*(env[i]-mean); sd = Math.sqrt(sd/m);
+  if(sd < 0.3) return null;
+  var lo = Math.round(0.3*R), hi = Math.round(1.2*R), best = -1, bl = 0, tot = 0, cnt = 0;
+  for(var lag=lo; lag<=hi; lag++){
+    var sc = 0; for(i=0;i+lag<m;i++) sc += (env[i]-mean)*(env[i+lag]-mean);
+    sc /= (m-lag); tot += Math.abs(sc); cnt++;
+    if(sc > best){ best = sc; bl = lag; }
+  }
+  if(best <= 0 || best < 1.6*(tot/cnt)) return null;
+  var P0 = bl/R; while(P0 < 0.5) P0 *= 2; while(P0 > 1.0) P0 /= 2;
+  // hienosäätö: kampa-sovitus jakson ja vaiheen yli
+  var bestS = -1, P = P0, bp = 0, Rf = 100, mf = Math.floor(T*Rf) + 1, envf = new Float32Array(mf);
+  for(i=0;i<n;i++){ var xf = Math.floor(samples[i].t*Rf); if(xf >= 0 && xf < mf && samples[i].f > envf[xf]) envf[xf] = samples[i].f; }
+  for(var cp = P0*0.94; cp <= P0*1.06; cp += 0.001){
+    var pl = Math.round(cp*Rf);
+    for(var ph=0; ph<pl; ph++){
+      var s2 = 0;
+      for(var q = ph; q < mf; q += cp*Rf){ var qi = Math.round(q); s2 += Math.max(envf[qi]||0, envf[qi-1]||0, envf[qi+1]||0); }
+      if(s2 > bestS){ bestS = s2; P = cp; bp = ph; }
+    }
+  }
+  return {P:P, phase:bp/Rf, bpm:60/P};
+}
 function liveOpen(){
   if(!liveReady() || LV.on) return;
   $('live').classList.add('on'); $('lvRes').style.display = 'none'; $('lvTap').style.display = '';
   $('lvStage').style.visibility = ''; $('lvScore').textContent = '0'; $('lvCombo').textContent = 'Valmistaudu…'; $('lvJudge').style.opacity = 0;
-  LV.beats = []; LV.state = []; LV.rings = [];
+  LV.beats = []; LV.state = []; LV.rings = []; LV.samples = []; LV.bpm = 0;
+  LV.music = lvAudioStart(); LV.phase = LV.music ? 'listen' : 'play';
   for(var i=0;i<LV.N;i++){ LV.beats.push(2 + i*LV.gap); LV.state.push(0); }   // 0 odottaa, 1 osuttu, 2 hukkaan
+  if(LV.music){ LV.beats = []; $('lvCombo').textContent = 'Kuuntele rytmiä…'; }
   LV.pts = 0; LV.combo = 0; LV.maxCombo = 0; LV.perfect = 0; LV.on = true; LV.t0 = performance.now();
   var st = $('lvStage'); var old = st.querySelectorAll('.lvring'); for(var o=0;o<old.length;o++) old[o].remove();
   LV.raf = requestAnimationFrame(liveLoop);
 }
+function lvBuildBeats(tNow, r){
+  var P = r ? r.P : LV.gap, first = r ? r.phase : 0, k = Math.ceil((tNow + 1.6 - first)/P);
+  LV.beats = []; for(var i=0;i<LV.N;i++) LV.beats.push(first + (k+i)*P);
+  LV.bpm = r ? Math.round(r.bpm) : 0;
+}
 function judge(txt, col){ var j = $('lvJudge'); j.textContent = txt; j.style.color = col; j.style.opacity = 1; clearTimeout(judge.t); judge.t = setTimeout(function(){ j.style.opacity = 0; }, 350); }
 function liveTap(tt){
-  if(!LV.on) return;
+  if(!LV.on || LV.phase === 'listen') return;
   var t = (tt !== undefined) ? tt : (performance.now() - LV.t0)/1000, best = -1, bd = 9;
   for(var i=0;i<LV.N;i++){ if(LV.state[i] === 0){ var d = Math.abs(LV.beats[i] - t); if(d < bd){ bd = d; best = i; } } }
   if(best < 0 || bd > 0.3){ LV.combo = 0; judge('HUKKA', '#ff6b6b'); $('lvCombo').textContent = ''; return; }
@@ -1187,6 +1308,12 @@ function liveTap(tt){
 function liveLoop(now){
   if(!LV.on) return;
   var t = (now - LV.t0)/1000, st = $('lvStage'), done = true;
+  if(LV.phase === 'listen'){
+    lvSample(t);
+    if(t < 5){ LV.raf = requestAnimationFrame(liveLoop); return; }
+    var br = btCompute(LV.samples); lvBuildBeats(t, br); LV.phase = 'play';
+    $('lvCombo').textContent = br ? ('Tahti ' + LV.bpm + ' / min') : '';
+  }
   for(var i=0;i<LV.N;i++){
     var b = LV.beats[i];
     if(LV.state[i] === 0){
@@ -1204,15 +1331,15 @@ function liveLoop(now){
   LV.raf = requestAnimationFrame(liveLoop);
 }
 function liveEnd(){
-  LV.on = false; cancelAnimationFrame(LV.raf);
+  LV.on = false; cancelAnimationFrame(LV.raf); lvAudioStop();
   var r = Math.min(1, LV.pts/(LV.N*3));
   var gain = Math.round(Math.max(30, incomePerSec()*80) * (0.3 + 1.2*r));
   S.coins += gain; S.total += gain; S.liveCd = 180; S.lives++; if(r > S.liveBest) S.liveBest = r;
   var buffTxt = '';
-  if(r >= 0.15){ addBuff('Live-bonus', 120, 1 + 0.5*r, 1 + 0.4*r); buffTxt = ' Live-bonus: kuuntelijat ×' + (1+0.5*r).toFixed(2).replace('.',',') + ' ja kolikot ×' + (1+0.4*r).toFixed(2).replace('.',',') + ' kahden minuutin ajan.'; }
+  if(r >= 0.15){ addBuff('Live-bonus', 120, 1 + 0.5*r, 1 + 0.4*r); buffTxt = ' Live-bonus: kuuntelijat ×' + (1+0.5*r).toFixed(2).replace('.',',') + ' ja tulot ×' + (1+0.4*r).toFixed(2).replace('.',',') + ' kahden minuutin ajan.'; }
   $('lvTap').style.display = 'none'; $('lvStage').style.visibility = 'hidden'; $('lvCombo').textContent = '';
   $('lvPct').textContent = Math.round(r*100) + ' %';
-  $('lvTxt').textContent = 'Pisin putki ' + LV.maxCombo + ', täydellisiä ' + LV.perfect + '. Palkkio +' + fmt(gain) + ' kolikkoa.' + buffTxt;
+  $('lvTxt').textContent = 'Pisin putki ' + LV.maxCombo + ', täydellisiä ' + LV.perfect + '. Palkkio +' + fmt(gain) + ' $.' + buffTxt;
   $('lvRes').style.display = '';
   render(true); save();
 }
@@ -1282,34 +1409,87 @@ function auPool(g){
   for(var i=0;i<n;i++){ if(!AU.bad[REAL[g][i].id]) out.push(REAL[g][i]); }
   return out;
 }
-function auNext(){
-  if(!AU.on) return;
-  var g = curGenre(), pool = auPool(g), a = auEl();
-  AU.g = g;
-  if(!pool.length){ a.pause(); AU.cur = null; return; }
+var API = {i:-1, bases:['/wp-json/suorni/v1/', '/?rest_route=/suorni/v1/', '/index.php?rest_route=/suorni/v1/']};
+function apiUrl(i, path, qs){
+  var b = API.bases[i];
+  return b + path + (qs ? (b.indexOf('?') >= 0 ? '&' : '?') + qs : '');
+}
+function api(path, opt, cb){            // cb(data|null)
+  if(location.protocol.indexOf('http') !== 0){ cb(null); return; }
+  opt = opt || {};
+  var order = API.i >= 0 ? [API.i] : [0,1,2];
+  (function nx(k){
+    if(k >= order.length){ cb(null); return; }
+    var i = order[k], init = {credentials:'omit', cache:'no-store'};
+    if(opt.body){ init.method = 'POST'; init.headers = {'Content-Type':'application/json'}; init.body = JSON.stringify(opt.body); }
+    fetch(apiUrl(i, path, opt.qs), init).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(d){ API.i = i; cb(d); }).catch(function(){ nx(k+1); });
+  })(0);
+}
+function findReal(id){
+  if(!REAL_OK) return null;
+  for(var g in REAL){ for(var i=0;i<REAL[g].length;i++){ if(REAL[g][i].id == id) return REAL[g][i]; } }
+  return null;
+}
+function auPlay(t, off, radio){
+  var a = auEl();
+  AU.cur = {title:t.title, artist:t.artist, info:t.info, id:t.id, real:true, radio:!!radio};
+  AU.sw = a.src;
+  a.src = t.url; a.volume = 0; AU.fade = 0;
+  if(off > 1){ var seek = function(){ a.removeEventListener('loadedmetadata', seek); try{ a.currentTime = off; }catch(e){} }; a.addEventListener('loadedmetadata', seek); }
+  var pr = a.play(); if(pr && pr.catch) pr.catch(function(){ AU.on = false; syncSnd(); toast('Selain esti äänen: napauta äänikuvaketta uudelleen'); });
+}
+function auPick(g, pool){
   var cands = pool.filter(function(t){ return AU.hist.indexOf(t.id) < 0; });
   if(!cands.length){ AU.hist = []; cands = pool; }
   var t = cands[Math.floor(Math.random()*cands.length)];
   AU.hist.push(t.id); if(AU.hist.length > Math.min(4, pool.length-1)) AU.hist.shift();
-  AU.cur = {title:t.title, artist:t.artist, info:t.info, id:t.id, real:true};
-  a.src = t.url; a.volume = 0; AU.fade = 0;
-  var pr = a.play(); if(pr && pr.catch) pr.catch(function(){ AU.on = false; syncSnd(); toast('Selain esti äänen: napauta äänikuvaketta uudelleen'); });
+  auPlay(t, 0, false);
+}
+function auNext(){
+  if(!AU.on || AU.busy) return;
+  var g = curGenre(), pool = auPool(g), a = auEl();
+  AU.g = g;
+  var prev = AU.cur && AU.cur.id;
+  var haveRadio = AU.radioOk !== false;
+  if(!haveRadio){
+    if(!pool.length){ a.pause(); AU.cur = null; return; }
+    auPick(g, pool); return;
+  }
+  AU.busy = true;
+  api('peli/now', {}, function(d){
+    AU.busy = false;
+    if(!AU.on) return;
+    if(!d){ AU.radioOk = false; }
+    var t = d && d.id ? findReal(d.id) : null;
+    if(t && d.age < 900 && t.id != prev){
+      var off = d.age + Math.min(30, (t.dur||60)/2);
+      if(off < (t.dur||0) - 8){
+        AU.g = curGenre(); auPlay(t, off, true);
+        if(!AU.toasted){ AU.toasted = true; toast('Soi: ' + t.title + ' (sama kuin oikeassa radiossa)'); }
+        return;
+      }
+    }
+    var g2 = curGenre(), p2 = auPool(g2); AU.g = g2;
+    if(!p2.length){ a.pause(); AU.cur = null; return; }
+    auPick(g2, p2);
+  });
 }
 function auTick(dt){
   if(!AU.on || !AU.el) return;
   if(AU.fade < 1){ AU.fade = Math.min(1, AU.fade + dt/1.2); try{ AU.el.volume = AU.fade; }catch(e){} }
   var g = curGenre();
-  if(g !== AU.g) auNext();                       // ohjelmapaikan tyyli vaihtui
-  else if(!AU.cur && auPool(g).length) auNext(); // uusi kappale ostettu
+  if(g !== AU.g && !(AU.cur && AU.cur.radio)) auNext();   // ohjelmapaikan tyyli vaihtui
+  else if(g !== AU.g) AU.g = g;
+  else if(!AU.cur && !AU.busy && (auPool(g).length || AU.radioOk !== false)) auNext(); // uusi kappale ostettu tai radio alkoi soida
 }
 function syncSnd(){
   var b = $('snd'); b.classList.toggle('on', AU.on);
   $('sndWave').style.display = AU.on ? '' : 'none';
 }
 function toggleSound(){
-  if(!REAL_OK){ toast('Oikeat kappaleet ja ääni toimivat vasta suorni.fi/peli/ -osoitteessa.'); return; }
+  if(!REAL_OK){ toast('Oikeat kappaleet ja ääni toimivat vasta suorni.fi/?peli=1 -osoitteessa.'); return; }
   AU.on = !AU.on; syncSnd();
-  if(AU.on){ auEl(); AU.g = null; auNext(); toast('Ääni päällä: Radio Suornin oikeat kappaleet'); }
+  if(AU.on){ auEl(); AU.g = null; AU.cur = null; AU.toasted = false; AU.radioOk = undefined; auNext(); toast('Ääni päällä: Radio Suornin oikeat kappaleet'); }
   else if(AU.el){ AU.el.pause(); AU.cur = null; }
   render(true);
 }
@@ -1325,6 +1505,7 @@ function frame(now){
     step(dt);
     bubbleTick(dt); evTick(dt); auTick(dt); choiceTick(dt); wishTick(dt);
     achAcc += dt; if(achAcc >= 2){ achAcc = 0; achTick(); }
+    lbAcc += dt; if(lbAcc >= 60){ lbAcc = 0; lbSend(false); if(!document.hidden) lbFetch(); }
     acc += dt; saveAcc += dt;
     if(acc >= 0.25){ acc = 0; render(false); }
     if(saveAcc >= 5){ saveAcc = 0; save(); }
@@ -1341,9 +1522,10 @@ document.addEventListener('visibilitychange', function(){
 window.addEventListener('pagehide', save);
 
 // testikoukku
-window.__taajuus = {state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
+window.__taajuus = {state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
 
 loadReal();
+drawLb(); setTimeout(function(){ lbSend(false); lbFetch(); }, 1500);
 offline();
 render(true);
 requestAnimationFrame(frame);
