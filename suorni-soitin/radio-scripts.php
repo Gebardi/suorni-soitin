@@ -31,6 +31,13 @@ function suorni_scripts() {
 	foreach ( $l as $s ) { if ( is_array( $s ) && ! empty( $s['id'] ) ) { $out[] = suorni_script_norm( $s ); } }
 	return $out;
 }
+/* Moottorin ajastuslista: omat tekstijuonnot + juontajien äänitteet. Kun tekoälyjuontaja on kytketty pois, vain äänitteet (ihmisjuontajat) soivat. */
+function suorni_scripts_all() {
+	$l = suorni_scripts();
+	if ( function_exists( 'suorni_hclip_scripts' ) ) { $l = array_merge( $l, suorni_hclip_scripts() ); }
+	if ( ! suorni_radio_speak_on() ) { $l = array_values( array_filter( $l, function ( $s ) { return ! empty( $s['aud'] ); } ) ); }
+	return $l;
+}
 function suorni_scripts_save( $req ) {
 	$in = $req->get_param( 'scripts' );
 	if ( ! is_array( $in ) ) { $in = array(); }
@@ -63,6 +70,7 @@ function suorni_script_ld( $s ) {
 	return ( is_array( $m ) && isset( $m[ $s['id'] . '|' . $c ] ) ) ? (string) $m[ $s['id'] . '|' . $c ] : '';
 }
 function suorni_script_mark( $id, $ts = 0 ) {
+	if ( 0 === strpos( (string) $id, 'h_' ) ) { suorni_hclip_mark( $id, $ts ); return; }
 	$c = suorni_ch_cur();
 	if ( '' !== $c ) {
 		$m = get_option( 'suorni_scr_ld', array() );
@@ -112,17 +120,18 @@ function suorni_radio_scripts_for_break( $prog, &$st ) {
 	return $use;
 }
 /* Seuraava kellonaikaan sidottu juonto ($e:n jälkeen, enintään tunnin päässä) tai 0 */
+function suorni_script_date_ok( $s, $c ) { return empty( $s['date'] ) || wp_date( 'Ymd', $c ) === $s['date']; }
 function suorni_radio_script_next_time( $e ) {
 	$e   = (int) $e;
 	$mid = $e - ( (int) wp_date( 'G', $e ) * 3600 + (int) wp_date( 'i', $e ) * 60 + (int) wp_date( 's', $e ) );
 	$best = 0;
-	foreach ( suorni_scripts() as $s ) {
+	foreach ( suorni_scripts_all() as $s ) {
 		if ( ! $s['on'] || 'time' !== $s['mode'] ) { continue; }
 		list( $h, $m ) = array_map( 'intval', explode( ':', $s['time'] ) );
 		foreach ( array( 0, 86400 ) as $add ) {
 			$c = $mid + $add + $h * 3600 + $m * 60;
 			if ( $c <= $e || $c > $e + 3600 ) { continue; }
-			if ( ! in_array( (int) wp_date( 'N', $c ), $s['days'], true ) || wp_date( 'Ymd', $c ) === suorni_script_ld( $s ) ) { continue; }
+			if ( ! in_array( (int) wp_date( 'N', $c ), $s['days'], true ) || wp_date( 'Ymd', $c ) === suorni_script_ld( $s ) || ! suorni_script_date_ok( $s, $c ) ) { continue; }
 			if ( ! $best || $c < $best ) { $best = $c; }
 		}
 	}
@@ -132,18 +141,19 @@ function suorni_radio_script_next_time( $e ) {
 function suorni_radio_script_due( $end ) {
 	$e   = (int) floor( $end + 0.5 );
 	$mid = $e - ( (int) wp_date( 'G', $e ) * 3600 + (int) wp_date( 'i', $e ) * 60 + (int) wp_date( 's', $e ) );
-	foreach ( suorni_scripts() as $s ) {
+	foreach ( suorni_scripts_all() as $s ) {
 		if ( ! $s['on'] || 'time' !== $s['mode'] ) { continue; }
 		list( $h, $m ) = array_map( 'intval', explode( ':', $s['time'] ) );
 		$c = $mid + $h * 3600 + $m * 60;
 		if ( $c > $e || $e - $c > 600 ) { continue; }
-		if ( ! in_array( (int) wp_date( 'N', $c ), $s['days'], true ) || wp_date( 'Ymd', $c ) === suorni_script_ld( $s ) ) { continue; }
+		if ( ! in_array( (int) wp_date( 'N', $c ), $s['days'], true ) || wp_date( 'Ymd', $c ) === suorni_script_ld( $s ) || ! suorni_script_date_ok( $s, $c ) ) { continue; }
 		return $s;
 	}
 	return null;
 }
 /* Aikajanan kohde käsikirjoitetusta tekstistä */
 function suorni_radio_script_item( $cfg, $s, $ts, $prog ) {
+	if ( ! empty( $s['aud'] ) ) { return suorni_hclip_item_from_script( $s ); }
 	$pg   = suorni_script_prog( $cfg, $s, $prog );
 	$dj   = suorni_radio_dj();
 	$text = suorni_script_text( $s, $ts );
@@ -170,17 +180,8 @@ function suorni_script_prev_post( $req ) {
 	if ( is_wp_error( $r ) ) { return $r; }
 	return suorni_json( array( 'ok' => true, 'url' => $r['url'], 'dur' => max( 2, (int) ceil( $r['bytes'] / 12000 ) ) ) );
 }
-/* Soita heti: lisätään nykyisen kohteen jälkeen */
-function suorni_script_now_post( $req ) {
-	$id = sanitize_key( (string) $req->get_param( 'id' ) );
-	$sc = null;
-	foreach ( suorni_scripts() as $s ) { if ( $s['id'] === $id ) { $sc = $s; break; } }
-	if ( ! $sc ) { return new WP_Error( 'suorni_bad', 'Juontoa ei löytynyt. Tallenna juonnot ensin.', array( 'status' => 404 ) ); }
-	$cfg  = suorni_radio_cfg();
-	$now  = microtime( true );
-	$prog = suorni_radio_prog_at( $cfg, (int) $now );
-	$it   = suorni_radio_script_item( $cfg, $sc, (int) $now + 5, $prog );
-	if ( ! $it ) { return new WP_Error( 'suorni_tts', 'Puheen luonti epäonnistui. Katso Valvonta-paneelista syy.', array( 'status' => 502 ) ); }
+/* Lisää valmis kohde nykyisen kohteen jälkeen (nykyinen kanava). Palauttaa alkuajan tai 0. */
+function suorni_radio_insert_now( $it, $prog ) {
 	$got = false;
 	for ( $i = 0; $i < 10 && ! ( $got = suorni_radio_lock() ); $i++ ) { usleep( 300000 ); }
 	wp_cache_delete( 'suorni_radio_log', 'options' );
@@ -189,7 +190,7 @@ function suorni_script_now_post( $req ) {
 	$now = microtime( true );
 	$k   = -1;
 	foreach ( $log['items'] as $i => $x ) { if ( $x['start'] > $now + 2 ) { $k = $i; break; } }
-	$it['prog'] = $prog['name'];
+	$it['prog'] = isset( $prog['name'] ) ? $prog['name'] : '';
 	if ( $k < 0 ) {
 		$last = $log['items'] ? end( $log['items'] ) : null;
 		$it['start'] = $last ? max( $now + 3, $last['start'] + $last['dur'] ) : $now + 3;
@@ -202,8 +203,22 @@ function suorni_script_now_post( $req ) {
 	}
 	update_option( 'suorni_radio_log', $log, false );
 	if ( $got ) { suorni_radio_unlock(); }
+	return (int) $it['start'];
+}
+/* Soita heti: lisätään nykyisen kohteen jälkeen */
+function suorni_script_now_post( $req ) {
+	$id = sanitize_key( (string) $req->get_param( 'id' ) );
+	$sc = null;
+	foreach ( suorni_scripts() as $s ) { if ( $s['id'] === $id ) { $sc = $s; break; } }
+	if ( ! $sc ) { return new WP_Error( 'suorni_bad', 'Juontoa ei löytynyt. Tallenna juonnot ensin.', array( 'status' => 404 ) ); }
+	$cfg  = suorni_radio_cfg();
+	$now  = microtime( true );
+	$prog = suorni_radio_prog_at( $cfg, (int) $now );
+	$it   = suorni_radio_script_item( $cfg, $sc, (int) $now + 5, $prog );
+	if ( ! $it ) { return new WP_Error( 'suorni_tts', 'Puheen luonti epäonnistui. Katso Valvonta-paneelista syy.', array( 'status' => 502 ) ); }
+	$at = suorni_radio_insert_now( $it, $prog );
 	suorni_script_mark( $id );
-	return suorni_json( array( 'ok' => true, 'at' => (int) $it['start'] ) );
+	return suorni_json( array( 'ok' => true, 'at' => $at ) );
 }
 add_action( 'rest_api_init', function () {
 	register_rest_route( 'suorni/v1', '/radio/scripts', array( 'methods' => 'POST', 'callback' => 'suorni_scripts_save', 'permission_callback' => 'suorni_can' ) );

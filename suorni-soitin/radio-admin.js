@@ -248,7 +248,7 @@
 					'<p style="margin:6px 0 2px">Juontajan ääni (suomi)</p><select style="' + st + '" data-f="vfi">' + vopt(['', 'fi-FI-NooraNeural', 'fi-FI-SelmaNeural', 'fi-FI-HarriNeural', 'en-US-AvaMultilingualNeural', 'en-US-EmmaMultilingualNeural', 'en-US-AndrewMultilingualNeural', 'en-US-BrianMultilingualNeural'], p.vfi, ['Oletus (yhteinen)', 'Noora (nainen)', 'Selma (nainen)', 'Harri (mies)', 'Ava – monikielinen, luonnollisempi (nainen, kokeellinen)', 'Emma – monikielinen (nainen, kokeellinen)', 'Andrew – monikielinen (mies, kokeellinen)', 'Brian – monikielinen (mies, kokeellinen)']) + '</select>' +
 					'<p style="margin:6px 0 2px">Englanninkielisten nimien ääni</p><select style="' + st + '" data-f="ven">' + vopt(['', 'en-US-JennyNeural', 'en-US-AriaNeural', 'en-US-GuyNeural', 'en-GB-SoniaNeural', 'en-GB-RyanNeural'], p.ven, ['Oletus (yhteinen)', 'Jenny (nainen, US)', 'Aria (nainen, US)', 'Guy (mies, US)', 'Sonia (nainen, UK)', 'Ryan (mies, UK)']) + '</select>' +
 					'<p style="margin:6px 0 2px">Puhenopeus tälle ohjelmalle (tyhjä/0 = radion oletus)</p><input style="' + st + '" type="number" min="0" max="1.4" step="0.05" data-f="rate" value="' + (p.rate || 0) + '">' +
-					'<div style="margin:6px 0">' + cb('weather', 'Sää') + cb('tip', 'Päivän juttu') + cb('intro', 'Kappaleen esittely') + cb('greet', 'Terveiset') + cb('ann', 'Ohjelman aloitus') + cb('ai', 'Tekoäly') + cb('news', 'Uutiset') + cb('sports', 'Urheilu/Liiga') + cb('nhl', 'NHL ja suomalaiset') + '</div>' +
+					'<div style="margin:6px 0">' + cb('weather', 'Sää') + cb('tip', 'Päivän juttu') + cb('intro', 'Kappaleen esittely') + cb('greet', 'Terveiset') + cb('ann', 'Ohjelman aloitus') + cb('ai', 'Tekoäly') + cb('human', '🎙️ Ihmisjuontaja (ei tekoälyn juontoja)') + cb('news', 'Uutiset') + cb('sports', 'Urheilu/Liiga') + cb('nhl', 'NHL ja suomalaiset') + '</div>' +
 					'<button type="button" data-del style="flex:none">Poista ohjelma</button>';
 				w.addEventListener('input', sync(i, w)); w.addEventListener('change', sync(i, w));
 				w.querySelector('[data-pu]').addEventListener('click', function () { w.querySelector('[data-pf]').click(); });
@@ -540,7 +540,7 @@
 		var sc = document.querySelector('[data-sb-clock]');
 		if (sc) { if (window.__suorniClk) { clearInterval(window.__suorniClk); } var tickc = function () { var d = new Date(); sc.textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }; tickc(); window.__suorniClk = setInterval(tickc, 1000); }
 		var loose = [].slice.call(box.children);
-		var TABS = [['tanaan', '📌 Tänään'], ['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista'], ['kanavat', '📻 Kanavat'], ['tarve', '🎯 Kappaletarve'], ['levy', '🗄️ Levytila'], ['mainokset', '📢 Mainokset'], ['sivusto', '🌐 Sivusto']];
+		var TABS = [['tanaan', '📌 Tänään'], ['yleinen', '🏠 Yleiskatsaus'], ['ohjelmat', '🗓️ Ohjelmat'], ['yleiso', '💬 Yleisö'], ['juontaja', '🎙️ Juontaja'], ['yhteiso', '🎵 Uudet artistit'], ['lista', '📀 Soittolista'], ['kanavat', '📻 Kanavat'], ['tarve', '🎯 Kappaletarve'], ['levy', '🗄️ Levytila'], ['ihmiset', '🎤 Ihmisjuontajat'], ['mainokset', '📢 Mainokset'], ['sivusto', '🌐 Sivusto']];
 
 		/* Massalisäys + päivittäinen tarkistus */
 		var upw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
@@ -1209,7 +1209,45 @@
 		}
 		dkw.innerHTML = '<h3 style="margin:0 0 6px">🗄️ Levytila</h3><p style="font-size:13px;opacity:.8">Avaa välilehti mitataksesi levynkäytön.</p>';
 
-		var bucket = { tanaan: [tnw], yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, tgw, bw, tw], kanavat: [chw, clw], tarve: [nw], levy: [dkw], mainokset: [adw], sivusto: [sow, bkw] };
+
+		/* Ihmisjuontajat: omat tunnukset, lisäys, poisto, salasanan nollaus, äänitteet */
+		var hsw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
+		var hs = { cred: null, err: '' };
+		function hsDraw(X) {
+			var H = (X && X.hosts) ? X : D.hosts || { hosts: [], studio: '' };
+			D.hosts = H;
+			var h = '<h3 style="margin:0 0 6px">🎤 Ihmisjuontajat</h3>' +
+				'<p style="font-size:13px;opacity:.85;margin:0 0 8px">Juontajalla on omat tunnukset, joilla hän pääsee vain studionäkymään: äänittää juontoja selaimessa, ajastaa ne ja poistaa omansa. Hän ei näe ohjaamoa eikä sivuston asetuksia. Merkitse ohjelma "Ihmisjuontaja"-ruudulla (Ohjelmat-välilehti), niin tekoälyn juonnot vaikenevat sen ajan.</p>' +
+				'<p style="font-size:13px;margin:0 0 10px">Studion osoite: <a href="' + esc(H.studio) + '" target="_blank" style="color:#ffb347">' + esc(H.studio) + '</a></p>';
+			if (hs.cred) {
+				h += '<div style="background:#25402f;border-radius:10px;padding:10px;margin:0 0 10px"><b>Tunnukset – ' + esc(hs.cred.name) + '</b> (salasana näytetään vain nyt, kirjoita se muistiin ja anna juontajalle)<br>Osoite: ' + esc(H.studio) + '<br>Käyttäjätunnus: <b>' + esc(hs.cred.login) + '</b><br>Salasana: <b>' + esc(hs.cred.pass) + '</b> <button type="button" data-hsx>Piilota</button></div>';
+			}
+			if (hs.err) { h += '<p style="color:#ff8a8a">' + esc(hs.err) + '</p>'; }
+			h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px"><input data-hsn placeholder="Juontajan nimi" maxlength="40" style="flex:1 1 160px"><input data-hsl placeholder="Käyttäjätunnus (valinnainen)" maxlength="40" style="flex:1 1 160px"><input data-hse placeholder="Sähköposti (valinnainen)" style="flex:1 1 180px"><button type="button" data-hsa>➕ Lisää juontaja</button></div>';
+			if (!H.hosts.length) { h += '<p style="opacity:.8">Ei vielä ihmisjuontajia.</p>'; }
+			H.hosts.forEach(function (u) {
+				h += '<div style="border-top:1px solid #363d4a;padding:8px 0"><b>' + esc(u.name) + '</b> <span style="opacity:.75">(' + esc(u.login) + ')</span>' + (u.blocked ? ' <span style="color:#ff8a8a">– estetty</span>' : '') + '<div style="margin:6px 0">' +
+					'<button type="button" data-hsr="' + u.id + '">Uusi salasana</button> <button type="button" data-hsb="' + u.id + '" data-bl="' + (u.blocked ? 0 : 1) + '">' + (u.blocked ? 'Salli takaisin' : 'Estä kirjautuminen') + '</button> <button type="button" data-hsd="' + u.id + '" data-nm="' + esc(u.name) + '" style="color:#ff8a8a">Poista juontaja</button></div>';
+				if (u.clips.length) {
+					u.clips.forEach(function (c) { h += '<div style="font-size:13px;margin:4px 0 4px 8px">🎙️ ' + esc(c.title) + ' · ' + c.dur + ' s · ' + esc(c.when) + ' · ' + esc(c.status) + ' <audio controls preload="none" src="' + esc(c.url) + '" style="height:28px;vertical-align:middle"></audio> <button type="button" data-hsc="' + esc(c.id) + '">Poista</button></div>'; });
+				} else { h += '<div style="font-size:13px;opacity:.7;margin-left:8px">Ei äänitteitä.</div>'; }
+				h += '</div>';
+			});
+			hsw.innerHTML = h;
+			function act(body, okf) { hs.err = ''; api('POST', D.urls.hostact, body).then(function (X) { if (X.cred) { hs.cred = X.cred; } if (okf) { okf(); } hsDraw(X); }).catch(function (e) { hs.err = e.message; hsDraw(); }); }
+			var hx = hsw.querySelector('[data-hsx]'); if (hx) { hx.addEventListener('click', function () { hs.cred = null; hsDraw(); }); }
+			hsw.querySelector('[data-hsa]').addEventListener('click', function () {
+				var n = hsw.querySelector('[data-hsn]').value.trim(); if (!n) { alert('Anna juontajan nimi.'); return; }
+				act({ act: 'add', name: n, login: hsw.querySelector('[data-hsl]').value.trim(), email: hsw.querySelector('[data-hse]').value.trim() });
+			});
+			[].forEach.call(hsw.querySelectorAll('[data-hsr]'), function (b) { b.addEventListener('click', function () { if (confirm('Luodaanko uusi salasana? Vanha lakkaa toimimasta heti.')) { act({ act: 'reset', uid: +b.getAttribute('data-hsr') }); } }); });
+			[].forEach.call(hsw.querySelectorAll('[data-hsb]'), function (b) { b.addEventListener('click', function () { act({ act: b.getAttribute('data-bl') === '1' ? 'block' : 'unblock', uid: +b.getAttribute('data-hsb') }); }); });
+			[].forEach.call(hsw.querySelectorAll('[data-hsd]'), function (b) { b.addEventListener('click', function () { if (confirm('Poistetaanko juontaja ' + b.getAttribute('data-nm') + ' ja kaikki hänen äänitteensä? Tätä ei voi perua.')) { act({ act: 'delete', uid: +b.getAttribute('data-hsd') }); } }); });
+			[].forEach.call(hsw.querySelectorAll('[data-hsc]'), function (b) { b.addEventListener('click', function () { if (confirm('Poistetaanko äänite?')) { api('POST', D.urls.hostclipdel, { id: b.getAttribute('data-hsc') }).then(function (X) { hsDraw(X); }).catch(function (e) { alert('Virhe: ' + e.message); }); } }); });
+		}
+		hsDraw();
+
+		var bucket = { tanaan: [tnw], yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, tgw, bw, tw], kanavat: [chw, clw], tarve: [nw], levy: [dkw], ihmiset: [hsw], mainokset: [adw], sivusto: [sow, bkw] };
 		var used = [];
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });

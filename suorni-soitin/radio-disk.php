@@ -136,7 +136,7 @@ function suorni_disk_scan( $quick = false ) {
 	$files = array();
 	$ok   = suorni_disk_walk( $base, $files, $dl );
 	$cat  = array();
-	$names = array( 'suorni-tts' => 'Puhevälimuisti (tekoälyn puheet)', 'suorni-subs' => 'Uusien artistien kappaleet', 'suorni-suno' => 'Tallennetut ulkoiset kappaleet', 'suorni-bg' => 'Kanavien taustakuvat' );
+	$names = array( 'suorni-tts' => 'Puhevälimuisti (tekoälyn puheet)', 'suorni-subs' => 'Uusien artistien kappaleet', 'suorni-suno' => 'Tallennetut ulkoiset kappaleet', 'suorni-bg' => 'Kanavien taustakuvat', 'suorni-host' => 'Ihmisjuontajien äänitteet' );
 	$upl = 0;
 	foreach ( $files as $f ) {
 		$rel = ltrim( substr( str_replace( '\\', '/', $f[0] ), strlen( $base ) ), '/' );
