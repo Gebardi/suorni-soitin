@@ -942,6 +942,17 @@
 			h += grp('Odottaa hyväksyntää', P.pend, [['ok', '✅ Hyväksy'], ['no', '🚫 Hylkää']]);
 			h += grp('Hyväksytyt', P.ok, [['no', '🚫 Hylkää'], ['del', '🗑️']]);
 			h += grp('Hylätyt', P.no, [['ok', '✅ Hyväksy'], ['del', '🗑️']]);
+			var SR = P.src || { days: [], tot: {}, wk: {} };
+			h += '<h3 style="margin:16px 0 6px">📈 Uudet pelaajat kanavittain</h3><p style="font-size:13px;opacity:.8;margin:0 0 6px">Jokainen laite lasketaan kerran, ensimmäisellä käynnillä. Kanava tulee linkin src-osasta (esim. ?peli=1&amp;src=tiktok).</p>';
+			var ks = Object.keys(SR.tot || {});
+			if (!ks.length) { h += '<p style="font-size:13px;opacity:.7">Ei vielä tietoja.</p>'; }
+			else {
+				h += '<table style="width:100%;font-size:14px;border-collapse:collapse"><tr style="text-align:left"><th>Kanava</th><th>7 pv</th><th>Yhteensä</th></tr>' + ks.map(function (k) {
+					return '<tr style="border-top:1px solid #2a303b"><td>' + esc(k) + '</td><td>' + ((SR.wk || {})[k] || 0) + '</td><td>' + SR.tot[k] + '</td></tr>';
+				}).join('') + '</table><p style="margin:10px 0 2px"><b>Päivittäin</b></p>' + SR.days.map(function (d) {
+					return '<div style="font-size:13px;padding:3px 0;border-top:1px solid #2a303b">' + esc(d.d) + ': ' + Object.keys(d.r).map(function (k) { return esc(k) + ' ' + d.r[k]; }).join(', ') + '</div>';
+				}).join('');
+			}
 			h += '<h3 style="margin:16px 0 6px">👍 Kappaleiden peukutus pelissä</h3><p style="font-size:13px;opacity:.8;margin:0 0 6px">Pelaajat arvioivat oikeita kappaleita. Järjestys on nettopeukkujen mukaan. Pienet äänimäärät ovat vain suuntaa-antavia.</p>';
 			if (!(P.votes || []).length) { h += '<p style="font-size:13px;opacity:.7">Ei vielä ääniä.</p>'; }
 			else {

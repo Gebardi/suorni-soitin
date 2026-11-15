@@ -119,6 +119,53 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'suorni/v1', '/peli/top', array( 'methods' => 'GET', 'callback' => 'suorni_peli_top', 'permission_callback' => '__return_true' ) );
 } );
 
+/* Uudet pelaajat kanavittain: peli ilmoittaa kerran per laite (pid + src). Tallennetaan vain laskurit päivittäin ja pelaajatunnuksen tiiviste. */
+function suorni_peli_hit( $req ) {
+	$pid = substr( preg_replace( '/[^a-z0-9]/', '', strtolower( (string) $req->get_param( 'pid' ) ) ), 0, 24 );
+	$src = substr( sanitize_key( (string) $req->get_param( 'src' ) ), 0, 20 );
+	if ( strlen( $pid ) < 8 ) { return new WP_Error( 'suorni_bad', 'Virheellinen', array( 'status' => 400 ) ); }
+	if ( '' === $src ) { $src = 'suora'; }
+	$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+	$rk = 'suorni_ph_' . md5( $ip );
+	$n  = (int) get_transient( $rk );
+	if ( $n >= 30 ) { return suorni_json( array( 'ok' => true, 'wait' => true ) ); }
+	set_transient( $rk, $n + 1, 600 );
+	$seen = get_option( 'suorni_peli_seen', array() );
+	if ( ! is_array( $seen ) ) { $seen = array(); }
+	$h = substr( md5( $pid . wp_salt() ), 0, 12 );
+	if ( isset( $seen[ $h ] ) ) { return suorni_json( array( 'ok' => true, 'known' => true ) ); }
+	$seen[ $h ] = time();
+	if ( count( $seen ) > 20000 ) { asort( $seen ); $seen = array_slice( $seen, -15000, null, true ); }
+	update_option( 'suorni_peli_seen', $seen, false );
+	$day = wp_date( 'Y-m-d' );
+	$c   = get_option( 'suorni_peli_src', array() );
+	if ( ! is_array( $c ) ) { $c = array(); }
+	if ( ! isset( $c[ $day ] ) ) { $c[ $day ] = array(); }
+	$c[ $day ][ $src ] = ( isset( $c[ $day ][ $src ] ) ? (int) $c[ $day ][ $src ] : 0 ) + 1;
+	ksort( $c );
+	$c = array_slice( $c, -60, null, true );
+	update_option( 'suorni_peli_src', $c, false );
+	return suorni_json( array( 'ok' => true ) );
+}
+function suorni_peli_src_admin() {
+	$c = get_option( 'suorni_peli_src', array() );
+	if ( ! is_array( $c ) ) { $c = array(); }
+	$days = array(); $tot = array(); $w = array();
+	$t7 = wp_date( 'Y-m-d', time() - 6 * DAY_IN_SECONDS );
+	foreach ( array_reverse( $c, true ) as $d => $r ) {
+		$days[] = array( 'd' => $d, 'r' => $r );
+		foreach ( $r as $k => $v ) {
+			$tot[ $k ] = ( isset( $tot[ $k ] ) ? $tot[ $k ] : 0 ) + $v;
+			if ( $d >= $t7 ) { $w[ $k ] = ( isset( $w[ $k ] ) ? $w[ $k ] : 0 ) + $v; }
+		}
+	}
+	arsort( $tot ); arsort( $w );
+	return array( 'days' => array_slice( $days, 0, 14 ), 'tot' => $tot, 'wk' => $w );
+}
+add_action( 'rest_api_init', function () {
+	register_rest_route( 'suorni/v1', '/peli/hit', array( 'methods' => 'POST', 'callback' => 'suorni_peli_hit', 'permission_callback' => '__return_true' ) );
+} );
+
 /* Ohjaamon 🎮 Peli -välilehti: nimimerkkien moderointi ja kappaleiden peukutus */
 function suorni_peli_admin() {
 	$l = suorni_peli_top_list();
@@ -146,6 +193,7 @@ function suorni_peli_admin() {
 	}
 	usort( $rows, function ( $a, $b ) { $x = ( $b['u'] - $b['d'] ) <=> ( $a['u'] - $a['d'] ); return $x ?: $b['u'] <=> $a['u']; } );
 	$g['votes'] = $rows;
+	$g['src']   = suorni_peli_src_admin();
 	return $g;
 }
 function suorni_peliact_post( $req ) {
