@@ -360,13 +360,13 @@ details.fl li b{color:var(--tx);font-weight:500}
   <div id="lvStage"><div id="lvBird">♪</div><div id="lvJudge"></div></div>
   <div id="lvCombo"></div>
   <button id="lvTap">LENNÄ</button>
-  <div id="lvRes" style="display:none"><h3 style="margin:0 0 4px">Live päättyi</h3><div class="big" id="lvPct"></div><p class="mu" id="lvTxt"></p><button class="btn" id="lvDone" style="width:100%;border:0">Valmis</button></div>
+  <div id="lvRes" style="display:none"><h3 style="margin:0 0 4px">Live päättyi</h3><div class="big" id="lvPct"></div><p class="mu" id="lvTxt"></p><button class="btn ghost" data-share="live" style="width:100%;margin:0 0 8px">Jaa tulos</button><button class="btn" id="lvDone" style="width:100%;border:0">Valmis</button></div>
 </div>
 
 <div id="mg"><div class="lvtop"><b id="mgTitle">Minipeli</b><span id="mgScore">0 %</span></div>
   <div id="mgBody"></div>
   <button id="mgQuit" class="btn ghost" style="width:100%;max-width:420px;margin:0 0 4px">Lopeta ilman palkintoa</button>
-  <div id="mgRes" style="display:none;width:100%;max-width:420px;text-align:center"><h3 id="mgResH" style="margin:0 0 4px">Minipeli</h3><div class="big" id="mgPct" style="font-family:var(--mono);font-size:34px;color:var(--ok);margin:8px 0"></div><p class="mu" id="mgTxt"></p><button class="btn" id="mgDone" style="width:100%;border:0">Valmis</button></div>
+  <div id="mgRes" style="display:none;width:100%;max-width:420px;text-align:center"><h3 id="mgResH" style="margin:0 0 4px">Minipeli</h3><div class="big" id="mgPct" style="font-family:var(--mono);font-size:34px;color:var(--ok);margin:8px 0"></div><p class="mu" id="mgTxt"></p><button class="btn ghost" data-share="mg" style="width:100%;margin:0 0 8px">Jaa tulos</button><button class="btn" id="mgDone" style="width:100%;border:0">Valmis</button></div>
 </div>
 
 <div id="setup"><div class="box">
@@ -1109,7 +1109,7 @@ function offline(){
 
 
 /* ---------- Kartta: kuuluvuusalueet ---------- */
-var TIERS = ['Kylä','Kunta','Kaupunki','Suurkaupunki'], TIER_PL = ['Kylät','Kunnat','Kaupungit','Suurkaupungit'], TIER_RADIO = ['Kyläradio','Kuntaradio','Kaupunkiradio','Suurkaupunkiradio'], TIER_B = [0.02,0.03,0.04,0.06];
+var TIERS = ['Kylä','Kunta','Kaupunki','Suurkaupunki','Euroopan kaupunki'], TIER_PL = ['Kylät','Kunnat','Kaupungit','Suurkaupungit','Eurooppa'], TIER_RADIO = ['Kyläradio','Kuntaradio','Kaupunkiradio','Suurkaupunkiradio','Euroradio'], TIER_B = [0.02,0.03,0.04,0.06,0.08];
 var CITIES = [
   // kylät (t:0)
   {id:'fis', t:0, n:'Fiskars',      lon:23.55, lat:60.22, ant:0, cost:20,   g:'pop',         x:'Fiskarsin kyläpuodeissa soi pop.'},
@@ -1159,9 +1159,43 @@ var CITIES = [
   {id:'tku', t:3, n:'Turku',        lon:22.27, lat:60.45, ant:2, cost:400,    g:'pop',         x:'Turku tykkää popista.'},
   {id:'hki', t:3, n:'Helsinki',     lon:24.94, lat:60.17, ant:3, cost:4000,   g:'pop',         x:'Helsinki janoaa popia.'},
   {id:'oul', t:3, n:'Oulu',         lon:25.47, lat:65.01, ant:3, cost:5500,   g:'metalli',     x:'Oulu jyrää metallia.'},
-  {id:'iva', t:3, n:'Ivalo',        lon:27.55, lat:68.66, ant:5, cost:600000, g:'rauhallinen', x:'Ivalossa kuunnellaan rauhallista tunturissa.'}
+  {id:'iva', t:3, n:'Ivalo',        lon:27.55, lat:68.66, ant:5, cost:600000, g:'rauhallinen', x:'Ivalossa kuunnellaan rauhallista tunturissa.'},
+  // Eurooppa (t:4)
+  {id:'tll', t:4, n:'Tallinna', lon:24.75, lat:59.44, ant:6, cost:15000000, g:'pop', x:'Tallinna kuuntelee popia lahden takaa.'},
+  {id:'sto', t:4, n:'Tukholma', lon:18.07, lat:59.33, ant:6, cost:25000000, g:'pop', x:'Tukholma tykkää popista.'},
+  {id:'osl', t:4, n:'Oslo', lon:10.75, lat:59.91, ant:6, cost:30000000, g:'rock', x:'Oslossa rokataan.'},
+  {id:'cph', t:4, n:'Kööpenhamina', lon:12.57, lat:55.68, ant:6, cost:28000000, g:'pop', x:'Kööpenhamina pitää popista.'},
+  {id:'rig', t:4, n:'Riika', lon:24.1, lat:56.95, ant:6, cost:18000000, g:'iskelma', x:'Riika laulaa mukana iskelmää.'},
+  {id:'vno', t:4, n:'Vilna', lon:25.28, lat:54.69, ant:6, cost:20000000, g:'rauhallinen', x:'Vilna rauhoittuu rauhallisen äärellä.'},
+  {id:'waw', t:4, n:'Varsova', lon:21.01, lat:52.23, ant:7, cost:150000000, g:'rock', x:'Varsova rokkaa.'},
+  {id:'ber', t:4, n:'Berliini', lon:13.4, lat:52.52, ant:7, cost:300000000, g:'pop', x:'Berliini tanssii.'},
+  {id:'ams', t:4, n:'Amsterdam', lon:4.9, lat:52.37, ant:7, cost:280000000, g:'pop', x:'Amsterdam tykkää popista.'},
+  {id:'lon', t:4, n:'Lontoo', lon:-0.13, lat:51.51, ant:7, cost:400000000, g:'rock', x:'Lontoo soittaa rockia.'},
+  {id:'dub', t:4, n:'Dublin', lon:-6.26, lat:53.35, ant:7, cost:260000000, g:'rock', x:'Dublin laulaa ja rokkaa.'},
+  {id:'prg', t:4, n:'Praha', lon:14.42, lat:50.08, ant:7, cost:170000000, g:'metalli', x:'Prahassa jyrää metalli.'},
+  {id:'vie', t:4, n:'Wien', lon:16.37, lat:48.21, ant:7, cost:220000000, g:'rauhallinen', x:'Wienissä kuunnellaan rauhallista.'},
+  {id:'bud', t:4, n:'Budapest', lon:19.04, lat:47.5, ant:7, cost:190000000, g:'iskelma', x:'Budapest rakastaa iskelmää.'},
+  {id:'par', t:4, n:'Pariisi', lon:2.35, lat:48.86, ant:8, cost:4000000000, g:'iskelma', x:'Pariisi laulaa iskelmää.'},
+  {id:'bru', t:4, n:'Bryssel', lon:4.35, lat:50.85, ant:8, cost:2500000000, g:'pop', x:'Bryssel kuuntelee popia.'},
+  {id:'mad', t:4, n:'Madrid', lon:-3.7, lat:40.42, ant:8, cost:3500000000, g:'iskelma', x:'Madrid tanssii iskelmän tahtiin.'},
+  {id:'lis', t:4, n:'Lissabon', lon:-9.14, lat:38.72, ant:8, cost:2200000000, g:'rauhallinen', x:'Lissabon rauhoittuu.'},
+  {id:'rom', t:4, n:'Rooma', lon:12.5, lat:41.9, ant:8, cost:3800000000, g:'iskelma', x:'Rooma rakastaa iskelmää.'},
+  {id:'ath', t:4, n:'Ateena', lon:23.73, lat:37.98, ant:8, cost:2600000000, g:'iskelma', x:'Ateena kuuntelee iskelmää.'},
+  {id:'buc', t:4, n:'Bukarest', lon:26.1, lat:44.43, ant:8, cost:2000000000, g:'metalli', x:'Bukarest tykkää metallista.'},
+  {id:'beg', t:4, n:'Belgrad', lon:20.46, lat:44.8, ant:8, cost:2100000000, g:'rock', x:'Belgrad rokkaa.'},
+  {id:'sof', t:4, n:'Sofia', lon:23.32, lat:42.7, ant:8, cost:2000000000, g:'metalli', x:'Sofiassa jyrää raskas.'},
+  {id:'zrh', t:4, n:'Zürich', lon:8.54, lat:47.37, ant:8, cost:3000000000, g:'rauhallinen', x:'Zürich kuuntelee rauhallista.'},
+  {id:'bcn', t:4, n:'Barcelona', lon:2.17, lat:41.39, ant:9, cost:30000000000, g:'pop', x:'Barcelona tykkää popista.'},
+  {id:'mil', t:4, n:'Milano', lon:9.19, lat:45.46, ant:9, cost:35000000000, g:'pop', x:'Milano seuraa popin trendejä.'},
+  {id:'ist', t:4, n:'Istanbul', lon:28.98, lat:41.01, ant:9, cost:40000000000, g:'rock', x:'Istanbul rokkaa.'}
 ];
 var FIN = [[22.95,59.82],[25.0,60.15],[26.9,60.45],[28.0,60.55],[28.8,61.1],[29.6,62.0],[30.5,62.9],[29.9,63.9],[30.0,65.0],[29.6,66.0],[28.7,66.8],[29.1,67.5],[30.0,68.2],[28.9,68.9],[28.8,69.9],[28.0,70.1],[26.5,69.9],[25.0,68.7],[23.5,68.6],[21.0,69.05],[20.6,68.9],[21.6,68.5],[23.6,67.9],[23.9,66.8],[24.15,65.85],[25.4,65.0],[24.5,64.2],[23.1,63.85],[21.6,63.1],[21.2,62.3],[21.4,61.5],[21.5,61.1],[21.3,60.7],[22.0,60.3]];
+var EUR = [[[24,59.5],[30,59.8],[40,60],[40,47],[33,45],[30,46],[28.5,44],[28,42],[26,40.5],[26,39],[23,38],[23.5,36.5],[21.5,37],[19.5,40],[19,42],[13.5,45.5],[12.5,44],[16,41.5],[18.5,40],[16,38],[15.5,40],[12,41.8],[10,44],[8,44],[3.5,43.2],[3,42],[0,39],[-1,37.5],[-5,36],[-9,37],[-9,43],[-1.5,43.5],[-1.5,46],[-4.5,48.5],[-1.5,48.8],[1.5,50],[3.5,51.3],[5,53.3],[8.5,54],[8.5,57],[10.5,57.5],[10.8,54.8],[14,54],[19,54.5],[21,57],[24,57.5]],
+  [[5,59],[5,62],[10,64],[14,67],[19,70],[25,71],[30,70],[31,67],[30,63],[30,60.5],[25,60],[22,60],[21,63],[25,65.5],[22,65.8],[17.5,62.5],[19,60],[17,58.5],[16,56.5],[13,55.5],[12.5,56.5],[11,58.5],[8,58]],
+  [[-5.5,50],[1.5,51],[1.7,52.8],[0,53.5],[-2,57.5],[-3,58.6],[-6,58.5],[-5,55.5],[-3,54.8],[-3.2,53.4],[-5,52]],
+  [[-10,51.5],[-6,52],[-6,54.5],[-8,55],[-10,53.5]]];
+function ex(lon){ return Math.round((lon+11)*5.88*10)/10; }
+function ey(lat){ return Math.round((71-lat)*8.3*10)/10; }
 function mx(lon){ return Math.round((lon-19.8)*26*10)/10; }
 function my(lat){ return Math.round((70.3-lat)*42*10)/10; }
 function cityCount(){ var n=0; for(var k in S.cities) if(S.cities[k]) n++; return n; }
@@ -1172,7 +1206,7 @@ function placeLevel(){ var m = 0; CITIES.forEach(function(c){ if(S.cities[c.id] 
 function cityMult(g){
   var sum = 0, fav = 0, tb = 1;
   CITIES.forEach(function(c){ if(S.cities[c.id]){ sum += TIER_B[c.t]; if(c.g === g) fav++; } });
-  for(var t=0;t<4;t++){ if(tierDone(t)) tb *= 1.1; }
+  for(var t=0;t<5;t++){ if(tierDone(t)) tb *= 1.1; }
   return (1 + sum) * (1 + 0.03*fav) * tb;
 }
 var cityOpen = null, mapTier = -1, cityPulse = null;
@@ -1188,20 +1222,22 @@ function cityAfford(){
   for(var i=0;i<CITIES.length;i++){ var c = CITIES[i]; if(!S.cities[c.id] && S.antenna >= c.ant && S.coins >= cityCost(c)) return true; }
   return false;
 }
+function inView(c){ return mapTier >= 0 ? c.t === mapTier : c.t < 4; }
 function drawMap(){
-  var poly = FIN.map(function(q){ return mx(q[0])+','+my(q[1]); }).join(' ');
-  var svg = '<svg viewBox="0 0 300 470" class="fmap" role="img" aria-label="Suomen kartta kuuluvuusalueista"><polygon points="'+poly+'" class="land"/>';
+  var eu = mapTier === 4, PX = eu ? ex : mx, PY = eu ? ey : my, svg;
+  if(eu){ svg = '<svg viewBox="0 0 300 300" class="fmap" role="img" aria-label="Euroopan kartta kuuluvuusalueista">' + EUR.map(function(pl){ return '<polygon points="' + pl.map(function(q){ return ex(q[0])+','+ey(q[1]); }).join(' ') + '" class="land"/>'; }).join(''); }
+  else svg = '<svg viewBox="0 0 300 470" class="fmap" role="img" aria-label="Suomen kartta kuuluvuusalueista"><polygon points="'+FIN.map(function(q){ return mx(q[0])+','+my(q[1]); }).join(' ')+'" class="land"/>';
   for(var i=0;i<CITIES.length;i++){
-    if(mapTier >= 0 && CITIES[i].t !== mapTier) continue;
-    var c = CITIES[i], on = !!S.cities[c.id], lock = S.antenna < c.ant, x = mx(c.lon), y = my(c.lat);
-    if(on) svg += '<circle cx="'+x+'" cy="'+y+'" r="26" class="cov"/><circle cx="'+x+'" cy="'+y+'" r="15" class="cov2"/>' + (cityPulse === c.id ? '<circle cx="'+x+'" cy="'+y+'" r="14" class="pulse"/>' : '');
+    if(!inView(CITIES[i])) continue;
+    var c = CITIES[i], on = !!S.cities[c.id], lock = S.antenna < c.ant, x = PX(c.lon), y = PY(c.lat);
+    if(on) svg += '<circle cx="'+x+'" cy="'+y+'" r="'+(eu?14:26)+'" class="cov"/><circle cx="'+x+'" cy="'+y+'" r="'+(eu?8:15)+'" class="cov2"/>' + (cityPulse === c.id ? '<circle cx="'+x+'" cy="'+y+'" r="14" class="pulse"/>' : '');
   }
   for(var j=0;j<CITIES.length;j++){
-    if(mapTier >= 0 && CITIES[j].t !== mapTier) continue;
-    var d = CITIES[j], o = !!S.cities[d.id], l = S.antenna < d.ant, xx = mx(d.lon), yy = my(d.lat);
+    if(!inView(CITIES[j])) continue;
+    var d = CITIES[j], o = !!S.cities[d.id], l = S.antenna < d.ant, xx = PX(d.lon), yy = PY(d.lat);
     svg += '<g data-city="'+d.id+'" class="cty'+(o?' on':'')+(l?' lock':'')+(cityOpen===d.id?' sel':'')+(S.kc[d.id]!==undefined?' kme':(K.d&&K.d.cities[d.id]&&K.d.cities[d.id].owner?' kfoe':''))+'"><circle cx="'+xx+'" cy="'+yy+'" r="9" class="hit"/><circle cx="'+xx+'" cy="'+yy+'" r="'+((o?1.5:1)+d.t*0.9+2.2)+'" class="dt"/>'+(S.home===d.id?'<text x="'+xx+'" y="'+(yy-9)+'" class="hm" text-anchor="middle">★</text>':'')+'</g>';
   }
-  for(var pi=0;pi<CITIES.length;pi++){ var pc = CITIES[pi]; if(!S.cities[pc.id] || (mapTier >= 0 && pc.t !== mapTier)) continue; var px = mx(pc.lon), py = my(pc.lat); for(var pj=0;pj<2+pc.t;pj++){ var an = (pj*2.4 + pi) , rr = 7 + (pj%2)*3; svg += '<circle cx="'+(px + Math.cos(an)*rr).toFixed(1)+'" cy="'+(py + Math.sin(an)*rr).toFixed(1)+'" r="1.1" class="ppl" style="animation-delay:'+(pj*0.4)+'s"/>'; } }
+  for(var pi=0;pi<CITIES.length;pi++){ var pc = CITIES[pi]; if(!S.cities[pc.id] || !inView(pc)) continue; var px = PX(pc.lon), py = PY(pc.lat); for(var pj=0;pj<2+pc.t;pj++){ var an = (pj*2.4 + pi) , rr = 7 + (pj%2)*3; svg += '<circle cx="'+(px + Math.cos(an)*rr).toFixed(1)+'" cy="'+(py + Math.sin(an)*rr).toFixed(1)+'" r="1.1" class="ppl" style="animation-delay:'+(pj*0.4)+'s"/>'; } }
   svg += '</svg>';
   var info = '';
   if(cityOpen){
@@ -1211,9 +1247,9 @@ function drawMap(){
     else if(S.antenna < c2.ant) info += '<span class="mu" style="font-size:12px;text-align:right">Vaatii: '+ANT[c2.ant].n+'</span>';
     else info += buyBtn(cityCost(c2),'Rakenna','city',c2.id);
     info += '</div>' + kisaCityRow(c2);
-  } else info = '<p class="hint">Napauta paikkaa. Kylä antaa +2 %, kunta +3 %, kaupunki +4 % ja suurkaupunki +6 % kuuntelijoita, lisäksi +3 %, kun ohjelmassa soi sen suosikkityyli. Kun kaikki saman tason paikat kuuluvat, saat ×1,1. Kotikaupunkisi (★) lähellä olevat paikat ovat halvempia.</p>';
+  } else info = '<p class="hint">Napauta paikkaa. Kylä antaa +2 %, kunta +3 %, kaupunki +4 %, suurkaupunki +6 % ja Euroopan kaupunki +8 % kuuntelijoita, lisäksi +3 %, kun ohjelmassa soi sen suosikkityyli. Kun kaikki saman tason paikat kuuluvat, saat ×1,1. Kotikaupunkisi (★) lähellä olevat paikat ovat halvempia.</p>';
   var tf = '<div class="chips" style="margin-bottom:8px"><button class="chip'+(mapTier<0?' sel':'')+'" data-mt="-1">Kaikki</button>';
-  for(var tt=0;tt<4;tt++) tf += '<button class="chip'+(mapTier===tt?' sel':'')+'" data-mt="'+tt+'">'+TIER_PL[tt]+' '+tierOwned(tt)+'/'+tierTotal(tt)+(tierDone(tt)?' ✓':'')+'</button>';
+  for(var tt=0;tt<5;tt++) tf += '<button class="chip'+(mapTier===tt?' sel':'')+'" data-mt="'+tt+'">'+TIER_PL[tt]+' '+tierOwned(tt)+'/'+tierTotal(tt)+(tierDone(tt)?' ✓':'')+'</button>';
   tf += '</div>';
   $('mapBox').innerHTML = tf + svg + info;
   $('mapH').textContent = 'Kuuluvuuskartta ' + cityCount() + '/' + CITIES.length;
@@ -1273,7 +1309,7 @@ function drawLb(){
     h += '<p class="hint">Radiosi nimi <b>'+escH(S.nick)+'</b> · tuottosi yhteensä $ '+fmt(myScore())+'</p>';
     if(stt === 'odottaa') h += '<p class="hint">Radion nimi odottaa ylläpidon hyväksyntää. Se näkyy listalla hyväksynnän jälkeen.</p>';
     if(stt === 'hylatty') h += '<p class="hint">Nimeä ei hyväksytty. Valitse toinen.</p>';
-    h += '<button class="btn" data-act="nickchg" style="border:0;padding:8px 14px;font-size:13px">Vaihda radion nimi</button>';
+    h += '<button class="btn" data-act="nickchg" style="border:0;padding:8px 14px;font-size:13px">Vaihda radion nimi</button> <button class="btn ghost" data-share="top" style="padding:8px 14px;font-size:13px">Jaa</button>';
   }
   else h += '<div class="nickrow"><input id="nickIn" maxlength="16" placeholder="Radion nimi (2–16 merkkiä)" autocomplete="off"><button class="btn" data-act="nick">Liity listalle</button></div><p class="hint" id="nickMsg"></p>';
   box.innerHTML = h;
@@ -1344,6 +1380,7 @@ $('suGo').addEventListener('click', suGo);
 /* ---------- Minipelit: viritys, arvaa tyyli, beatmatch ---------- */
 var MGS = {
   tune:  {n:'Viritä taajuus', x:'Löydä asemat kohinan seasta.', ant:1},
+  haul:  {n:'Roudaus', x:'Kerää kalusto ja kanna se lavalle. Varo kärryjä!', ant:1},
   beat:  {n:'Pidä tahti', x:'Kuuntele tahti ja jatka sitä itse, kun ääni katoaa.', ant:2}
 };
 var MG = {on:false, kind:'', raf:0, held:false, ctx:null};
@@ -1378,7 +1415,7 @@ function mgOpen(k){
   mgHold();
   $('mg').classList.add('on'); $('mgRes').style.display = 'none'; $('mgBody').style.display = ''; $('mgScore').textContent = '0 %';
   $('mgTitle').textContent = MGS[k].n; $('mgQuit').style.display = '';
-  ({tune:tuneStart, beat:beatStart})[k]();
+  ({tune:tuneStart, beat:beatStart, haul:haulStart})[k]();
 }
 function mgStop(){
   cancelAnimationFrame(MG.raf); MG.raf = 0;
@@ -1504,6 +1541,80 @@ function beatLoop(now){
   }
   var pr = BM.pts/beatTotal(); mgScoreTxt(pr);
   MG.raf = requestAnimationFrame(beatLoop);
+}
+/* --- 3. Roudaus: kerää kalusto ja kanna se lavalle (2D) --- */
+var HL = {};
+var HL_ICO = ['🎸','🎤','🥁','🎹','🔊'];
+function haulStart(){
+  $('mgBody').innerHTML = '<div class="mu" id="hlT" style="text-align:center">Kerää kalusto ja kanna lavalle. Varo kärryjä!</div><canvas id="hlC" width="360" height="440" style="width:100%;max-width:360px;margin:0 auto;display:block;border-radius:12px;background:#0f1420;touch-action:none"></canvas><div class="hint" style="text-align:center">Pidä sormi näytöllä: roudari kulkee sormea kohti. Voit kantaa kolme esinettä kerralla, mutta kantaminen hidastaa.</div>';
+  var cv = $('hlC');
+  HL = {w:360, h:440, px:180, py:60, tx:180, ty:60, down:false, carry:[], items:[], obs:[], got:0, time:45, stun:0, goal:14, flash:'', fl:0, ctx:cv.getContext('2d')};
+  for(var i=0;i<3;i++) HL.obs.push({x:60 + i*120, y:150 + i*75, v:(i%2 ? -1 : 1) * (70 + i*25)});
+  while(HL.items.length < 4) haulSpawn();
+  function pt(e){ var r = cv.getBoundingClientRect(); HL.tx = (e.clientX - r.left) * HL.w / r.width; HL.ty = (e.clientY - r.top) * HL.h / r.height; }
+  cv.addEventListener('pointerdown', function(e){ e.preventDefault(); HL.down = true; pt(e); try{ cv.setPointerCapture(e.pointerId); }catch(x){} });
+  cv.addEventListener('pointermove', function(e){ if(HL.down) pt(e); });
+  ['pointerup','pointercancel'].forEach(function(n){ cv.addEventListener(n, function(){ HL.down = false; }); });
+  MG.last = performance.now(); MG.raf = requestAnimationFrame(haulLoop);
+}
+function haulSpawn(){
+  for(var k=0;k<20;k++){
+    var x = 30 + Math.random()*(HL.w - 60), y = 30 + Math.random()*(HL.h - 140), ok = true;
+    for(var o=0;o<HL.obs.length;o++) if(Math.abs(HL.obs[o].y - y) < 22) ok = false;
+    for(var q=0;q<HL.items.length;q++) if(Math.hypot(HL.items[q].x - x, HL.items[q].y - y) < 40) ok = false;
+    if(ok){ HL.items.push({x:x, y:y, i:Math.floor(Math.random()*HL_ICO.length)}); return; }
+  }
+  HL.items.push({x:60 + Math.random()*(HL.w - 120), y:30, i:0});
+}
+function haulLoop(now){
+  if(!MG.on || MG.kind !== 'haul') return;
+  var dt = Math.min(0.05, (now - MG.last)/1000); MG.last = now;
+  HL.time -= dt; if(HL.fl > 0) HL.fl -= dt;
+  var diff = 1 + (45 - HL.time)/60;
+  // liike
+  if(HL.stun > 0) HL.stun -= dt;
+  else {
+    var dx = HL.tx - HL.px, dy = HL.ty - HL.py, d = Math.hypot(dx, dy), sp = 150 * (1 - 0.14*HL.carry.length) * dt;
+    if(HL.down && d > 3){ var st = Math.min(sp, d); HL.px += dx/d*st; HL.py += dy/d*st; }
+  }
+  HL.px = Math.max(14, Math.min(HL.w - 14, HL.px)); HL.py = Math.max(14, Math.min(HL.h - 14, HL.py));
+  // kärryt
+  HL.obs.forEach(function(o){
+    o.x += o.v * diff * dt; if(o.x < 20){ o.x = 20; o.v = Math.abs(o.v); } if(o.x > HL.w - 20){ o.x = HL.w - 20; o.v = -Math.abs(o.v); }
+    if(HL.stun <= 0 && Math.hypot(o.x - HL.px, o.y - HL.py) < 24){
+      HL.stun = 0.8; if(HL.carry.length){ HL.flash = 'Kalusto tippui!'; HL.fl = 0.9; HL.carry = []; for(var n=0;n<2;n++) if(HL.items.length < 6) haulSpawn(); }
+      HL.py = Math.max(14, HL.py - 30); HL.ty = HL.py; try{ if(navigator.vibrate) navigator.vibrate(30); }catch(e){}
+    }
+  });
+  // kerääminen
+  for(var i=HL.items.length-1;i>=0;i--){
+    var it = HL.items[i];
+    if(HL.carry.length < 3 && HL.stun <= 0 && Math.hypot(it.x - HL.px, it.y - HL.py) < 24){ HL.carry.push(it.i); HL.items.splice(i, 1); fx('buy'); }
+  }
+  while(HL.items.length < 4) haulSpawn();
+  // lava
+  if(HL.py > HL.h - 64 && HL.carry.length){
+    var n2 = HL.carry.length, bonus = n2 === 3 ? 1 : 0; HL.got += n2 + bonus; HL.carry = []; HL.flash = '+' + (n2 + bonus) + (bonus ? ' (kolmen bonus)' : ''); HL.fl = 0.9; fx('big');
+  }
+  mgScoreTxt(HL.got/HL.goal);
+  haulDraw();
+  if(HL.time <= 0){ var r = Math.min(1, HL.got/HL.goal); mgFinish(r, 'Veit lavalle ' + HL.got + ' pistettä (tavoite ' + HL.goal + ').'); return; }
+  MG.raf = requestAnimationFrame(haulLoop);
+}
+function haulDraw(){
+  var c = HL.ctx, w = HL.w, h = HL.h; c.clearRect(0, 0, w, h);
+  c.fillStyle = '#121a2a'; c.fillRect(0, 0, w, h);
+  c.strokeStyle = 'rgba(77,163,255,.08)'; c.lineWidth = 1; for(var gx=0;gx<w;gx+=40){ c.beginPath(); c.moveTo(gx, 0); c.lineTo(gx, h); c.stroke(); }
+  c.fillStyle = 'rgba(61,220,151,.14)'; c.fillRect(0, h - 64, w, 64); c.fillStyle = '#3ddc97'; c.font = '700 13px monospace'; c.textAlign = 'center'; c.fillText('LAVA · vie kalusto tänne', w/2, h - 26);
+  c.font = '24px serif'; c.textBaseline = 'middle';
+  HL.items.forEach(function(it){ c.fillText(HL_ICO[it.i], it.x, it.y); });
+  HL.obs.forEach(function(o){ c.fillText('🛒', o.x, o.y); });
+  c.fillStyle = HL.stun > 0 ? '#ff6b6b' : '#4da3ff'; c.beginPath(); c.arc(HL.px, HL.py, 13, 0, 6.283); c.fill();
+  c.fillStyle = '#0b0e14'; c.fillRect(HL.px - 6, HL.py - 3, 4, 4); c.fillRect(HL.px + 2, HL.py - 3, 4, 4);
+  c.font = '16px serif'; for(var k=0;k<HL.carry.length;k++) c.fillText(HL_ICO[HL.carry[k]], HL.px, HL.py - 22 - k*17);
+  c.font = '700 14px monospace'; c.fillStyle = '#e8edf7'; c.textAlign = 'left'; c.fillText('⏱ ' + Math.max(0, Math.ceil(HL.time)) + ' s', 10, 16); c.textAlign = 'right'; c.fillText(HL.got + ' / ' + HL.goal, w - 10, 16);
+  if(HL.fl > 0){ c.textAlign = 'center'; c.fillStyle = '#ffb84d'; c.font = '700 18px monospace'; c.fillText(HL.flash, w/2, h/2 - 30*(1 - HL.fl)); }
+  c.textAlign = 'left'; c.textBaseline = 'alphabetic';
 }
 $('mgList').addEventListener('click', function(e){ var b = e.target.closest('[data-mg]'); if(b) mgOpen(b.dataset.mg); });
 $('mgDone').addEventListener('click', function(){ $('mg').classList.remove('on'); mgRelease(); render(true); });
@@ -1709,7 +1820,16 @@ var QUESTS = [
   {id:'q12', n:'Kymmenen paikkaa',         s:'Kuuluvuuskartta alkaa täyttyä. Laajenna kymmeneen paikkaan.', v:cityCount, tg:10, u:'paikkaa', r:{k:400}},
   {id:'q13', n:'Joulun suurlähetys',       s:'Joulun lähetys koittaa: yleisö pitää saada nousemaan 40 % kuudessa minuutissa.', v:function(){ return S.lis; }, tgf:function(b){ return Math.ceil(b*1.4 + 3); }, lim:360, u:'kuuntelijaa', r:{k:500, buff:true}},
   {id:'q14', n:'Vakikuuntelija',           s:'Radio Suorni kysyy, jaksatko lähettää joka päivä. Pelaa kolme päivää putkeen.', v:function(){ return S.streak; }, tg:3, u:'päivää', r:{k:500}},
-  {id:'q15', n:'Koko Suomi kuuluu',        s:'Luvun loppuhuipennus: yhteyspäällikkö lupaa valtakunnan verkon, jos hankit Valtakunnan taajuuden.', v:function(){ return S.antenna; }, tg:5, u:'', r:{k:800, buff:true}}
+  {id:'q15', n:'Koko Suomi kuuluu',        s:'Luvun loppuhuipennus: yhteyspäällikkö lupaa valtakunnan verkon, jos hankit Valtakunnan taajuuden.', v:function(){ return S.antenna; }, tg:5, u:'', r:{k:800, buff:true}},
+  {id:'q16', n:'Pohjolan ääni',            s:'Yhteyspäällikkö: "Suomi on hoidettu. Nyt katse rajan taakse." Hanki Pohjoismainen lähetys -antenni.', v:function(){ return S.antenna; }, tg:6, u:'', r:{k:1000, buff:true}},
+  {id:'q17', n:'Lahden yli Tallinnaan',    s:'Viro kuuntelee jo laitteillaan Suomen radioita. Rakenna kuuluvuus Tallinnaan.', v:function(){ return S.cities.tll ? 1 : 0; }, tg:1, u:'', r:{k:800}},
+  {id:'q18', n:'Roudari',                  s:'Euroopan kiertue tarvitsee kalustoa. Saavuta Roudaus-minipelissä vähintään 60 %.', v:function(){ return Math.round((S.mgBest.haul||0)*100); }, tg:60, u:'%', r:{k:800}},
+  {id:'q19', n:'Viisi pääkaupunkia',       s:'Kiertue etenee. Rakenna kuuluvuus viiteen Euroopan kaupunkiin.', v:function(){ return tierOwned(4); }, tg:5, u:'kaupunkia', r:{k:1200}},
+  {id:'q20', n:'Eurooppalainen yö',        s:'Eurovisio-viikonloppu! Kasvata yleisöä 35 % seitsemässä minuutissa.', v:function(){ return S.lis; }, tgf:function(b){ return Math.ceil(b*1.35 + 5); }, lim:420, u:'kuuntelijaa', r:{k:1500, buff:true}},
+  {id:'q21', n:'Lontoo kutsuu',            s:'Lontoon klubit haluavat soittolistasi. Rakenna kuuluvuus Lontooseen.', v:function(){ return S.cities.lon ? 1 : 0; }, tg:1, u:'', r:{k:1500}},
+  {id:'q22', n:'Puolet Euroopasta',        s:'Yli puolet kartasta kuuluu jo. Rakenna kuuluvuus 14 Euroopan kaupunkiin.', v:function(){ return tierOwned(4); }, tg:14, u:'kaupunkia', r:{k:2500}},
+  {id:'q23', n:'Satelliittiradio',         s:'Kaukaisimmat kaupungit vaativat avaruuteen. Hanki Satelliittiradio-antenni.', v:function(){ return S.antenna; }, tg:8, u:'', r:{k:3000, buff:true}},
+  {id:'q24', n:'Koko Eurooppa kuuluu',     s:'Luvun 2 huipennus: rakenna kuuluvuus kaikkiin Euroopan kaupunkeihin.', v:function(){ return tierDone(4) ? 1 : 0; }, tg:1, u:'', r:{k:8000, buff:true}}
 ];
 function qCur(){ return QUESTS[S.qi] || null; }
 function qTarget(q){ return q.tgf ? q.tgf(S.qBase) : q.tg; }
@@ -1739,7 +1859,7 @@ function questTick(dt){
 function drawQuest(){
   var a = $('qAsema'), b = $('qLog'); if(!a || !b) return;
   var q = qCur(), h = '';
-  if(!q){ h = '<p class="hint">Luku 1 on valmis! Olet rakentanut radion kylästä valtakunnalliseksi. Seuraavat tehtävät tulossa.</p>'; $('qCard').style.display = ''; a.innerHTML = h; }
+  if(!q){ h = '<p class="hint">Luku 2 on valmis! Radiosi kuuluu koko Euroopassa. Luku 3 tulossa.</p>'; $('qCard').style.display = ''; a.innerHTML = h; }
   else {
     var tg = qTarget(q), cur = q.lim && !(S.qLeft > 0) && !S.qOk ? 0 : Math.max(0, q.lim ? q.v() - S.qBase : q.v()), tgv = q.lim ? tg - S.qBase : tg;
     if(q.lim && S.qLeft > 0) { cur = Math.max(0, q.v() - S.qBase); }
@@ -1752,10 +1872,39 @@ function drawQuest(){
     h += '</div>';
     a.innerHTML = h;
   }
-  var l = '<p class="hint">Luku 1: Kylästä valtakunnan taajuudelle · ' + Math.min(S.qi, QUESTS.length) + '/' + QUESTS.length + ' tehtävää</p><div class="lb">';
-  QUESTS.forEach(function(qq, i){ l += '<div class="lbr' + (i === S.qi ? ' me' : '') + '"><span class="lbn">' + (i < S.qi ? '✓' : (i + 1) + '.') + '</span><span class="lbt" style="' + (i > S.qi ? 'opacity:.45' : '') + '">' + (i <= S.qi ? escH(qq.n) : '???') + '</span></div>'; });
+  var l = '<p class="hint">' + Math.min(S.qi, QUESTS.length) + '/' + QUESTS.length + ' tehtävää suoritettu</p><div class="lb">';
+  QUESTS.forEach(function(qq, i){ if(i === 0) l += '<p class="hint" style="margin:4px 0"><b>Luku 1: Kylästä valtakunnan taajuudelle</b></p>'; if(i === 15) l += '<p class="hint" style="margin:10px 0 4px"><b>Luku 2: Euroopan aallot</b></p>'; l += '<div class="lbr' + (i === S.qi ? ' me' : '') + '"><span class="lbn">' + (i < S.qi ? '✓' : (i + 1) + '.') + '</span><span class="lbt" style="' + (i > S.qi ? 'opacity:.45' : '') + '">' + (i <= S.qi ? escH(qq.n) : '???') + '</span></div>'; });
   b.innerHTML = l + '</div>';
 }
+
+/* ---------- Jakaminen ja kanavaseuranta ---------- */
+var SHARE_URL = 'https://suorni.fi/?peli=1&src=jako';
+function shareGame(text){
+  var d = {title:'Taajuus – radiopeli', text:text, url:SHARE_URL};
+  if(navigator.share){ navigator.share(d).catch(function(){}); return; }
+  var full = text + ' ' + SHARE_URL;
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(full).then(function(){ toast('Linkki kopioitu. Liitä se kaverille!', 2500); }, function(){ toast(full, 6000); }); }
+  else toast(full, 6000);
+}
+function srcInit(){
+  if(S.srcSent === undefined){
+    var m = /[?&]src=([a-z0-9_-]{1,20})/i.exec(location.search);
+    if(!m && (S.total || 0) > 100){ S.srcSent = true; S.src = ''; save(); return; }   // vanha pelaaja: ei lasketa uudeksi
+    S.src = m ? m[1].toLowerCase() : 'suora'; S.srcSent = false; save();
+  }
+  if(S.srcSent === false && S.src){
+    ensurePid();
+    setTimeout(function(){ api('peli/hit', {body:{pid:S.pid, src:S.src}}, function(d){ if(d && d.ok !== false){ S.srcSent = true; save(); } }); }, 4000);
+  }
+}
+document.addEventListener('click', function(e){
+  var b = e.target.closest && e.target.closest('[data-share]'); if(!b) return;
+  var k = b.dataset.share, txt = 'Rakennan radiota Taajuus-pelissä. Pystytkö parempaan?';
+  if(k === 'live') txt = 'Sain ' + $('lvPct').textContent + ' Taajuus-pelin Live-lähetyksessä. Pystytkö parempaan?';
+  else if(k === 'mg') txt = 'Sain ' + $('mgPct').textContent + ' minipelissä ' + $('mgResH').textContent + ' (Taajuus-radiopeli). Pystytkö parempaan?';
+  else if(k === 'top') txt = 'Radioni ' + (S.nick || '') + ' on Taajuus-pelin Top 10 -listalla' + (LBD && LBD.me && LBD.me.rank ? ' sijalla ' + LBD.me.rank : '') + '. Pystytkö parempaan?';
+  shareGame(txt);
+});
 
 /* ---------- Tapahtumat ---------- */
 document.addEventListener('click', function(e){
@@ -2172,6 +2321,7 @@ var ACH = [
   {id:'tr0', n:'Kyläradio valmis', x:'Kuulu kaikissa kylissä', t:function(){ return tierDone(0); }},
   {id:'tr1', n:'Kuntaradio valmis', x:'Kuulu kaikissa kunnissa', t:function(){ return tierDone(1); }},
   {id:'tr2', n:'Kaupunkiradio valmis', x:'Kuulu kaikissa kaupungeissa', t:function(){ return tierDone(2); }},
+  {id:'tr4', n:'Euroradio valmis', x:'Kuulu kaikissa Euroopan kaupungeissa', t:function(){ return tierDone(4); }},
   {id:'tr3', n:'Suurkaupunkiradio valmis', x:'Kuulu kaikissa suurkaupungeissa', t:function(){ return tierDone(3); }},
   {id:'k12', n:'Koko kartta', x:'Kuulu kaikilla paikkakunnilla', t:function(){ return cityCount() >= CITIES.length; }},
   {id:'f1',  n:'Mitä tapahtui?', x:'Menetä päätöksellä kuuntelijoita (vähintään 25 %)', t:function(){ return S.fails >= 1; }},
@@ -2432,10 +2582,10 @@ document.addEventListener('visibilitychange', function(){
 window.addEventListener('pagehide', save);
 
 // testikoukku
-window.__taajuus = {QUESTS:QUESTS, questTick:questTick, qClaim:qClaim, qStart:qStart, drawStudio:drawStudio, juiceTick:juiceTick, fx:fx, K:function(){return K;}, kisaApply:kisaApply, kisaClaim:kisaClaim, kisaUnclaim:kisaUnclaim, kisaPrice:kisaPrice, tierDone:tierDone, placeLevel:placeLevel, MG:MG, TN:function(){return TN;}, BM:function(){return BM;}, mgOpen:mgOpen, mgCtx:mgCtx, FL:FL, dq:function(){return S.dq;}, dailyTick:dailyTick, heardSong:heardSong, drawCol:drawCol, state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();S.setup=true;lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, voteNow:voteNow, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
+window.__taajuus = {HL:function(){return HL;}, haulStart:haulStart, srcInit:srcInit, shareGame:shareGame, QUESTS:QUESTS, questTick:questTick, qClaim:qClaim, qStart:qStart, drawStudio:drawStudio, juiceTick:juiceTick, fx:fx, K:function(){return K;}, kisaApply:kisaApply, kisaClaim:kisaClaim, kisaUnclaim:kisaUnclaim, kisaPrice:kisaPrice, tierDone:tierDone, placeLevel:placeLevel, MG:MG, TN:function(){return TN;}, BM:function(){return BM;}, mgOpen:mgOpen, mgCtx:mgCtx, FL:FL, dq:function(){return S.dq;}, dailyTick:dailyTick, heardSong:heardSong, drawCol:drawCol, state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();S.setup=true;lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, voteNow:voteNow, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
 
 loadReal();
-drawLb(); drawKisa(); setTimeout(function(){ lbSend(false); lbFetch(); kisaFetch(); }, 1500);
+srcInit(); drawLb(); drawKisa(); setTimeout(function(){ lbSend(false); lbFetch(); kisaFetch(); }, 1500);
 offline();
 render(true);
 requestAnimationFrame(frame);
