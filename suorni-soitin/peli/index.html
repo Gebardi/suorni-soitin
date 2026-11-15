@@ -266,6 +266,8 @@ details.fl li b{color:var(--tx);font-weight:500}
         <h2>Live-lähetys</h2>
         <p class="mu" id="liveTx"></p>
         <button class="btn" id="liveBtn" style="width:100%;border:0">Aloita live</button>
+        <div class="hint" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:8px">Äänen viive <button class="chip" id="lvOffM">−</button><b id="lvOffV">0</b> ms <button class="chip" id="lvOffP">+</button></div>
+        <p class="hint" style="margin-top:2px">Jos ääni kuuluu putkiin nähden myöhään, kasvata arvoa.</p>
       </div>
 
       <div class="card" id="mgCard"><h2>Minipelit</h2><div id="mgList"></div></div>
@@ -518,7 +520,7 @@ function fresh(){
     tp:0, tpFree:0, perks:{}, runs:0, sbLeft:0, sbNext:0,
     buffs:[], cities:{}, nick:'', pid:'', bank:0, lastSent:-1, votes:{}, fails:0, luck:0, ach:{}, liveCd:0, lives:0, liveBest:0, wishes:0, choices:0, choice:null,
     ls:0, total:20, hearts:0, songsBought:0,
-    setup:false, focus:'all', home:'', mgCd:{}, mgN:0, mgBest:{}, kc:{}, kWeek:'', kLeague:-1, kHad:false, kN:0, kWins:[],
+    setup:false, focus:'all', home:'', mgCd:{}, mgN:0, mgBest:{}, lvOff:0, kc:{}, kWeek:'', kLeague:-1, kHad:false, kN:0, kWins:[],
     earn:0, heard:{}, heardN:0, voteN:0, sbN:0, dq:null, streak:0, streakDay:'', dqDays:0,
     last:Date.now(), started:Date.now()
   };
@@ -724,7 +726,7 @@ function prestige(){
   if(S.antenna < 5 || gain < 1) return;
   var old = S, n = fresh();
   n.tp = old.tp + gain; n.tpFree = old.tpFree + gain; n.perks = old.perks; n.runs = (old.runs||0) + 1;
-  n.kc = old.kc; n.kWeek = old.kWeek; n.kLeague = old.kLeague; n.kHad = old.kHad; n.kN = old.kN; n.kWins = old.kWins; n.mgN = old.mgN; n.mgBest = old.mgBest; n.setup = false; n.focus = old.focus; n.home = old.home; n.earn = old.earn; n.heard = old.heard; n.heardN = old.heardN; n.voteN = old.voteN; n.sbN = old.sbN; n.dq = old.dq; n.streak = old.streak; n.streakDay = old.streakDay; n.dqDays = old.dqDays; n.ach = old.ach; n.lives = old.lives; n.liveBest = old.liveBest; n.wishes = old.wishes; n.choices = old.choices; n.liveCd = old.liveCd;
+  n.lvOff = old.lvOff; n.kc = old.kc; n.kWeek = old.kWeek; n.kLeague = old.kLeague; n.kHad = old.kHad; n.kN = old.kN; n.kWins = old.kWins; n.mgN = old.mgN; n.mgBest = old.mgBest; n.setup = false; n.focus = old.focus; n.home = old.home; n.earn = old.earn; n.heard = old.heard; n.heardN = old.heardN; n.voteN = old.voteN; n.sbN = old.sbN; n.dq = old.dq; n.streak = old.streak; n.streakDay = old.streakDay; n.dqDays = old.dqDays; n.ach = old.ach; n.lives = old.lives; n.liveBest = old.liveBest; n.wishes = old.wishes; n.choices = old.choices; n.liveCd = old.liveCd;
   n.votes = old.votes; n.fails = old.fails; n.luck = old.luck; n.nick = old.nick; n.pid = old.pid; n.bank = (old.bank||0) + old.total; n.lastSent = old.lastSent; n.hearts = old.hearts; n.fixes = old.fixes; n.started = old.started; n.sbNext = old.sbNext; n.sbLeft = old.sbLeft;
   n.coins = 20; n.total = 20;
   if(old.perks.p1) n.antenna = 1;
@@ -1797,7 +1799,7 @@ function wishTick(dt){
 }
 
 /* ---------- Live-lähetys (Flappy-tyylinen rytmipeli) ---------- */
-var LV = {on:false, t0:0, N:24, gap:0.95, lead:1.2, beats:[], state:[], rings:[], pts:0, combo:0, maxCombo:0, perfect:0, raf:0};
+var LV = {on:false, t0:0, N:24, gap:0.95, lead:0.95, beats:[], state:[], rings:[], pts:0, combo:0, maxCombo:0, perfect:0, raf:0};
 function liveReady(){ return S.liveCd <= 0; }
 var LB = {ctx:null, el:null, src:null, an:null, buf:null, prev:0};
 function sameOrigin(u){ try{ return new URL(u, location.href).origin === location.origin; }catch(e){ return false; } }
@@ -1881,8 +1883,9 @@ function liveOpen(){
   LV.hits = 0; $('lvStage').style.visibility = ''; flSetup();
   LV.raf = requestAnimationFrame(liveLoop);
 }
+function lvLat(){ var c = LB.ctx, l = c ? ((c.outputLatency || 0) + (c.baseLatency || 0)) : 0; if(l < 0.06) l = 0.09; return l + (S.lvOff || 0)/1000; }
 function lvBuildBeats(tNow, r){
-  var P = r ? r.P : LV.gap, first = r ? r.phase : 0, k = Math.ceil((tNow + 1.6 - first)/P);
+  var P = r ? r.P : LV.gap, first = (r ? r.phase : 0) + (r ? lvLat() : 0), k = Math.ceil((tNow + 1.6 - first)/P);
   var stp = P < 0.8 ? 2 : 1; k = Math.ceil((tNow + 2.2 - first)/P); LV.beats = []; for(var i=0;i<LV.N;i++) LV.beats.push(first + (k+i*stp)*P);
   LV.bpm = r ? Math.round(r.bpm) : 0;
 }
@@ -1890,21 +1893,26 @@ function judge(txt, col){ var j = $('lvJudge'); j.textContent = txt; j.style.col
 var FL = {W:0, H:0, bx:0, by:0, vy:0, gw:54, br:15, gapH:0, gaps:[], pipes:[], last:0, inv:0};
 function liveTap(){
   if(!LV.on || !FL.H) return;
-  FL.vy = -0.68 * FL.H;
+  FL.vy = -0.62 * FL.H;
   var bd = $('lvBird'); bd.classList.add('flap'); setTimeout(function(){ bd.classList.remove('flap'); }, 120);
 }
-function flHearts(){ var h = ''; for(var i=0;i<3;i++) h += i < FL.lives ? '♥' : '♡'; $('lvLives').textContent = h; }
+function flHearts(){ var h = ''; for(var i=0;i<2;i++) h += i < FL.lives ? '♥' : '♡'; $('lvLives').textContent = h; }
 function flSetup(){
   var st = $('lvStage'); FL.W = st.clientWidth || 360; FL.H = st.clientHeight || 420;
   FL.bx = FL.W * 0.28; FL.by = FL.H * 0.5; FL.vy = 0; FL.gapH = FL.H * 0.34; FL.inv = 0; FL.last = 0;
   FL.v = (FL.W + FL.gw - FL.bx) / LV.lead;
-  FL.gaps = []; FL.gh = []; FL.lives = 3; var c = 0.5, sd = (Date.now() % 997) + 1;
-  for(var i=0;i<LV.N;i++){ sd = (sd*9301 + 49297) % 233280; var r = sd/233280; c = Math.max(0.25, Math.min(0.75, c + (r-0.5)*(0.40 + 0.20*i/(LV.N-1)))); FL.gaps.push(c); FL.gh.push(FL.H * (0.34 - 0.10*i/(LV.N-1))); }
+  FL.gaps = []; FL.gh = []; FL.amp = []; FL.per = []; FL.lives = 2; var c = 0.5, sd = (Date.now() % 997) + 1;
+  for(var i=0;i<LV.N;i++){ sd = (sd*9301 + 49297) % 233280; var r = sd/233280; c = Math.max(0.25, Math.min(0.75, c + (r-0.5)*(0.40 + 0.20*i/(LV.N-1)))); FL.gaps.push(c); FL.gh.push(FL.H * (0.30 - 0.12*i/(LV.N-1))); FL.amp.push(i < 6 ? 0 : 0.04 + 0.07*(i-6)/(LV.N-7)); FL.per.push(1.3 - 0.4*i/(LV.N-1)); }
   var old = st.querySelectorAll('.lvpipe'); for(var o=0;o<old.length;o++) old[o].remove();
   FL.pipes = []; LV.dead = false; flHearts();
 }
+function flGc(i, t){
+  var gc = FL.gaps[i]*FL.H;
+  if(FL.amp[i] > 0) gc += FL.amp[i]*FL.H*Math.sin(6.283*(t - LV.beats[i])/FL.per[i]);
+  return Math.max(FL.gh[i]/2 + 3, Math.min(FL.H - FL.gh[i]/2 - 3, gc));
+}
 function flPipe(i){
-  var st = $('lvStage'), top = FL.gaps[i]*FL.H - FL.gh[i]/2, bot = FL.gaps[i]*FL.H + FL.gh[i]/2;
+  var st = $('lvStage'), gc0 = flGc(i, LV.beats[i] - LV.lead), top = gc0 - FL.gh[i]/2, bot = gc0 + FL.gh[i]/2;
   var a = document.createElement('div'), b = document.createElement('div');
   a.className = b.className = 'lvpipe'; a.style.top = '0'; a.style.height = top + 'px'; b.style.top = bot + 'px'; b.style.height = (FL.H - bot) + 'px';
   a.style.width = b.style.width = FL.gw + 'px'; st.appendChild(a); st.appendChild(b); FL.pipes[i] = [a, b];
@@ -1920,7 +1928,7 @@ function liveLoop(now){
     }
   }
   // lintu
-  FL.vy += 2.3 * FL.H * dt; FL.by += FL.vy * dt;
+  FL.vy += 2.7 * FL.H * dt; FL.by += FL.vy * dt;
   if(FL.by > FL.H - FL.br){ FL.by = FL.H - FL.br; FL.vy = -0.35 * FL.H; }
   if(FL.by < FL.br){ FL.by = FL.br; if(FL.vy < 0) FL.vy = 0; }
   if(FL.inv > 0) FL.inv -= dt;
@@ -1938,14 +1946,15 @@ function liveLoop(now){
       var gx = FL.bx + (bt - t) * FL.v;                           // putken keskikohta
       var x = gx - FL.gw/2;
       p[0].style.transform = p[1].style.transform = 'translateX(' + x.toFixed(1) + 'px)';
+      var gcur = flGc(i, t), top = gcur - FL.gh[i]/2, bot = gcur + FL.gh[i]/2;
+      if(FL.amp[i] > 0 && st0 === 0){ p[0].style.height = top.toFixed(1) + 'px'; p[1].style.top = bot.toFixed(1) + 'px'; p[1].style.height = (FL.H - bot).toFixed(1) + 'px'; }
       if(st0 === 0){
-        var top = FL.gaps[i]*FL.H - FL.gh[i]/2, bot = FL.gaps[i]*FL.H + FL.gh[i]/2;
         if(Math.abs(gx - FL.bx) < FL.gw/2 + FL.br*0.8 && (FL.by - FL.br*0.8 < top || FL.by + FL.br*0.8 > bot)){
           LV.state[i] = 2; LV.combo = 0; LV.hits = (LV.hits||0) + 1; FL.inv = 0.8; FL.vy = Math.abs(FL.vy) * 0.3;
           p[0].classList.add('bad'); p[1].classList.add('bad'); judge('OSUMA', '#ff6b6b'); $('lvCombo').textContent = ''; FL.lives--; flHearts(); if(FL.lives <= 0){ LV.dead = true; }
         } else if(gx + FL.gw/2 + FL.br < FL.bx){
           LV.state[i] = 1;
-          var off = Math.abs(FL.by - FL.gaps[i]*FL.H) / (FL.gh[i]/2), pts, txt, col;
+          var off = Math.abs(FL.by - gcur) / (FL.gh[i]/2), pts, txt, col;
           if(off < 0.4){ pts = 3; txt = 'TÄYDELLINEN'; col = '#3ddc97'; LV.perfect++; }
           else if(off < 0.7){ pts = 2; txt = 'HYVÄ'; col = '#4da3ff'; }
           else { pts = 1; txt = 'OK'; col = '#ffb84d'; }
@@ -1977,6 +1986,10 @@ function liveEnd(){
   render(true); save();
 }
 $('liveBtn').addEventListener('click', liveOpen);
+function lvOffShow(){ $('lvOffV').textContent = (S.lvOff || 0); }
+$('lvOffM').addEventListener('click', function(){ S.lvOff = Math.max(-300, (S.lvOff || 0) - 25); lvOffShow(); save(); });
+$('lvOffP').addEventListener('click', function(){ S.lvOff = Math.min(600, (S.lvOff || 0) + 25); lvOffShow(); save(); });
+lvOffShow();
 $('lvTap').addEventListener('pointerdown', function(e){ e.preventDefault(); liveTap(); });
 $('lvStage').addEventListener('pointerdown', function(e){ e.preventDefault(); liveTap(); });
 document.addEventListener('keydown', function(e){ if(LV.on && (e.code === 'Space' || e.key === ' ')){ e.preventDefault(); liveTap(); } });
