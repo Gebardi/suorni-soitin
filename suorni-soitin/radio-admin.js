@@ -926,6 +926,18 @@
 			});
 		})();
 
+		/* Jukeboksin soittotilasto */
+		var jbw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
+		(function () {
+			var J = D.jb || { top: [], days: [], tot: 0 };
+			var h = '<h3 style="margin:0 0 6px">🎵 Jukeboksi</h3><p style="font-size:13px;opacity:.8;margin:0 0 6px">Kuulijat valitsevat kappaleita itse etusivun jukeboksista. Soittoja yhteensä: <b>' + J.tot + '</b>. Radiosta piilotetut kappaleet eivät näy jukeboksissa.</p>';
+			if (!J.top.length) { h += '<p style="font-size:13px;opacity:.7">Ei vielä soittoja.</p>'; }
+			else {
+				h += '<table style="width:100%;font-size:14px;border-collapse:collapse"><tr style="text-align:left"><th>Suosituimmat kappaleet</th><th>Soitot</th></tr>' + J.top.map(function (x) { return '<tr style="border-top:1px solid #2a303b"><td>' + esc(x.n) + '</td><td>' + x.p + '</td></tr>'; }).join('') + '</table>';
+				h += '<p style="margin:10px 0 2px"><b>Päivittäin</b></p>' + J.days.map(function (d) { return '<div style="font-size:13px;padding:3px 0;border-top:1px solid #2a303b">' + esc(d.d) + ': ' + d.p + '</div>'; }).join('');
+			}
+			jbw.innerHTML = h;
+		})();
 		/* Taajuus-peli: nimimerkkien moderointi ja kappaleiden peukutus */
 		var pgw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
 		function drawPeli() {
@@ -1293,7 +1305,7 @@
 		}
 		hsDraw();
 
-		var bucket = { tanaan: [tnw], yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, tgw, bw, tw], kanavat: [chw, clw], tarve: [nw], levy: [dkw], ihmiset: [hsw], mainokset: [adw], peli: [pgw], sivusto: [sow, bkw] };
+		var bucket = { tanaan: [tnw], yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw, jbw], juontaja: [hC, ow, aw, fw], yhteiso: [hD, scw], lista: [upw, tgw, bw, tw], kanavat: [chw, clw], tarve: [nw], levy: [dkw], ihmiset: [hsw], mainokset: [adw], peli: [pgw], sivusto: [sow, bkw] };
 		var used = [];
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });

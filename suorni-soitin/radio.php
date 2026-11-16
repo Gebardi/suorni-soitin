@@ -21,6 +21,7 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-teosto.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-disk.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-hosts.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-peli.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-jukebox.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-peli-kisa.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-backup.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-icons.php';
@@ -1387,7 +1388,7 @@ function suorni_radio_admin_get() {
 		'tts'    => suorni_tts_public(),
 		'subs'   => suorni_comm_admin_list(),
 		'mon'    => suorni_mon_admin(),
-		'health' => suorni_health_get(), 'watch' => suorni_watch_data(), 'maxup' => (int) wp_max_upload_size(), 'reqs' => suorni_req_admin_list(), 'reqcfg' => suorni_reqcfg(), 'peli' => suorni_peli_admin(),
+		'health' => suorni_health_get(), 'watch' => suorni_watch_data(), 'maxup' => (int) wp_max_upload_size(), 'reqs' => suorni_req_admin_list(), 'reqcfg' => suorni_reqcfg(), 'peli' => suorni_peli_admin(), 'jb' => suorni_jb_admin(),
 		'sunoleft' => function_exists( 'suorni_suno_left' ) ? suorni_suno_left() : 0,
 		'urls'   => array( 'peliact' => suorni_ep( 'radio/peliact' ), 'disk' => suorni_ep( 'radio/disk' ), 'diskcfg' => suorni_ep( 'radio/diskcfg' ), 'diskact' => suorni_ep( 'radio/diskact' ), 'hostact' => suorni_ep( 'radio/hostact' ), 'hostclipdel' => suorni_ep( 'radio/hostclipdel' ), 'speak' => suorni_ep( 'radio/speak' ), 'bkexport' => suorni_ep( 'radio/export' ), 'bkmake' => suorni_ep( 'radio/bkmake' ), 'bkimport' => suorni_ep( 'radio/import' ), 'bkrestore' => suorni_ep( 'radio/bkrestore' ), 'bkdel' => suorni_ep( 'radio/bkdel' ), 'social' => suorni_ep( 'radio/social' ), 'tags' => suorni_ep( 'radio/tags' ), 'tagdel' => suorni_ep( 'radio/tagdel' ), 'push' => suorni_ep( 'radio/push' ), 'channels' => suorni_ep( 'radio/channels' ), 'classify' => suorni_ep( 'radio/classify' ), 'scripts' => suorni_ep( 'radio/scripts' ), 'scriptprev' => suorni_ep( 'radio/scriptprev' ), 'scriptnow' => suorni_ep( 'radio/scriptnow' ), 'ads' => suorni_ep( 'ads' ), 'adgen' => suorni_ep( 'radio/adgen' ), 'unhide' => suorni_ep( 'radio/unhide' ), 'coverup' => suorni_ep( 'radio/coverup' ), 'chatreply' => suorni_ep( 'radio/chatreply' ), 'watch' => suorni_ep( 'radio/watch' ), 'watchmail' => suorni_ep( 'radio/watchmail' ), 'upload' => suorni_ep( 'radio/upload' ), 'health' => suorni_ep( 'radio/health' ), 'reqact' => suorni_ep( 'radio/reqact' ), 'reqcfg' => suorni_ep( 'radio/reqcfg' ), 'sunocache' => suorni_ep( 'radio/sunocache' ), 'queue' => suorni_ep( 'radio/queue' ), 'queuecut' => suorni_ep( 'radio/queuecut' ), 'commact' => suorni_ep( 'radio/commact' ), 'trackprogs' => suorni_ep( 'radio/trackprogs' ), 'trackboost' => suorni_ep( 'radio/trackboost' ), 'monrenew' => suorni_ep( 'radio/monrenew' ), 'suggest' => suorni_ep( 'radio/suggest' ), 'suggact' => suorni_ep( 'radio/suggact' ), 'trackstyle' => suorni_ep( 'radio/trackstyle' ) ),
 	) );
@@ -1668,6 +1669,7 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 	<div class="rv"><span>VOL</span><input type="range" min="0" max="100" value="100" data-vol aria-label="Äänenvoimakkuus"></div>
 	<?php if ( ! $shop ) : ?><div class="rsh"><button type="button" class="rg" data-share aria-label="Jaa tämä kappale"><?php echo suorni_ic( 'link' ); ?> Jaa tämä kappale</button><span data-sharem aria-live="polite"></span></div><?php endif; ?>
 	<div class="rc" data-cap></div>
+	<?php if ( ! $shop && function_exists( 'suorni_jb_html' ) ) { echo suorni_jb_html(); } ?>
 	<?php if ( ! $shop && function_exists( 'suorni_peli_url' ) ) { echo suorni_peli_html(); } ?>
 	<?php if ( $cfg['comm'] ) : ?>
 	<div class="ri" data-cq hidden><b><?php echo suorni_ic( 'sparkle' ); ?> Tulossa uusilta artisteilta</b><div data-cqlist></div></div>

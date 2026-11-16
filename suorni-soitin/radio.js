@@ -639,6 +639,7 @@
 	}
 	function setUi(on) {
 		playing = on;
+		if (on) { try { document.dispatchEvent(new CustomEvent('suorni-radio-on')); } catch (e) {} }
 		root.classList.toggle('rplay', on);
 		elPlay.innerHTML = ic(on ? 'pause' : 'play');
 		elPlay.setAttribute('aria-label', on ? 'Pysäytä' : 'Kuuntele');
@@ -646,6 +647,7 @@
 		if (!on) { elCap.textContent = ''; }
 		barShow();
 	}
+	document.addEventListener('suorni-jb-on', function () { if (playing) { elPlay.click(); } });
 	elPlay.addEventListener('click', function () {
 		if (shopUrl && !playing && shopOpen === false) { return; }
 		if (playing) { au.pause(); try { rg.pause(); } catch (e) {} rgKey = ''; tailEnd = 0; setUi(false); curKey = ''; if (shopUrl && !autoStop) { userStop = true; } return; }
