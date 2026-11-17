@@ -317,9 +317,12 @@ details.fl li b{color:var(--tx);font-weight:500}
 
     <section id="t-saav" class="tab">
       <div class="card"><h2>Radio-uran tehtävät</h2><div id="qLog"></div></div>
+      <div class="card"><h2>Juontajatarinat</h2><div id="hsBox"></div></div>
+      <div class="card"><h2>Haasteradiot</h2><div id="chBox"></div></div>
       <div class="card"><h2>Päivän tehtävät</h2><div id="dqBox"></div></div>
       <div class="card"><h2 id="colH">Kokoelma</h2><div id="colBox"></div></div>
       <div class="card"><h2>Top 10 -radiot</h2><div id="lbBox"></div></div>
+      <div class="card"><h2>Yhteinen viikkotavoite</h2><div id="cmBox"></div></div>
       <div class="card"><h2>Viikkokisa</h2><div id="kisaBox"></div></div>
       <div class="card"><h2 id="mapH">Kuuluvuuskartta</h2><div id="mapBox"></div></div>
       <div class="card"><h2 id="achH">Saavutukset</h2><div id="achList"></div></div>
@@ -376,6 +379,7 @@ details.fl li b{color:var(--tx);font-weight:500}
   <input id="suName" maxlength="16" placeholder="Esim. Radio Pohjanmaa" autocomplete="off">
   <div class="sub">Linja</div><div class="chips" id="suFocus"></div><p class="hint" id="suFocusTx"></p>
   <div class="sub">Kotikaupunki (lähellä olevat kaupungit halpenevat)</div><div class="chips" id="suHome"></div><p class="hint" id="suHomeTx"></p>
+  <div id="suChW" style="display:none"><div class="sub">Haaste (valinnainen)</div><div class="chips" id="suCh"></div><p class="hint" id="suChTx"></p></div>
   <p class="hint" id="suTip"></p>
   <p class="hint" id="suMsg" style="color:var(--warn)"></p>
   <button class="btn" id="suGo" style="width:100%;border:0">Perusta radio</button>
@@ -532,7 +536,7 @@ function fresh(){
     tp:0, tpFree:0, perks:{}, runs:0, sbLeft:0, sbNext:0,
     buffs:[], cities:{}, nick:'', pid:'', bank:0, lastSent:-1, votes:{}, fails:0, luck:0, ach:{}, liveCd:0, lives:0, liveBest:0, wishes:0, choices:0, choice:null,
     ls:0, total:20, hearts:0, songsBought:0,
-    setup:false, focus:'all', home:'', mgCd:{}, mgN:0, mgBest:{}, qi:0, qBase:0, qLeft:-1, qOk:false, qFail:false, qDone:0, lvOff:0, kc:{}, kWeek:'', kLeague:-1, kHad:false, kN:0, kWins:[],
+    setup:false, focus:'all', home:'', mgCd:{}, mgN:0, mgBest:{}, qi:0, qBase:0, qLeft:-1, qOk:false, qFail:false, qDone:0, lvOff:0, kc:{}, kWeek:'', kLeague:-1, kHad:false, kN:0, kWins:[], cmW:'', cmC:0, cmP:0, ch:'', chT:0, chFail:false, chDone:{}, chBest:{}, alb:{}, hs:{},
     earn:0, heard:{}, heardN:0, voteN:0, sbN:0, dq:null, streak:0, streakDay:'', dqDays:0,
     last:Date.now(), started:Date.now()
   };
@@ -557,7 +561,7 @@ function save(){
 
 /* ---------- Laskenta ---------- */
 function fameLevel(){ return Math.floor(Math.sqrt(S.ls/200)); }
-function coinMult(){ return (1 + 0.3*S.studio) * (1 + 0.01*fameLevel()) * (1 + 0.05*S.tp); }
+function coinMult(){ return (1 + 0.3*S.studio) * (1 + 0.01*fameLevel()) * (1 + 0.05*S.tp) * (1 + 0.04*chCount()) * (1 + 0.01*albCount()) * (1 + 0.02*hsDone()); }
 function partner(){ return S.antenna >= 3; }
 function buffLis(){ var m = 1; for(var i=0;i<S.buffs.length;i++) m *= S.buffs[i].lis || 1; return m; }
 function buffCoin(){ var m = 1; for(var i=0;i<S.buffs.length;i++) m *= S.buffs[i].coin || 1; return m; }
@@ -608,6 +612,7 @@ function targetFor(idx, fatArr){
        * hostMult(idx) * focusMult(g) * homeMult(g) * fullMatch(idx, g) * AD_PEN[S.ads[idx]||0] * evMult(g) * (partner() ? 1.1 : 1) * sbMult() * buffLis() * cityMult(g);
 }
 function step(dt){
+  if(S.ch && S.setup){ S.chT += dt; chCheck(); }
   var idx = slotIdx(S.clock);
   var g = S.slots[idx];
   // kyllästyminen
@@ -673,6 +678,7 @@ function buySong(g){
   render(true);
 }
 function unlockGenre(g){
+  if(S.ch === 'mono' && g !== S.focus){ toast('Haaste: Yksi linja sallii vain oman tyylisi.'); return; }
   var c = GENRES[g].cost;
   if(S.coins < c || S.unlocked[g]) return;
   var st2 = Math.min(2, realCap(g)); S.coins -= c; S.unlocked[g] = true; S.owned[g] = st2; S.songsBought += st2;
@@ -696,6 +702,7 @@ function buyStudio(){
 function hostTrainCost(h){ return Math.round(300 * Math.pow(2.6, S.hostLv[h]||0)); }
 function hireHost(h){
   var H = HOSTS[h]; if(!H || S.hired[h] || S.coins < H.cost) return;
+  if(S.ch === 'solo'){ toast('Haaste: Ei juontajia.'); return; }
   S.coins -= H.cost; S.hired[h] = true; if(!S.hostLv[h]) S.hostLv[h] = 0;
   if(S.hostIn[H.slot] === null) S.hostIn[H.slot] = h;
   toast(H.n + ' palkattu!'); render(true);
@@ -738,7 +745,7 @@ function prestige(){
   if(S.antenna < 5 || gain < 1) return;
   var old = S, n = fresh();
   n.tp = old.tp + gain; n.tpFree = old.tpFree + gain; n.perks = old.perks; n.runs = (old.runs||0) + 1;
-  n.qi = old.qi; n.qDone = old.qDone; n.lvOff = old.lvOff; n.kc = old.kc; n.kWeek = old.kWeek; n.kLeague = old.kLeague; n.kHad = old.kHad; n.kN = old.kN; n.kWins = old.kWins; n.mgN = old.mgN; n.mgBest = old.mgBest; n.setup = false; n.focus = old.focus; n.home = old.home; n.earn = old.earn; n.heard = old.heard; n.heardN = old.heardN; n.voteN = old.voteN; n.sbN = old.sbN; n.dq = old.dq; n.streak = old.streak; n.streakDay = old.streakDay; n.dqDays = old.dqDays; n.ach = old.ach; n.lives = old.lives; n.liveBest = old.liveBest; n.wishes = old.wishes; n.choices = old.choices; n.liveCd = old.liveCd;
+  n.qi = old.qi; n.qDone = old.qDone; n.lvOff = old.lvOff; n.kc = old.kc; n.kWeek = old.kWeek; n.kLeague = old.kLeague; n.kHad = old.kHad; n.kN = old.kN; n.kWins = old.kWins; n.cmW = old.cmW; n.cmC = old.cmC; n.cmP = old.cmP; n.chDone = old.chDone; n.chBest = old.chBest; n.alb = old.alb; n.hs = old.hs; n.mgN = old.mgN; n.mgBest = old.mgBest; n.setup = false; n.focus = old.focus; n.home = old.home; n.earn = old.earn; n.heard = old.heard; n.heardN = old.heardN; n.voteN = old.voteN; n.sbN = old.sbN; n.dq = old.dq; n.streak = old.streak; n.streakDay = old.streakDay; n.dqDays = old.dqDays; n.ach = old.ach; n.lives = old.lives; n.liveBest = old.liveBest; n.wishes = old.wishes; n.choices = old.choices; n.liveCd = old.liveCd;
   n.votes = old.votes; n.fails = old.fails; n.luck = old.luck; n.nick = old.nick; n.pid = old.pid; n.bank = (old.bank||0) + old.total; n.lastSent = old.lastSent; n.hearts = old.hearts; n.fixes = old.fixes; n.started = old.started; n.sbNext = old.sbNext; n.sbLeft = old.sbLeft;
   n.coins = 20; n.total = 20;
   if(old.perks.p1) n.antenna = 1;
@@ -758,6 +765,7 @@ function prestige(){
 }
 function setSlot(i, g){
   if(!S.unlocked[g]) return;
+  if(S.ch === 'mono' && g !== S.focus){ toast('Haaste: Yksi linja sallii vain oman tyylisi.'); return; }
   if(i === slotIdx(S.clock) && S.slots[i] && S.slots[i] !== g){ toast('Kappale on kesken. Vaihda seuraavan ohjelman tyyli.'); return; }
   S.slots[i] = g; render(true);
 }
@@ -1214,6 +1222,7 @@ function cityBy(id){ for(var i=0;i<CITIES.length;i++) if(CITIES[i].id===id) retu
 function buyCity(id){
   var c = cityBy(id);
   if(!c || S.cities[id] || S.antenna < c.ant || S.coins < cityCost(c)) return;
+  if(S.ch === 'rural' && c.t >= 2){ toast('Haaste: Maaseuturadio kuuluu vain kyliin ja kuntiin.'); return; }
   S.coins -= cityCost(c); S.cities[id] = true; lastSig = ''; cityPulse = id; setTimeout(function(){ cityPulse = null; lastSig = ''; }, 1500);
   toast(c.n + ' kuuluu nyt! Kuuntelijat +' + Math.round(TIER_B[c.t]*100) + ' %' + (tierDone(c.t) ? ' · ' + TIER_PL[c.t] + ' valmiina, ×1,1!' : ''));
   render(true);
@@ -1325,7 +1334,7 @@ function saveNick(){
 
 
 /* ---------- Radion perustaminen ---------- */
-var SU = {focus:'all', home:'', built:false};
+var SU = {focus:'all', home:'', built:false, ch:''};
 var FOCUS_TX = {
   all:'Tasainen kasvu kaikilla tyyleillä. Ei erikoisbonusta.',
   iskelma:'Iskelmä ×1,6, muut tyylit ×0,85. Kyllästyminen hitaampaa.',
@@ -1350,6 +1359,10 @@ function suDraw(){
     tx = c.n + ': kyläyleisö pitää tyylistä ' + GENRES[c.g].n + (SU.focus === c.g ? ' (sopii linjaasi, ×1,2)' : '') + '. Kylästä laajennat kuntiin, kaupunkeihin ja suurkaupunkeihin. Lähellä ' + near + ' paikkaa (−30 %), keskimatkalla ' + mid + ' (−15 %).';
   } else tx = 'Valitse kotikylä, josta radiosi aloittaa. Etelässä lähipaikkoja on paljon, pohjoisessa vähemmän.';
   $('suHomeTx').textContent = tx;
+  $('suChW').style.display = S.runs > 0 ? '' : 'none';
+  var ch = '<button class="chip'+(SU.ch===''?' sel':'')+'" data-suc="">Ei haastetta</button>';
+  CH_ORDER.forEach(function(k){ ch += '<button class="chip'+(SU.ch===k?' sel':'')+(S.chDone[k]?' ok':'')+'" data-suc="'+k+'">'+CHS[k].ic+' '+CHS[k].n+(S.chDone[k]?' ✓':'')+'</button>'; });
+  $('suCh').innerHTML = ch; $('suChTx').textContent = SU.ch ? CHS[SU.ch].x + (SU.ch === 'mono' && SU.focus === 'all' ? ' Valitse ensin jokin muu linja kuin Yleisradio.' : '') : 'Vapaaehtoinen erityissääntö tälle kierrokselle.';
   var hs = []; HORDER.forEach(function(k){ if(HOSTS[k].g === SU.focus) hs.push(HOSTS[k].n + ' (' + HOSTS[k].role + ')'); });
   $('suTip').textContent = SU.focus === 'all' ? 'Vinkki: yleisradiossa jokaiselle ohjelmapaikalle kannattaa palkata sen tyyliin sopiva juontaja.' : 'Vinkki: palkkaa juontaja, jonka tyyli on ' + GENRES[SU.focus].n.toLowerCase() + ': ' + hs.join(', ') + '. Kotikaupunki + linja + juontaja = täsmäosuma.';
 }
@@ -1361,19 +1374,24 @@ function suGo(){
   var v = $('suName').value.replace(/\s+/g,' ').trim();
   if(!nickOk(v)){ $('suMsg').textContent = 'Radion nimessä 2–16 kirjainta, numeroa, väliä tai merkkejä _ . -'; return; }
   if(!SU.home){ $('suMsg').textContent = 'Valitse kotikaupunki.'; return; }
+  if(S.runs > 0 && SU.ch === 'mono' && SU.focus === 'all'){ $('suMsg').textContent = 'Yksi linja -haaste vaatii muun linjan kuin Yleisradion.'; return; }
   var changed = v !== S.nick;
   S.nick = v; ensurePid(); if(changed) S.lastSent = -1;
   S.focus = SU.focus; S.home = SU.home; S.setup = true; S.cities[SU.home] = true;
+  S.ch = S.runs > 0 ? SU.ch : ''; S.chT = 0; S.chFail = false;
+  if(S.ch === 'solo'){ S.hired = {}; S.hostIn = [null,null,null,null]; }
+  if(S.ch === 'mono'){ S.slots = [SU.focus,SU.focus,SU.focus,SU.focus]; S.unlocked[SU.focus] = true; S.owned[SU.focus] = Math.max(S.owned[SU.focus]||0, 3); }
   if(S.total < 300 && SU.focus !== 'all'){
     var k = SU.focus;
     if(!S.perks.p3){ S.unlocked = {}; S.owned = {}; }
     S.unlocked[k] = true; S.owned[k] = Math.max(S.owned[k]||0, 3);
     S.slots = [k,k,k,k];
   }
-  $('suMsg').textContent = ''; lastSig = ''; save(); lbSend(true); setTimeout(lbFetch, 1200); drawLb(); render(true);
+  $('suMsg').textContent = ''; SU.ch = ''; lastSig = ''; drawCh(); save(); lbSend(true); setTimeout(lbFetch, 1200); drawLb(); render(true);
   toast('Radio ' + v + ' perustettu!', 2800);
 }
 $('suFocus').addEventListener('click', function(e){ var b = e.target.closest('[data-suf]'); if(b){ SU.focus = b.dataset.suf; suDraw(); } });
+$('suCh').addEventListener('click', function(e){ var b = e.target.closest('[data-suc]'); if(b){ SU.ch = b.dataset.suc; suDraw(); } });
 $('suHome').addEventListener('click', function(e){ var b = e.target.closest('[data-suh]'); if(b){ SU.home = b.dataset.suh; suDraw(); } });
 $('suGo').addEventListener('click', suGo);
 
@@ -1429,7 +1447,7 @@ function mgQuit(){ if(!MG.on) return; MG.on = false; mgStop(); $('mg').classList
 function mgFinish(r, extra){
   MG.on = false; mgStop();
   var gain = Math.round(Math.max(30, incomePerSec()*60) * (0.3 + r));
-  S.coins += gain; S.total += gain; S.mgCd[MG.kind] = 180; S.mgN++; if(r > (S.mgBest[MG.kind]||0)) S.mgBest[MG.kind] = r;
+  S.coins += gain; S.total += gain; S.mgCd[MG.kind] = 180; S.mgN++; cmAdd(Math.round(10 + 20*r)); if(r > (S.mgBest[MG.kind]||0)) S.mgBest[MG.kind] = r;
   var bt = '';
   if(r >= 0.25){ addBuff('Minipeli-bonus', 90, 1 + 0.3*r, 1 + 0.25*r); bt = ' Bonus: kuuntelijat ×' + (1+0.3*r).toFixed(2).replace('.',',') + ' ja tulot ×' + (1+0.25*r).toFixed(2).replace('.',',') + ' 90 sekunnin ajan.'; }
   $('mgBody').style.display = 'none'; $('mgQuit').style.display = 'none';
@@ -1696,6 +1714,147 @@ function kisaTick(dt){
     if(c && S.kc[id] !== undefined){ var pw = kisaPower(c); api('peli/claim', {body:{pid:S.pid, city:id, power:pw}}, function(d){ if(d && d.ok && d.cities) S.kc[id] = pw; }); }
   }
 }
+
+
+
+/* ---------- Levyt ja juontajatarinat ---------- */
+var ALB_N = 5;
+function albGroups(g){
+  var tot = REAL_OK ? REAL[g].length : 0, out = [];
+  for(var a = 0; a < tot; a += ALB_N){ var e = Math.min(tot, a + ALB_N); if(e - a >= 3) out.push([a, e]); }
+  return out;
+}
+function albHeard(g, grp){ var n = 0; for(var i = grp[0]; i < grp[1]; i++){ var sg = songAt(g, i); if(sg && sg.id && S.heard[sg.id]) n++; } return n; }
+function albCount(){ var n = 0; for(var k in S.alb) if(S.alb[k]) n++; return Math.min(20, n); }
+function albCheck(){
+  if(!REAL_OK) return;
+  GORDER.forEach(function(g){ albGroups(g).forEach(function(grp, k){
+    var key = g + k;
+    if(!S.alb[key] && albHeard(g, grp) >= grp[1] - grp[0]){
+      S.alb[key] = true; var c = Math.round(Math.max(300, incomePerSec() * 300)); S.coins += c; S.total += c;
+      toast('Levy kuunneltu: ' + GENRES[g].n + ' ' + (k + 1) + '! +' + fmt(c) + ' $ ja tulot +1 % pysyvästi', 4500); fx('big');
+    }
+  }); });
+}
+var HSTORY = {
+  aino:['Aino nousi ennen aamukukon laulua jo lapsena ja kuunteli navetan radiota. Siitä asti aamu on ollut hänen oma hetkensä.','Aino kertoo, että ensimmäinen työpaikka oli leipomo. Sieltä jäi tapa laulaa taikinan ääressä, ja nyt hän laulaa myös lähetyksessä.','Aino saa kirjeen kuuntelijalta, joka sanoo heräävänsä joka päivä hänen ääneensä. Aino säästää kirjeen studion seinälle.'],
+  pirkko:['Pirkko esiintyi nuorena tanssilavoilla kylästä kylään. Autossa soi vain iskelmää.','Pirkko muistaa illan, jolloin sähköt katkesivat kesken kappaleen ja yleisö lauloi loppuun. Siitä hän tiesi, mitä iskelmä on.','Pirkko saa pyynnön laulaa hääparille. Hän sanoo kyllä, ja radio lähettää kappaleen suorana.'],
+  sanni:['Sanni aloitti postinkantajana. Hän tuntee jokaisen kylän tien ja kuuntelijoiden nimet.','Sanni kuulee, että lounastauolla radiota kuunnellaan koko tehtaan voimin. Hän alkaa lukea terveisiä ääneen.','Sanni saa lahjaksi pienen kyltin: "Päivän ääni". Se on nyt studion ovessa.'],
+  roope:['Roope teki ensimmäisen mixtapensa kasetille jo ala-asteella. Kasetti on yhä tallessa.','Roope kokeilee uutta vaihtoa: kappale vaihtuu kesken sanan. Kuuntelijat joko rakastavat tai vihaavat, mutta kuuntelevat.','Roope pitää keikan kaupungin torilla ja puolet yleisöstä tunnistaa hänen äänensä radiosta.'],
+  eino:['Eino oli ennen linja-autonkuljettaja. Illan ajot opettivat hänelle, mikä musiikki sopii väsyneelle.','Einolle soittaa kuuntelija, joka kertoo nukahtavansa hänen lähetykseensä. Eino ottaa sen kohteliaisuutena.','Eino saa kunniamaininnan Ilta-ajan ääni -kilpailussa. Hän kiittää puheessaan kaikkia valvojia.'],
+  kaisa:['Kaisa soitti nuorena autotallibändissä. Naapurit kärsivät, mutta kappaleet olivat hyviä.','Kaisa sai kitaransa takaisin, jonka hän oli myynyt rahapulassa. Se soi nyt studion nurkassa.','Kaisa vetää radion oman rock-illan, ja soittopyyntöjä tulee yli sata.'],
+  unto:['Unto on työskennellyt yövuorossa vuosikymmeniä. Radio oli aina hänen seuranaan.','Unto huomaa, että yöllä soittaa eniten rekkakuskit. Hän lupaa pitää heille valot päällä.','Unto saa kiitoskortin sairaalan yövuorolta. Se roikkuu nyt mikin vieressä.'],
+  lumi:['Lumi on aina rakastanut hiljaisuutta. Hän ymmärsi, että hyvä musiikki tarvitsee tilaa.','Lumi kokeilee lähetystä, jossa on pitkiä taukoja. Kuuntelijat kertovat, että heidän oma ajattelunsa pääsi ääneen.','Lumi saa kutsun pitämään rentoutushetken kyläkirjastossa. Hän ottaa mukaan radion.'],
+  reijo:['Reijo kasvoi pienessä kylässä, jossa metallia kuunneltiin salaa. Nyt hän soittaa sitä suoraan lähetyksessä.','Reijon kitaralaukku jäi bussiin. Kuuntelijat löysivät sen radion ansiosta ja palauttivat sen studiolle.','Reijo järjestää metalli-illan, ja jonossa seisoo ihmisiä, joiden ei uskoisi pitävän genrestä. Siitä tulee perinne.']
+};
+var HS_LV = [1, 3, 5], HS_K = [120, 300, 600];
+function hsRead(){ var n = 0; for(var k in S.hs) n += S.hs[k] || 0; return n; }
+function hsDone(){ var n = 0; for(var k in S.hs) if((S.hs[k]||0) >= 3) n++; return Math.min(9, n); }
+function hsClaim(h){
+  var c = S.hs[h] || 0; if(c >= 3 || !S.hired[h] || (S.hostLv[h]||0) < HS_LV[c]) return;
+  var g = Math.round(Math.max(150, incomePerSec() * HS_K[c])); S.coins += g; S.total += g; S.hs[h] = c + 1;
+  toast(HOSTS[h].n + ': tarina ' + (c + 1) + '/3 luettu · +' + fmt(g) + ' $' + (c === 2 ? ' ja tulot +2 % pysyvästi' : ''), 4000);
+  drawHs(); render(true); save();
+}
+function drawHs(){
+  var box = $('hsBox'); if(!box) return;
+  var h = '<p class="hint">Palkkaa ja kehitä juontajia, niin heidän tarinansa avautuvat (taso 1, 3 ja 5). Kolmas luku antaa pysyvän +2 % tulobonuksen (nyt +' + (2*hsDone()) + ' %).</p>', any = false;
+  HORDER.forEach(function(k){
+    if(!S.hired[k]) return; any = true;
+    var c = S.hs[k] || 0, lv = S.hostLv[k] || 0, st = HSTORY[k] || [];
+    h += '<div class="row"><div class="i"><b>' + escH(HOSTS[k].n) + ' · ' + escH(HOSTS[k].role) + '</b>';
+    for(var i = 0; i < c; i++) h += '<small>' + (i+1) + '. ' + escH(st[i] || '') + '</small>';
+    if(c < 3) h += '<small>' + (lv >= HS_LV[c] ? 'Uusi tarina valmiina!' : 'Seuraava tarina avautuu juontajan tasolla ' + HS_LV[c] + ' (nyt ' + lv + ').') + '</small>';
+    h += '</div>' + (c < 3 && lv >= HS_LV[c] ? '<button class="buy ok" data-act="hsc" data-arg="' + k + '">Lue</button>' : '<span class="tag">' + c + '/3</span>') + '</div>';
+  });
+  if(!any) h += '<p class="hint">Palkkaa ensimmäinen juontaja, niin tarinat alkavat.</p>';
+  box.innerHTML = h;
+}
+
+/* ---------- Haasteradiot ---------- */
+var CHS = {
+  mono:{n:'Yksi linja', ic:'🎯', x:'Soita vain yhtä tyyliä koko ajan. Muita tyylejä ei voi avata eikä asettaa ohjelmaan.'},
+  solo:{n:'Ei juontajia', ic:'🎙️', x:'Ei juontajia lainkaan. Kaikki kasvu tulee musiikista, kuuluvuudesta ja studiosta.'},
+  rural:{n:'Maaseuturadio', ic:'🌾', x:'Kuulut vain kyliin ja kuntiin, ei kaupunkeja eikä Eurooppaa.'},
+  sprint:{n:'Pikaradio', ic:'⏱️', x:'Pelaa kuuluvuus 5 alle 60 minuutissa pelaamalla (aika kuluu vain kun peli on auki).'}
+};
+var CH_ORDER = ['mono','solo','rural','sprint'], CH_LIM = 3600;
+function chCount(){ var n = 0; for(var k in S.chDone) if(S.chDone[k]) n++; return Math.min(4, n); }
+function chCheck(){
+  if(!S.ch) return;
+  if(S.antenna >= 5){
+    var id = S.ch, t = Math.max(1, Math.round(S.chT));
+    if(!S.chFail || id !== 'sprint'){
+      var first = !S.chDone[id]; S.chDone[id] = true;
+      if(!S.chBest[id] || t < S.chBest[id]) S.chBest[id] = t;
+      toast('Haaste suoritettu: ' + CHS[id].n + '! ' + (first ? 'Pysyvä bonus: tulot +4 %.' : 'Uusi ennätys tai uusinta.'), 5000);
+    }
+    S.ch = ''; S.chFail = false; lastSig = ''; drawCh(); save(); return;
+  }
+  if(S.ch === 'sprint' && !S.chFail && S.chT > CH_LIM){ S.chFail = true; toast('Pikaradio: aika loppui. Pelaa vapaasti eteenpäin.', 4500); drawCh(); }
+}
+function chTime(t){ var m = Math.floor(t/60), s = Math.floor(t%60); return m + ':' + (s < 10 ? '0' : '') + s; }
+function drawCh(){
+  var box = $('chBox'); if(!box) return;
+  if(!(S.runs > 0) && !S.ch && !chCount()){ box.innerHTML = '<p class="hint">Haasteradiot aukeavat, kun teet ensimmäisen Uuden taajuuden. Silloin voit aloittaa radion erityissäännöllä, ja jokainen suoritettu haaste antaa pysyvän +4 % tulobonuksen.</p>'; return; }
+  var h = '<p class="hint">Valitse haaste, kun perustat radion Uuden taajuuden jälkeen. Suorita se saavuttamalla kuuluvuus 5. Jokainen eri haaste: pysyvä tulot +4 % (nyt +' + (4*chCount()) + ' %).</p>';
+  CH_ORDER.forEach(function(k){
+    var c = CHS[k], act = S.ch === k, done = S.chDone[k];
+    var st = act ? ('Käynnissä · ' + chTime(S.chT) + (k === 'sprint' ? (S.chFail ? ' · aika ylittyi' : ' / 60:00') : '')) : done ? 'Suoritettu · ennätys ' + chTime(S.chBest[k] || 0) : 'Ei suoritettu';
+    h += '<div class="row"><div class="i"><b>' + c.ic + ' ' + c.n + '</b><small>' + c.x + ' ' + st + '</small></div></div>';
+  });
+  box.innerHTML = h;
+}
+
+/* ---------- Yhteinen viikkotavoite ---------- */
+var CM = {n6:0, d:null, ok:false, busy:false, acc:50, fl:0};
+var CM_STEPS = [{p:.33, k:300}, {p:.66, k:600}, {p:1, k:1500}];
+function cmAdd(n){ S.cmP = Math.min(400, (S.cmP||0) + n); }
+function cmApply(d){
+  CM.d = d; CM.ok = true;
+  if(S.cmW !== d.week){ S.cmW = d.week; S.cmC = 0; }
+  var pr = d.total / Math.max(1, d.goal);
+  if(CM.seen === undefined) CM.seen = d.total;
+  CM_STEPS.forEach(function(st, i){ if(pr >= st.p && CM.seen / d.goal < st.p) toast(i === 2 ? 'Yhteinen viikkotavoite täyttyi! 🎉 Nouda palkinto Tavoitteet-välilehdeltä.' : 'Yhteinen tavoite: ' + Math.round(st.p*100) + ' % saavutettu!', 4000); });
+  CM.seen = d.total; drawCm();
+}
+function cmFetch(cb){
+  if(CM.busy) return; ensurePid(); CM.busy = true;
+  var n = Math.min(40, Math.floor(S.cmP||0)), done = function(d){
+    CM.busy = false;
+    if(!d || d.goal === undefined){ CM.ok = false; drawCm(); return; }
+    if(n > 0 && !d.wait) S.cmP = Math.max(0, S.cmP - n);
+    cmApply(d); if(cb) cb();
+  };
+  if(n >= 5) api('peli/contrib', {body:{pid:S.pid, n:n}}, done);
+  else api('peli/comm', {qs:'pid=' + encodeURIComponent(S.pid)}, done);
+}
+function cmTick(dt){
+  if(document.hidden) return;
+  CM.fl += dt; if(CM.fl >= 6){ CM.fl -= 6; cmAdd(1); if(S.ch) drawCh(); if(CM.n6++ % 5 === 0) drawHs(); }
+  CM.acc += dt; if(CM.acc >= 60){ CM.acc = 0; cmFetch(); }
+}
+function cmClaim(i){
+  if(!CM.ok || !CM.d || S.cmC > i || S.cmC !== i) return;
+  var d = CM.d; if(d.total < CM_STEPS[i].p * d.goal || d.mine < d.min) return;
+  var g = Math.round(Math.max(200, incomePerSec() * CM_STEPS[i].k));
+  S.coins += g; S.total += g; S.cmC = i + 1; toast('Yhteisöpalkinto +' + fmt(g) + ' $', 3000); drawCm(); render(true); save();
+}
+function drawCm(){
+  var box = $('cmBox'); if(!box) return;
+  if(!CM.ok || !CM.d){ box.innerHTML = '<p class="hint">Yhteinen tavoite avautuu, kun peli on suorni.fi:n päivityksessä.</p>'; return; }
+  var d = CM.d, pr = Math.min(1, d.total / d.goal), ok = d.mine >= d.min;
+  var h = '<div class="row"><div class="i"><b>' + fmt(d.total) + ' / ' + fmt(d.goal) + ' pistettä</b><small>Viikko päättyy ' + (function(){ var s = Math.max(0, d.ends - Date.now()/1000), dd = Math.floor(s/86400), hh = Math.floor((s%86400)/3600); return dd > 0 ? dd + ' pv ' + hh + ' h' : hh + ' h'; })() + ' kuluttua · ' + d.contributors + ' kuuntelijaa mukana</small></div></div>';
+  h += '<div class="bar"><i style="width:' + Math.round(pr*100) + '%"></i></div>';
+  h += '<p class="hint">Pisteitä kertyy kun peli on auki ja minipeleistä. Sinun osuutesi: ' + fmt(d.mine) + (ok ? '' : ' (palkintoihin tarvitaan ' + d.min + ')') + '.</p>';
+  CM_STEPS.forEach(function(st, i){
+    var reached = d.total >= st.p * d.goal, claimed = S.cmC > i, can = reached && ok && S.cmC === i;
+    h += '<div class="row"><div class="i"><b>' + Math.round(st.p*100) + ' %</b><small>Palkinto: ' + (st.k/60) + ' min tulot</small></div>' +
+      (claimed ? '<span class="tag">Noudettu</span>' : can ? '<button class="buy ok" data-act="cmc" data-arg="' + i + '">Nouda</button>' : '<span class="tag">' + (reached ? 'Tarvitaan osuutta' : 'Lukittu') + '</span>') + '</div>';
+  });
+  if(d.prev) h += '<p class="hint">Viime viikon tulos: ' + fmt(d.prev) + ' pistettä.</p>';
+  box.innerHTML = h;
+}
 function kisaLeft(){
   if(!K.d) return ''; var s = Math.max(0, K.d.ends - Date.now()/1000), dd = Math.floor(s/86400), hh = Math.floor((s%86400)/3600);
   return dd > 0 ? dd + ' pv ' + hh + ' h' : hh + ' h ' + Math.floor((s%3600)/60) + ' min';
@@ -1829,7 +1988,15 @@ var QUESTS = [
   {id:'q21', n:'Lontoo kutsuu',            s:'Lontoon klubit haluavat soittolistasi. Rakenna kuuluvuus Lontooseen.', v:function(){ return S.cities.lon ? 1 : 0; }, tg:1, u:'', r:{k:1500}},
   {id:'q22', n:'Puolet Euroopasta',        s:'Yli puolet kartasta kuuluu jo. Rakenna kuuluvuus 14 Euroopan kaupunkiin.', v:function(){ return tierOwned(4); }, tg:14, u:'kaupunkia', r:{k:2500}},
   {id:'q23', n:'Satelliittiradio',         s:'Kaukaisimmat kaupungit vaativat avaruuteen. Hanki Satelliittiradio-antenni.', v:function(){ return S.antenna; }, tg:8, u:'', r:{k:3000, buff:true}},
-  {id:'q24', n:'Koko Eurooppa kuuluu',     s:'Luvun 2 huipennus: rakenna kuuluvuus kaikkiin Euroopan kaupunkeihin.', v:function(){ return tierDone(4) ? 1 : 0; }, tg:1, u:'', r:{k:8000, buff:true}}
+  {id:'q24', n:'Koko Eurooppa kuuluu',     s:'Luvun 2 huipennus: rakenna kuuluvuus kaikkiin Euroopan kaupunkeihin.', v:function(){ return tierDone(4) ? 1 : 0; }, tg:1, u:'', r:{k:8000, buff:true}},
+  {id:'q25', n:'Levyhylly',               s:'Luku 3: Äänitteiden aika. Arkistonhoitaja ehdottaa, että radiollesi kootaan oma levyhylly. Kuuntele jokin levy (5 kappaletta samalta tyylilajilta) loppuun asti Kokoelmassa.', v:function(){ return albCount(); }, tg:1, u:'levyä', r:{k:1500}},
+  {id:'q26', n:'Kolme levyä',             s:'Levyhylly alkaa täyttyä. Kuuntele yhteensä kolme levyä alusta loppuun.', v:function(){ return albCount(); }, tg:3, u:'levyä', r:{k:2500}},
+  {id:'q27', n:'Juontajan tarina',        s:'Juontajasi kertovat mielellään, mistä ovat tulleet. Kehitä juontajiasi ja lue yhteensä kolme tarinalukua.', v:function(){ return hsRead(); }, tg:3, u:'lukua', r:{k:3000}},
+  {id:'q28', n:'Studio kuntoon',          s:'Äänitteet vaativat kunnon studion. Paranna studio tasolle 10.', v:function(){ return S.studio; }, tg:10, u:'', r:{k:5000}},
+  {id:'q29', n:'Haastajan hetki',         s:'Radioliiton tarkastaja haluaa nähdä, mihin radiosi pystyy rajoitteilla. Suorita yksi haasteradio.', v:chCount, tg:1, u:'haastetta', r:{k:6000, buff:true}},
+  {id:'q30', n:'Yhteinen asia',           s:'Kuuntelijat haluavat tehdä jotain yhdessä. Nouda ensimmäinen palkinto yhteisestä viikkotavoitteesta.', v:function(){ return S.cmC > 0 ? 1 : 0; }, tg:1, u:'', r:{k:6000}},
+  {id:'q31', n:'Koko henkilökunta',       s:'Studio on täynnä ääniä. Palkkaa vähintään viisi juontajaa.', v:function(){ var n = 0; for(var k in S.hired) if(S.hired[k]) n++; return n; }, tg:5, u:'juontajaa', r:{k:8000}},
+  {id:'q32', n:'Radiolegenda',            s:'Luvun 3 huipennus: kuuntele kahdeksan levyä ja viimeistele kolmen juontajan tarinat.', v:function(){ return Math.min(8, albCount()) + Math.min(3, hsDone()); }, tg:11, u:'pistettä', r:{k:15000, buff:true}}
 ];
 function qCur(){ return QUESTS[S.qi] || null; }
 function qTarget(q){ return q.tgf ? q.tgf(S.qBase) : q.tg; }
@@ -1859,7 +2026,7 @@ function questTick(dt){
 function drawQuest(){
   var a = $('qAsema'), b = $('qLog'); if(!a || !b) return;
   var q = qCur(), h = '';
-  if(!q){ h = '<p class="hint">Luku 2 on valmis! Radiosi kuuluu koko Euroopassa. Luku 3 tulossa.</p>'; $('qCard').style.display = ''; a.innerHTML = h; }
+  if(!q){ h = '<p class="hint">Luku 3 on valmis! Olet radiolegenda. Lisää lukuja tulossa.</p>'; $('qCard').style.display = ''; a.innerHTML = h; }
   else {
     var tg = qTarget(q), cur = q.lim && !(S.qLeft > 0) && !S.qOk ? 0 : Math.max(0, q.lim ? q.v() - S.qBase : q.v()), tgv = q.lim ? tg - S.qBase : tg;
     if(q.lim && S.qLeft > 0) { cur = Math.max(0, q.v() - S.qBase); }
@@ -1873,7 +2040,7 @@ function drawQuest(){
     a.innerHTML = h;
   }
   var l = '<p class="hint">' + Math.min(S.qi, QUESTS.length) + '/' + QUESTS.length + ' tehtävää suoritettu</p><div class="lb">';
-  QUESTS.forEach(function(qq, i){ if(i === 0) l += '<p class="hint" style="margin:4px 0"><b>Luku 1: Kylästä valtakunnan taajuudelle</b></p>'; if(i === 15) l += '<p class="hint" style="margin:10px 0 4px"><b>Luku 2: Euroopan aallot</b></p>'; l += '<div class="lbr' + (i === S.qi ? ' me' : '') + '"><span class="lbn">' + (i < S.qi ? '✓' : (i + 1) + '.') + '</span><span class="lbt" style="' + (i > S.qi ? 'opacity:.45' : '') + '">' + (i <= S.qi ? escH(qq.n) : '???') + '</span></div>'; });
+  QUESTS.forEach(function(qq, i){ if(i === 0) l += '<p class="hint" style="margin:4px 0"><b>Luku 1: Kylästä valtakunnan taajuudelle</b></p>'; if(i === 15) l += '<p class="hint" style="margin:10px 0 4px"><b>Luku 2: Euroopan aallot</b></p>'; if(i === 24) l += '<p class="hint" style="margin:10px 0 4px"><b>Luku 3: Äänitteiden aika</b></p>'; l += '<div class="lbr' + (i === S.qi ? ' me' : '') + '"><span class="lbn">' + (i < S.qi ? '✓' : (i + 1) + '.') + '</span><span class="lbt" style="' + (i > S.qi ? 'opacity:.45' : '') + '">' + (i <= S.qi ? escH(qq.n) : '???') + '</span></div>'; });
   b.innerHTML = l + '</div>';
 }
 
@@ -1928,6 +2095,8 @@ document.addEventListener('click', function(e){
     else if(a === 'qstart'){ qStart(); return; }
     else if(a === 'kcl') kisaClaim(t.dataset.arg);
     else if(a === 'kun') kisaUnclaim(t.dataset.arg);
+    else if(a === 'cmc') cmClaim(+t.dataset.arg);
+    else if(a === 'hsc') hsClaim(t.dataset.arg);
     else if(a === 'nick'){ saveNick(); return; }
     else if(a === 'nickchg'){ S.nick = ''; save(); drawLb(); return; }
     else if(a === 'hire') hireHost(t.dataset.arg);
@@ -1938,7 +2107,7 @@ document.addEventListener('click', function(e){
     save(); return;
   }
   if(t.dataset.tab){
-    if(t.dataset.tab === 'saav'){ lbFetch(); kisaFetch(); }
+    if(t.dataset.tab === 'saav'){ lbFetch(); kisaFetch(); cmFetch(); drawHs(); drawCh(); }
     var tabs = document.querySelectorAll('.tab'), btns = document.querySelectorAll('nav button');
     if(t.dataset.tab === 'saav') achNew = false;
     for(var i=0;i<tabs.length;i++) tabs[i].classList.toggle('on', tabs[i].id === 't-'+t.dataset.tab);
@@ -2317,6 +2486,8 @@ var ACH = [
   {id:'qc5', n:'Tarinankertoja', x:'Suorita 5 Radio-uran tehtävää', t:function(){ return (S.qDone||0) >= 5; }},
   {id:'qc15', n:'Luku 1 valmis', x:'Suorita kaikki Radio-uran tehtävät', t:function(){ return (S.qDone||0) >= QUESTS.length; }},
   {id:'kv1', n:'Valtaaja', x:'Valtaa ensimmäinen kaupunki viikkokisassa', t:function(){ return (S.kN||0) >= 1; }},
+  {id:'ch1', n:'Haastaja', x:'Suorita haasteradio', t:function(){ return chCount() >= 1; }},
+  {id:'ch4', n:'Haasteiden mestari', x:'Suorita kaikki neljä haastetta', t:function(){ return chCount() >= 4; }},
   {id:'kw1', n:'Viikon voittaja', x:'Voita viikkokisa', t:function(){ return (S.kWins||[]).length >= 1; }},
   {id:'tr0', n:'Kyläradio valmis', x:'Kuulu kaikissa kylissä', t:function(){ return tierDone(0); }},
   {id:'tr1', n:'Kuntaradio valmis', x:'Kuulu kaikissa kunnissa', t:function(){ return tierDone(1); }},
@@ -2427,7 +2598,7 @@ function heardSong(t){
   var first = !S.heard[t.id];
   S.heard[t.id] = (S.heard[t.id]||0) + 1; S.heardN++;
   if(first){ var g = Math.max(50, Math.round(incomePerSec()*30)); S.coins += g; S.total += g; toast('Uusi kokoelmaan: ' + t.title + ' (+' + fmt(g) + ' $)', 2600); }
-  lastSig = '';
+  albCheck(); lastSig = '';
 }
 function drawCol(){
   var box = $('colBox'); if(!box) return;
@@ -2443,6 +2614,7 @@ function drawCol(){
       } else h += '<span class="chip colc lock">???</span>';
     }
     h += '</div>';
+    var ag = albGroups(g); if(ag.length){ h += '<div class="chips">'; ag.forEach(function(grp, k){ var hn = albHeard(g, grp), d = S.alb[g + k]; h += '<span class="chip colc' + (d ? ' sel' : '') + '">💿 Levy ' + (k+1) + ' ' + hn + '/' + (grp[1]-grp[0]) + (d ? ' ✓' : '') + '</span>'; }); h += '</div>'; }
   });
   $('colH').textContent = 'Kokoelma ' + got + '/' + all;
   box.innerHTML = '<p class="mu" style="margin:0 0 6px">' + (REAL_OK ? 'Kuultu pelissä: <b>' + Object.keys(S.heard).length + '</b> eri kappaletta. Laita ääni päälle ja kuule uudet kappaleet kokoelmaan: ensimmäinen kuuntelu antaa palkinnon.' : 'Oikeat kappaleet näkyvät osoitteessa suorni.fi/?peli=1.') + '</p>' + h;
@@ -2564,7 +2736,7 @@ function frame(now){
     step(dt);
     bubbleTick(dt); evTick(dt); auTick(dt); choiceTick(dt); wishTick(dt);
     achAcc += dt; if(achAcc >= 2){ achAcc = 0; achTick(); }
-    kisaTick(dt); juiceTick(dt); questTick(dt);
+    kisaTick(dt); cmTick(dt); juiceTick(dt); questTick(dt);
     lbAcc += dt; if(lbAcc >= 60){ lbAcc = 0; lbSend(false); if(!document.hidden) lbFetch(); }
     acc += dt; saveAcc += dt;
     if(acc >= 0.25){ acc = 0; render(false); }
@@ -2585,7 +2757,7 @@ window.addEventListener('pagehide', save);
 window.__taajuus = {HL:function(){return HL;}, haulStart:haulStart, srcInit:srcInit, shareGame:shareGame, QUESTS:QUESTS, questTick:questTick, qClaim:qClaim, qStart:qStart, drawStudio:drawStudio, juiceTick:juiceTick, fx:fx, K:function(){return K;}, kisaApply:kisaApply, kisaClaim:kisaClaim, kisaUnclaim:kisaUnclaim, kisaPrice:kisaPrice, tierDone:tierDone, placeLevel:placeLevel, MG:MG, TN:function(){return TN;}, BM:function(){return BM;}, mgOpen:mgOpen, mgCtx:mgCtx, FL:FL, dq:function(){return S.dq;}, dailyTick:dailyTick, heardSong:heardSong, drawCol:drawCol, state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();S.setup=true;lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, voteNow:voteNow, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
 
 loadReal();
-srcInit(); drawLb(); drawKisa(); setTimeout(function(){ lbSend(false); lbFetch(); kisaFetch(); }, 1500);
+srcInit(); drawLb(); drawKisa(); drawCm(); drawCh(); drawHs(); setTimeout(function(){ lbSend(false); lbFetch(); kisaFetch(); cmFetch(); }, 1500);
 offline();
 render(true);
 requestAnimationFrame(frame);
