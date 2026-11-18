@@ -27,6 +27,7 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-peli-yhteinen.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-backup.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-icons.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-station.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-neon.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-req.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-watch.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-welcome.php';
@@ -2038,7 +2039,7 @@ add_action( 'wp_head', function () {
 	$cfg = suorni_radio_cfg();
 	$b   = plugins_url( 'pwa/', __FILE__ );
 	echo '<link rel="manifest" href="' . esc_url( home_url( '/?suorni_manifest=1' ) ) . '">' . "\n";
-	echo '<meta name="theme-color" content="#0a2350">' . "\n";
+	echo '<meta name="theme-color" content="' . esc_attr( function_exists( 'suorni_theme_color' ) ? suorni_theme_color() : '#0a2350' ) . '">' . "\n";
 	echo '<link rel="apple-touch-icon" href="' . esc_url( $b . 'apple-touch-icon.png' ) . '">' . "\n";
 	echo '<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">' . "\n";
 	echo '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">' . "\n";

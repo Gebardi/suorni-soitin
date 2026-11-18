@@ -135,7 +135,7 @@ function suorni_social_html() {
 }
 function suorni_social_state() {
 	$c = suorni_social_cfg();
-	return array_merge( $c, array( 'seo' => suorni_seo_status(), 'tv_on' => suorni_tv_on(), 'tv_text' => suorni_tv_text(), 'tv_def' => suorni_tv_default_text(), 'gsc' => suorni_gsc_code() ) );
+	return array_merge( $c, array( 'seo' => suorni_seo_status(), 'tv_on' => suorni_tv_on(), 'tv_text' => suorni_tv_text(), 'tv_def' => suorni_tv_default_text(), 'gsc' => suorni_gsc_code(), 'theme' => function_exists( 'suorni_theme_saved' ) ? suorni_theme_saved() : '' ) );
 }
 function suorni_social_post( $req ) {
 	$cur = get_option( 'suorni_social', array() );
@@ -145,6 +145,7 @@ function suorni_social_post( $req ) {
 	}
 	if ( null !== $req->get_param( 'promo_on' ) ) { $cur['promo_on'] = (bool) $req->get_param( 'promo_on' ); }
 	if ( null !== $req->get_param( 'tv_on' ) ) { $cur['tv_on'] = (bool) $req->get_param( 'tv_on' ); }
+	if ( null !== $req->get_param( 'theme' ) ) { $t = sanitize_key( (string) $req->get_param( 'theme' ) ); $cur['theme'] = in_array( $t, array( 'neon' ), true ) ? $t : ''; }
 	update_option( 'suorni_social', $cur, false );
 	if ( $req->get_param( 'allow_index' ) ) { update_option( 'blog_public', '1' ); }
 	return suorni_json( array( 'social' => suorni_social_state() ) );
