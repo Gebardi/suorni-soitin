@@ -553,7 +553,7 @@ function errShow(e){
     document.body.appendChild(d);
   }catch(x){}
 }
-window.addEventListener('error', function(ev){ errShow(ev.error || ev.message); });
+window.addEventListener('error', function(ev){ var e = ev.error || new Error(ev.message); try{ e.message += ' [' + String(ev.filename || '?').slice(-40) + ':' + ev.lineno + ':' + ev.colno + ' ' + (navigator.userAgent.match(/(OPR|Chrome|Safari)\/[\d.]+/g) || []).join(' ') + ']'; }catch(x){} errShow(e); });
 var S = load() || fresh();
 
 function load(){
