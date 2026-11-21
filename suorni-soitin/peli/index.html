@@ -1712,7 +1712,7 @@ function kisaClaim(id){
       toast(d && d.cap ? 'Asemaraja täynnä. Pelaa lisää päiviä tai luovu yhdestä.' : d && d.wait ? 'Odota hetki ja yritä uudelleen.' : 'Yhteys ei toiminut, maksu palautettu.', 3000);
       if(d && d.cities) kisaApply(d); render(true); return;
     }
-    S.kc[id] = pw; S.kHad = true; S.kN = (S.kN || 0) + 1; kisaApply(d);
+    S.kc[id] = pw; K.sent = K.sent || {}; K.sent[id] = Date.now(); S.kHad = true; S.kN = (S.kN || 0) + 1; kisaApply(d);
     var dc = d.cities[id]; toast(dc && dc.own ? c.n + ' on nyt sinun!' : c.n + ': asemasi on mukana, mutta toinen johtaa.', 3000); render(true); save();
   });
 }
@@ -1728,12 +1728,12 @@ function kisaTick(dt){
   K.acc += dt;
   if(K.acc >= 60 && !document.hidden){
     K.acc = 0;
-    kisaFetch(function(ok){ if(ok){ K.q = []; for(var id in S.kc) K.q.push(id); } });
+    kisaFetch(function(ok){ if(ok){ K.q = []; var now = Date.now(); K.sent = K.sent || {}; for(var id in S.kc){ var c0 = cityBy(id), pw0 = c0 ? kisaPower(c0) : 0, old = S.kc[id] || 1; if(!K.sent[id] || now - K.sent[id] > 900000 || Math.abs(pw0 - old) / old > 0.08) K.q.push(id); } } });
   }
   K.qT -= dt;
   if(K.q.length && K.qT <= 0 && !K.pend && K.ok){
     K.qT = 5.5; var id = K.q.shift(), c = cityBy(id);
-    if(c && S.kc[id] !== undefined){ var pw = kisaPower(c); api('peli/claim', {body:{pid:S.pid, city:id, power:pw}}, function(d){ if(d && d.ok && d.cities) S.kc[id] = pw; }); }
+    if(c && S.kc[id] !== undefined){ var pw = kisaPower(c); api('peli/claim', {body:{pid:S.pid, city:id, power:pw}}, function(d){ if(d && d.ok && d.cities){ S.kc[id] = pw; K.sent = K.sent || {}; K.sent[id] = Date.now(); } }); }
   }
 }
 

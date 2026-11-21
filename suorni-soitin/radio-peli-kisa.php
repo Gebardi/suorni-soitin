@@ -141,7 +141,7 @@ function suorni_kisa_map( $req ) {
 function suorni_kisa_rl( $pid ) {
 	$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
 	$k = 'suorni_pk_' . md5( $ip ); $n = (int) get_transient( $k );
-	if ( $n >= 60 ) { return false; }
+	if ( $n >= 240 ) { return false; }
 	set_transient( $k, $n + 1, 600 );
 	$k2 = 'suorni_pkp_' . md5( $pid );
 	if ( get_transient( $k2 ) ) { return false; }
