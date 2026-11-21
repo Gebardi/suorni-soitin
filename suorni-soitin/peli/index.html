@@ -272,6 +272,8 @@ details.fl li b{color:var(--tx);font-weight:500}
         </div>
       </div>
 
+      <div class="card next" id="nextCard" style="border-color:var(--a)"><h2>Seuraavaksi</h2><div id="nextBox"></div></div>
+
       <div class="card" id="qCard"><h2>Radio-ura</h2><div id="qAsema"></div></div>
 
       <div class="card" id="studioCard"><h2>Studio</h2><div id="studioBox"></div></div>
@@ -820,6 +822,7 @@ function render(force){
   if(!S.setup){ if(!$('setup').classList.contains('on')){ $('setup').classList.add('on'); SU.built = false; suOpen(); } } else if($('setup').classList.contains('on')) $('setup').classList.remove('on');
   var idx = slotIdx(S.clock);
   var g = S.slots[idx];
+  try{ drawNext(); }catch(e){}
   var early = S.antenna < 1 && !(S.runs > 0);
   $('liveCard').style.display = early ? 'none' : ''; $('mgCard').style.display = early ? 'none' : '';
   $('hCoins').textContent = '$ ' + fmt(S.coins);
@@ -1790,6 +1793,36 @@ function drawHs(){
   box.innerHTML = h;
 }
 
+
+/* ---------- Seuraavaksi: yksi selkeä ohje ---------- */
+var NX = {sig:''};
+function nextStep(){
+  var inc = Math.max(0.01, incomePerSec()), c = [], i;
+  var nx = S.antenna + 1;
+  if(nx < ANT.length) c.push({p:1, t:'Osta antenni: ' + ANT[nx].a, w:'Kuuluvuus kasvaa ja uusia paikkoja aukeaa kartalle.', cost:ANT_COST[nx], tab:'kauppa'});
+  var hostCost = 0;
+  if(!hasHost() && S.ch !== 'solo'){ hostCost = 1e18; HORDER.forEach(function(k){ if(HOSTS[k].cost < hostCost) hostCost = HOSTS[k].cost; }); c.push({p:2, t:'Palkkaa ensimmäinen juontaja', w:'Juontaja nostaa tuloja ja kertoo tarinansa.', cost:hostCost, tab:'kauppa'}); }
+  if(S.studio < STUDIO_MAX) c.push({p:3, t:'Paranna studiota', w:'Tulot kasvavat 30 %.', cost:studioCost(), tab:'kauppa'});
+  var song = false; GORDER.forEach(function(g){ if(S.unlocked[g] && (S.owned[g]||0) < realCap(g)) song = true; });
+  if(song) c.push({p:4, t:'Osta uusi kappale', w:'Isompi soittolista vähentää kyllästymistä.', cost:songCost(), tab:'kauppa'});
+  var bc = null; CITIES.forEach(function(ct){ if(!S.cities[ct.id] && S.antenna >= ct.ant && !(S.ch === 'rural' && ct.t >= 2)){ var k = cityCost(ct); if(!bc || k < bc.cost) bc = {p:5, t:'Laajenna paikkaan ' + ct.n, w:'Avaa Tavoitteet → Kuuluvuuskartta ja napauta paikkaa.', cost:k, tab:'saav'}; } });
+  if(bc) c.push(bc);
+  if(S.antenna >= 5 && tpGain() >= Math.max(10, 0.25*S.tp)) return {t:'Tee Uusi taajuus', w:'Saat ' + tpGain() + ' taajuuspistettä pysyviin bonuksiin. Aloitat alusta, mutta vahvempana.', tab:'kauppa', go:true};
+  var aff = c.filter(function(x){ return S.coins >= x.cost; }).sort(function(a, b){ return a.p - b.p; });
+  if(aff.length) return {t:aff[0].t, w:aff[0].w + ' Hinta ' + fmt(aff[0].cost) + ' $.', tab:aff[0].tab, go:true};
+  if(!c.length) return null;
+  c.sort(function(a, b){ return (a.cost - S.coins) - (b.cost - S.coins); });
+  var best = c[0], sec = (best.cost - S.coins) / inc, mn = sec < 90 ? Math.ceil(sec) + ' s' : sec < 5400 ? Math.ceil(sec/60) + ' min' : Math.ceil(sec/3600) + ' h';
+  return {t:'Kerää rahaa: ' + best.t.charAt(0).toLowerCase() + best.t.slice(1), w:'Tarvitset ' + fmt(best.cost) + ' $ (vielä ' + fmt(best.cost - S.coins) + ' $, noin ' + mn + '). Voit odottaa tai kuunnella Radio Suornia: kuuntelijat ×1,25.', tab:null};
+}
+function drawNext(){
+  var box = $('nextBox'); if(!box) return;
+  var n = null; try{ n = nextStep(); }catch(e){}
+  var sig = n ? n.t + n.w : '';
+  if(sig === NX.sig) return; NX.sig = sig;
+  box.innerHTML = n ? '<div class="row"><div class="i"><b>' + escH(n.t) + '</b><small>' + escH(n.w) + '</small></div>' + (n.go && n.tab ? '<button class="buy ok" data-act="goto" data-arg="' + n.tab + '">' + (n.tab === 'saav' ? 'Kartalle' : 'Kauppaan') + '</button>' : '') + '</div>' : '<p class="hint">Hienoa työtä! Jatka tehtäviä ja viikkotavoitetta.</p>';
+}
+
 /* ---------- Haasteradiot ---------- */
 var CHS = {
   mono:{n:'Yksi linja', ic:'🎯', x:'Soita vain yhtä tyyliä koko ajan. Muita tyylejä ei voi avata eikä asettaa ohjelmaan.'},
@@ -2115,6 +2148,7 @@ document.addEventListener('click', function(e){
     else if(a === 'kcl') kisaClaim(t.dataset.arg);
     else if(a === 'kun') kisaUnclaim(t.dataset.arg);
     else if(a === 'cmc') cmClaim(+t.dataset.arg);
+    else if(a === 'goto'){ var tb = document.querySelector('[data-tab="' + t.dataset.arg + '"]'); if(tb) tb.click(); }
     else if(a === 'hsc') hsClaim(t.dataset.arg);
     else if(a === 'nick'){ saveNick(); return; }
     else if(a === 'nickchg'){ S.nick = ''; save(); drawLb(); return; }
