@@ -820,7 +820,8 @@ function render(force){
   if(!S.setup){ if(!$('setup').classList.contains('on')){ $('setup').classList.add('on'); SU.built = false; suOpen(); } } else if($('setup').classList.contains('on')) $('setup').classList.remove('on');
   var idx = slotIdx(S.clock);
   var g = S.slots[idx];
-
+  var early = S.antenna < 1 && !(S.runs > 0);
+  $('liveCard').style.display = early ? 'none' : ''; $('mgCard').style.display = early ? 'none' : '';
   $('hCoins').textContent = '$ ' + fmt(S.coins);
   $('lis').textContent = fmt(S.lis);
   $('inc').textContent = '+' + fmt(incomePerSec()) + ' $ / s';
@@ -936,7 +937,7 @@ function drawSlots(cur){
         h += '<option value="'+hk+'"'+(S.hostIn[i]===hk?' selected':'')+'>'+HOSTS[hk].n+' · '+HOSTS[hk].role+(HOSTS[hk].slot===i?' ★':'')+(HOSTS[hk].g===S.slots[i]?' ♪':'')+'</option>';
       }
       h += '</select>';
-    } else h += '<div class="hint">Palkkaa juontaja kaupasta.</div>';
+    } else if(S.antenna >= 1) h += '<div class="hint">Palkkaa juontaja kaupasta.</div>';
     // mainokset
     h += '<div class="sub">Mainokset</div>';
     if(S.adOn){
@@ -944,7 +945,7 @@ function drawSlots(cur){
       h += '<div class="seg">';
       for(var a=0;a<5;a++) h += '<button class="'+(al===a?'sel':'')+'" data-as="'+i+'" data-ad="'+a+'">'+a+'</button>';
       h += '</div><div class="hint">'+AD_NAMES[al]+(al ? ' · tuotto ×'+(1+AD_MULT[al]).toFixed(1).replace('.',',')+' · kuuntelijat −'+Math.round((1-AD_PEN[al])*100)+' %' : '')+'</div>';
-    } else h += '<div class="hint">Avaa mainokset kaupasta (mainosmyyjä).</div>';
+    } else if(S.antenna >= 1) h += '<div class="hint">Avaa mainokset kaupasta (mainosmyyjä).</div>';
     h += '</div>';
   }
   $('slots').innerHTML = h;
@@ -2780,10 +2781,10 @@ loadReal();
   var sel = ['#t-saav > .card', '#t-asema > .card', '#t-kauppa > .card'];
   document.querySelectorAll(sel.join(',')).forEach(function(c){
     var h = c.querySelector(':scope > h2'); if(!h) return;
-    var inSaav = c.parentNode.id === 't-saav', big = /Ohjelmapaikat|Juontajat$|Kappaleet ja tyylit/i.test(h.textContent);
+    var inSaav = c.parentNode.id === 't-saav', big = /Ohjelmapaikat|Juontajat$|Kappaleet ja tyylit|^Studio$/i.test(h.textContent.trim());
     if(!inSaav && !big) return;
     c.classList.add('fold'); c.dataset.fk = h.id || h.textContent.replace(/\s+\d.*$/, '').trim();
-    var k = c.dataset.fk, shut = k in st ? st[k] : (inSaav ? !OPEN[k] : false);
+    var k = c.dataset.fk, shut = k in st ? st[k] : (inSaav ? !OPEN[k] : ((k === 'Studio' && !(S.studio > 0)) || (k === 'Juontajat' && S.antenna < 1 && !(S.runs > 0))));
     if(shut) c.classList.add('shut');
   });
   document.addEventListener('click', function(e){
