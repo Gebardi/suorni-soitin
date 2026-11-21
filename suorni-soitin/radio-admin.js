@@ -927,19 +927,19 @@
 		})();
 
 		/* Äänikirjatesti */
-		var bkw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
+		var bktw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
 		(function () {
 			var vs = [['fi-FI-NooraNeural', 'Noora (nainen)'], ['fi-FI-SelmaNeural', 'Selma (nainen)'], ['fi-FI-HarriNeural', 'Harri (mies)']];
-			bkw.innerHTML = '<h3 style="margin:0 0 6px">📖 Äänikirjatesti</h3><p style="font-size:13px;opacity:.8;margin:0 0 6px">Liitä tekstiä (enintään 6 000 merkkiä, noin 5 minuuttia ääntä) ja kuuntele se Azuren suomenkielisellä äänellä. Käyttää samaa Azure-avainta kuin juontajan puhe. Päiväkatto 30 000 merkkiä.</p>' +
+			bktw.innerHTML = '<h3 style="margin:0 0 6px">📖 Äänikirjatesti</h3><p style="font-size:13px;opacity:.8;margin:0 0 6px">Liitä tekstiä (enintään 6 000 merkkiä, noin 5 minuuttia ääntä) ja kuuntele se Azuren suomenkielisellä äänellä. Käyttää samaa Azure-avainta kuin juontajan puhe. Päiväkatto 30 000 merkkiä.</p>' +
 				'<textarea data-bkt rows="8" style="' + st + ';font-size:14px" placeholder="Liitä tähän kirjan kohta"></textarea>' +
 				'<div style="display:flex;gap:8px;flex-wrap:wrap"><select data-bkv style="' + st + ';flex:1">' + vs.map(function (v) { return '<option value="' + v[0] + '">' + v[1] + '</option>'; }).join('') + '</select><select data-bkr style="' + st + ';flex:1"><option value="0.9">Hitaampi (−10 %)</option><option value="1" selected>Normaali</option><option value="1.1">Nopeampi (+10 %)</option></select></div>' +
 				'<p style="font-size:12px;opacity:.7;margin:2px 0" data-bkc>0 merkkiä</p><button type="button" data-bkg style="' + st + ';background:#2f6bff;border-color:#2f6bff;font-weight:700">Tee äänite</button><div data-bko></div>';
-			var ta = bkw.querySelector('[data-bkt]'), cn = bkw.querySelector('[data-bkc]'), out = bkw.querySelector('[data-bko]'), go = bkw.querySelector('[data-bkg]');
+			var ta = bktw.querySelector('[data-bkt]'), cn = bktw.querySelector('[data-bkc]'), out = bktw.querySelector('[data-bko]'), go = bktw.querySelector('[data-bkg]');
 			ta.addEventListener('input', function () { cn.textContent = ta.value.length + ' merkkiä' + (ta.value.length > 6000 ? ' (liikaa, enintään 6 000)' : ''); });
 			go.addEventListener('click', function () {
 				if (ta.value.trim().length < 20) { out.innerHTML = '<p>Liitä ensin tekstiä.</p>'; return; }
 				go.disabled = true; out.innerHTML = '<p>Tehdään äänitettä… (voi kestää hetken)</p>';
-				api('POST', D.urls.booktest, { text: ta.value, voice: bkw.querySelector('[data-bkv]').value, rate: bkw.querySelector('[data-bkr]').value }).then(function (j) {
+				api('POST', D.urls.booktest, { text: ta.value, voice: bktw.querySelector('[data-bkv]').value, rate: bktw.querySelector('[data-bkr]').value }).then(function (j) {
 					out.innerHTML = '<audio controls src="' + esc(j.url) + '" style="width:100%;margin-top:8px"></audio><p style="font-size:13px;margin:4px 0"><a href="' + esc(j.url) + '" download style="color:#7db2ff">Lataa mp3</a> · ' + j.chars + ' merkkiä' + (j.cached ? ' (valmiina, ei uutta kulua)' : '') + '</p>';
 				}).catch(function (e) { out.innerHTML = '<p style="color:#ff8a8a">' + esc(e.message) + '</p>'; }).then(function () { go.disabled = false; });
 			});
@@ -1324,7 +1324,7 @@
 		}
 		hsDraw();
 
-		var bucket = { tanaan: [tnw], yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw, jbw], juontaja: [hC, ow, aw, fw, bkw], yhteiso: [hD, scw], lista: [upw, tgw, bw, tw], kanavat: [chw, clw], tarve: [nw], levy: [dkw], ihmiset: [hsw], mainokset: [adw], peli: [pgw], sivusto: [sow, bkw] };
+		var bucket = { tanaan: [tnw], yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw, jbw], juontaja: [hC, ow, aw, fw, bktw], yhteiso: [hD, scw], lista: [upw, tgw, bw, tw], kanavat: [chw, clw], tarve: [nw], levy: [dkw], ihmiset: [hsw], mainokset: [adw], peli: [pgw], sivusto: [sow, bkw] };
 		var used = [];
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });
