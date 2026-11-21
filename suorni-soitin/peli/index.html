@@ -40,6 +40,11 @@ main{flex:1;overflow-y:auto;padding:14px 14px 96px}
 .tab{display:none}
 .tab.on{display:block}
 .card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.card.fold>h2{cursor:pointer;display:flex;justify-content:space-between;align-items:center;-webkit-tap-highlight-color:transparent}
+.card.fold>h2::after{content:'▾';font-size:14px;transition:transform .2s}
+.card.fold.shut>h2{margin-bottom:0}
+.card.fold.shut>h2::after{transform:rotate(-90deg)}
+.card.fold.shut>:not(h2){display:none}
 .card h2{margin:0 0 10px;font-size:11px;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mu);font-weight:600}
 
 /* asema */
@@ -2767,6 +2772,26 @@ window.addEventListener('pagehide', save);
 window.__taajuus = {HL:function(){return HL;}, haulStart:haulStart, srcInit:srcInit, shareGame:shareGame, QUESTS:QUESTS, questTick:questTick, qClaim:qClaim, qStart:qStart, drawStudio:drawStudio, juiceTick:juiceTick, fx:fx, K:function(){return K;}, kisaApply:kisaApply, kisaClaim:kisaClaim, kisaUnclaim:kisaUnclaim, kisaPrice:kisaPrice, tierDone:tierDone, placeLevel:placeLevel, MG:MG, TN:function(){return TN;}, BM:function(){return BM;}, mgOpen:mgOpen, mgCtx:mgCtx, FL:FL, dq:function(){return S.dq;}, dailyTick:dailyTick, heardSong:heardSong, drawCol:drawCol, state:function(){return S;}, step:step, render:render, save:save, fresh:function(){S=fresh();S.setup=true;lastSig='';render(true);}, buySong:buySong, achTick:achTick, ACH:ACH, choose:choose, choiceTick:choiceTick, wishTick:wishTick, wish:function(){return WISH;}, setWish:function(g){WISH={g:g,left:45,total:45};}, liveOpen:liveOpen, liveTap:liveTap, LV:LV, liveEnd:liveEnd, CHOICES:CHOICES, setChoice:function(i){S.choice=i;render(true);}, toggleSound:toggleSound, au:function(){return AU;}, real:function(){return REAL;}, realOk:function(){return REAL_OK;}, prestige:prestige, tpGain:tpGain, buyPerk:buyPerk, giveSuorni:giveSuorni, PERKS:PERKS, hireHost:hireHost, trainHost:trainHost, setHost:setHost, setAd:setAd, buyAds:buyAds, hostTrainCost:hostTrainCost, HOSTS:HOSTS, forceEvent:function(id){for(var i=0;i<EVENTS.length;i++){if(EVENTS[i].id===id){var e=EVENTS[i];EV={id:e.id,n:e.n,x:e.x,gm:e.gm,def:e.def,dur:e.dur,left:e.dur};}}}, openBubble:openBubble, evTick:evTick, ev:function(){return EV;}, unlockGenre:unlockGenre, buyAntenna:buyAntenna, voteNow:voteNow, btCompute:btCompute, saveNick:saveNick, drawLb:drawLb, lbSend:lbSend, myScore:myScore, fmt:fmt, buyCity:buyCity, cityCount:cityCount, CITIES:CITIES, cityMult:cityMult, buyStudio:buyStudio, songCost:songCost, studioCost:studioCost, ANT_COST:ANT_COST, GENRES:GENRES, setSlot:setSlot, offline:offline, targetFor:targetFor, fame:fameLevel};
 
 loadReal();
+
+/* ---------- Taitettavat kortit: vähemmän sekavuutta ---------- */
+(function(){
+  var OPEN = {'Päivän tehtävät':1, 'Yhteinen viikkotavoite':1}, st = {};
+  try{ st = JSON.parse(localStorage.getItem('taajuus_fold') || '{}') || {}; }catch(e){}
+  var sel = ['#t-saav > .card', '#t-asema > .card', '#t-kauppa > .card'];
+  document.querySelectorAll(sel.join(',')).forEach(function(c){
+    var h = c.querySelector(':scope > h2'); if(!h) return;
+    var inSaav = c.parentNode.id === 't-saav', big = /Ohjelmapaikat|Juontajat$|Kappaleet ja tyylit/i.test(h.textContent);
+    if(!inSaav && !big) return;
+    c.classList.add('fold'); c.dataset.fk = h.id || h.textContent.replace(/\s+\d.*$/, '').trim();
+    var k = c.dataset.fk, shut = k in st ? st[k] : (inSaav ? !OPEN[k] : false);
+    if(shut) c.classList.add('shut');
+  });
+  document.addEventListener('click', function(e){
+    var h = e.target.closest && e.target.closest('.card.fold > h2'); if(!h) return;
+    var c = h.parentNode; c.classList.toggle('shut'); st[c.dataset.fk] = c.classList.contains('shut') ? 1 : 0;
+    try{ localStorage.setItem('taajuus_fold', JSON.stringify(st)); }catch(x){}
+  });
+})();
 [srcInit, drawLb, drawKisa, drawCm, drawCh, drawHs].forEach(function(f){ try{ f(); }catch(e){ errShow(e); } });
 setTimeout(function(){ try{ lbSend(false); lbFetch(); kisaFetch(); cmFetch(); }catch(e){ errShow(e); } }, 1500);
 try{ offline(); }catch(e){ errShow(e); }
