@@ -16,12 +16,13 @@ function api(path, data) {
 function pic(e) { return e.img ? '<img src="' + esc(e.img) + '" alt="" draggable="false">' : '<span>' + e.e + '</span>'; }
 function el(t, c, h) { var e = document.createElement(t); if (c) { e.className = c; } if (h !== undefined) { e.innerHTML = h; } return e; }
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function gameLink() { return '<a class="back" href="' + esc(CFG.home) + (CFG.home.indexOf('?') > -1 ? '&' : '?') + 'peli=1&src=ristikko">🎮 Taajuus</a>'; }
 function shareUrl() { return CFG.home + (CFG.home.indexOf('?') > -1 ? '&' : '?') + 'ristikko=' + S.room; }
 
 /* ---------- aloitus ---------- */
 function start(msg) {
   app.innerHTML = '';
-  var t = el('div', 'top', '<h1>🧩 Kuvaristikko</h1><a class="back" href="' + esc(CFG.home) + '">← Suorni</a>');
+  var t = el('div', 'top', '<h1>🧩 Kuvaristikko</h1><span class="links">' + gameLink() + '<a class="back" href="' + esc(CFG.home) + '">📻 Suorni</a></span>');
   var c = el('div', 'card');
   c.innerHTML = '<p>Arvaa kuvista sanat! Pelaa yksin tai kutsu kavereita samaan ristikkoon: täytätte ruudukkoa yhdessä, mutta jokainen kerää omia pisteitä. Ruutuun tulee kirjain vain, jos se on oikein.</p>'
     + '<input id="nm" maxlength="16" placeholder="Nimimerkkisi" value="' + esc(name) + '">'
@@ -76,7 +77,7 @@ function render() {
 function lobby() {
   document.onkeydown = null; stopCd();
   app.innerHTML = '';
-  var top = el('div', 'top', '<h1>🧩 ' + esc(S.pz.title || 'Kuvaristikko') + '</h1>');
+  var top = el('div', 'top', '<h1>🧩 ' + esc(S.pz.title || 'Kuvaristikko') + '</h1>' + gameLink());
   var c = el('div', 'card');
   c.innerHTML = '<p>Huone <b style="font-size:22px;letter-spacing:2px">' + esc(S.room) + '</b></p><p>Odotetaan pelaajia. Kun kaikki ovat mukana, joku painaa Aloita, ja kaikille tulee lähtölaskenta samaan aikaan.</p>';
   var pls = el('div', 'pls');
@@ -123,6 +124,7 @@ function build() {
   app.innerHTML = '';
   var top = el('div', 'top', '<h1>🧩 Kuvaristikko</h1>');
   var sh = el('button', 'btn sm sec', '👥 Kutsu'); sh.onclick = share; top.appendChild(sh);
+  var gl = el('span', 'links', gameLink()); top.appendChild(gl);
   var pls = el('div', 'pls'); pls.id = 'pls';
   var meta = el('div', 'meta'); meta.id = 'meta';
   var bd = el('div', 'board'); bd.id = 'board'; bd.style.gridTemplateColumns = 'repeat(' + P.c + ',1fr)';
@@ -304,7 +306,8 @@ function showEnd() {
       .catch(function () { b1.disabled = false; });
   };
   var b2 = el('button', 'btn sec', 'Sulje'); b2.onclick = function () { ov.remove(); };
-  r.appendChild(b1); r.appendChild(b2); c.appendChild(r); ov.appendChild(c); document.body.appendChild(ov);
+  var b3 = el('a', 'btn sec', '🎮 Taajuuteen'); b3.href = CFG.home + (CFG.home.indexOf('?') > -1 ? '&' : '?') + 'peli=1&src=ristikko'; b3.style.textDecoration = 'none';
+  r.appendChild(b1); r.appendChild(b3); r.appendChild(b2); c.appendChild(r); ov.appendChild(c); document.body.appendChild(ov);
   updateNext();
 }
 function updateNext() { var b = document.getElementById('nxt'); if (b) { b.textContent = S.next ? '▶ Liity seuraavaan ristikkoon' : 'Seuraava ristikko'; } }

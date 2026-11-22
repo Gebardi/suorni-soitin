@@ -36,6 +36,7 @@ function suorni_rk_load( $code ) {
 	$d = get_option( suorni_rk_opt( $code ), null );
 	if ( ! is_array( $d ) || empty( $d['pz'] ) ) { return null; }
 	if ( time() - (int) $d['t0'] > 2 * DAY_IN_SECONDS ) { return null; }
+	if ( ! suorni_rk_puzzle( $d['pz'] ) ) { return null; }
 	if ( ! isset( $d['go'] ) ) { $d['go'] = (int) $d['t0']; }
 	if ( ! isset( $d['next'] ) ) { $d['next'] = ''; }
 	if ( ! isset( $d['hh'] ) ) { $d['hh'] = array(); }

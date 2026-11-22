@@ -53,3 +53,5 @@ a{color:#7cc4ff}
 .card .rank div b{white-space:nowrap}
 .hint{flex-wrap:wrap}.hint .ht{flex:1;min-width:110px}.hint .hbs{display:flex;gap:6px;flex-wrap:wrap}.hint .btn:disabled{opacity:.4;cursor:default}
 .bonus{font-size:14px;line-height:1.5;padding:10px 12px;border-radius:10px;background:rgba(255,210,63,.12);border:1px solid rgba(255,210,63,.35)}.bonus:empty{display:none}
+.top .links{display:flex;gap:12px;align-items:center}.top .back{font-size:14px;font-weight:700;text-decoration:none;color:#ffd23f;opacity:1;white-space:nowrap}
+.top{flex-wrap:wrap}
