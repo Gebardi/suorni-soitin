@@ -4,7 +4,7 @@
    2) ristikko/img  {n}         tekee yhden kuvan luonnoksen sanalle n (kutsutaan sana kerrallaan; sama kutsu tekee uuden kuvan)
    3) ristikko/pub  {title}     julkaisee luonnoksen pelattavaksi;  ristikko/discard hylkää;  ristikko/pzdel {id} poistaa julkaistun
    Asetukset ristikko/rkcfg {key,tm,im,max,maxi}: OpenAI-yhteensopiva avain (vain ylläpito syöttää, ei koskaan palaudu selaimelle).
-   Kulukatot: ristikoita / vrk (oletus 5) ja kuvia / vrk (oletus 40). Kuvat pienennetään 256 px:n jpg-tiedostoiksi (uploads/suorni-rk/).
+   Kulukatot: ristikoita / vrk (oletus 15) ja kuvia / vrk (oletus 150). Kuvat pienennetään 256 px:n jpg-tiedostoiksi (uploads/suorni-rk/).
    Kuvissa ei saa olla tekstiä, logoja eikä oikeita henkilöitä; ylläpito hyväksyy ristikon ennen julkaisua. */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -14,8 +14,8 @@ function suorni_rkg_cfg() {
 		'key'  => isset( $c['key'] ) ? (string) $c['key'] : '',
 		'tm'   => ( isset( $c['tm'] ) && preg_match( '/^[A-Za-z0-9._:\-]{2,60}$/', $c['tm'] ) ) ? $c['tm'] : 'gpt-4.1-mini',
 		'im'   => ( isset( $c['im'] ) && preg_match( '/^[A-Za-z0-9._:\-]{2,60}$/', $c['im'] ) ) ? $c['im'] : 'gpt-image-1-mini',
-		'max'  => isset( $c['max'] ) ? max( 1, min( 30, (int) $c['max'] ) ) : 5,
-		'maxi' => isset( $c['maxi'] ) ? max( 1, min( 200, (int) $c['maxi'] ) ) : 40,
+		'max'  => isset( $c['max'] ) ? max( 1, min( 50, (int) $c['max'] ) ) : 15,
+		'maxi' => isset( $c['maxi'] ) ? max( 1, min( 400, (int) $c['maxi'] ) ) : 150,
 	);
 }
 function suorni_rkg_dir() { $u = wp_upload_dir(); return array( 'path' => trailingslashit( $u['basedir'] ) . 'suorni-rk/', 'url' => trailingslashit( $u['baseurl'] ) . 'suorni-rk/' ); }
