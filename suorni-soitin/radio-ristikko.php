@@ -10,7 +10,13 @@
    enintään 8 pelaajaa huoneessa, huoneet poistuvat 2 vrk jälkeen. */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-function suorni_rk_puzzles() { static $p = null; if ( null === $p ) { $p = include dirname( __FILE__ ) . '/ristikko-puzzles.php'; } return is_array( $p ) ? $p : array(); }
+function suorni_rk_puzzles() {
+	$p = include dirname( __FILE__ ) . '/ristikko-puzzles.php'; if ( ! is_array( $p ) ) { $p = array(); }
+	$c = get_option( 'suorni_rk_custom', array() );
+	if ( is_array( $c ) ) { foreach ( $c as $x ) { if ( is_array( $x ) && ! empty( $x['ents'] ) ) { $p[] = $x; } } }
+	return $p;
+}
+function suorni_rk_latest_custom() { $c = get_option( 'suorni_rk_custom', array() ); return ( is_array( $c ) && $c ) ? end( $c ) : null; }
 function suorni_rk_code( $v ) { return substr( preg_replace( '/[^A-Z0-9]/', '', strtoupper( (string) $v ) ), 0, 5 ); }
 function suorni_rk_opt( $code ) { return 'suorni_rk_' . $code; }
 function suorni_rk_ip_ok( $max = 1500 ) {
@@ -48,8 +54,9 @@ function suorni_rk_solution( $p ) {
 }
 function suorni_rk_layout( $p ) {
 	$ents = array();
-	foreach ( $p['ents'] as $k => $e ) { $ents[] = array( 'id' => $k, 'e' => $e['e'], 'h' => $e['h'], 'r' => $e['r'], 'c' => $e['c'], 'd' => $e['d'], 'len' => mb_strlen( $e['w'], 'UTF-8' ) ); }
-	return array( 'id' => (int) $p['id'], 'r' => (int) $p['r'], 'c' => (int) $p['c'], 'ents' => $ents );
+	$u = function_exists( 'suorni_rkg_dir' ) ? suorni_rkg_dir() : array( 'url' => '' );
+	foreach ( $p['ents'] as $k => $e ) { $ents[] = array( 'id' => $k, 'e' => $e['e'], 'img' => ! empty( $e['f'] ) ? $u['url'] . $e['f'] : '', 'h' => $e['h'], 'r' => $e['r'], 'c' => $e['c'], 'd' => $e['d'], 'len' => mb_strlen( $e['w'], 'UTF-8' ) ); }
+	return array( 'id' => (int) $p['id'], 'title' => isset( $p['title'] ) ? $p['title'] : '', 'r' => (int) $p['r'], 'c' => (int) $p['c'], 'ents' => $ents );
 }
 function suorni_rk_view( $d, $pid, $full ) {
 	$h = md5( $pid ); $me = -1; $pl = array();
@@ -159,7 +166,10 @@ add_action( 'template_redirect', function () {
 	$room = suorni_rk_code( wp_unslash( $_GET['ristikko'] ) );
 	if ( strlen( $room ) < 5 ) { $room = ''; }
 	$u = plugin_dir_url( __FILE__ ); $ver = rawurlencode( SUORNI_VER );
-	$cfg = wp_json_encode( array( 'api' => rest_url( 'suorni/v1/ristikko/' ), 'room' => $room, 'home' => home_url( '/' ), 'n' => count( suorni_rk_puzzles() ) ) );
+	$feat = null; $want = isset( $_GET['pz'] ) ? (int) $_GET['pz'] : 0;
+	if ( $want ) { $fp = suorni_rk_puzzle( $want ); if ( $fp ) { $feat = array( 'id' => (int) $fp['id'], 'title' => isset( $fp['title'] ) ? (string) $fp['title'] : '' ); } }
+	if ( ! $feat ) { $lc = suorni_rk_latest_custom(); if ( $lc ) { $feat = array( 'id' => (int) $lc['id'], 'title' => (string) $lc['title'] ); } }
+	$cfg = wp_json_encode( array( 'api' => rest_url( 'suorni/v1/ristikko/' ), 'room' => $room, 'home' => home_url( '/' ), 'n' => count( suorni_rk_puzzles() ), 'feat' => $feat ) );
 	nocache_headers();
 	header( 'Content-Type: text/html; charset=utf-8' );
 	echo '<!doctype html><html lang="fi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex"><meta name="theme-color" content="#0b1020"><title>Kuvaristikko – Suorni</title>'
@@ -167,3 +177,5 @@ add_action( 'template_redirect', function () {
 		. '<script>window.RK=' . $cfg . ';</script><script src="' . esc_url( $u . 'ristikko.js?ver=' . $ver ) . '"></script></body></html>';
 	exit;
 }, 1 );
+
+require_once dirname( __FILE__ ) . '/radio-ristikko-ai.php';

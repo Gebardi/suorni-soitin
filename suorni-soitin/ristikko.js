@@ -13,6 +13,7 @@ function api(path, data) {
   return fetch(b + (b.indexOf('?') > -1 ? '' : ''), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
     .then(function (r) { return r.json().then(function (j) { if (!r.ok) { var e = new Error(j && j.message || 'Virhe'); e.status = r.status; throw e; } return j; }); });
 }
+function pic(e) { return e.img ? '<img src="' + esc(e.img) + '" alt="" draggable="false">' : '<span>' + e.e + '</span>'; }
 function el(t, c, h) { var e = document.createElement(t); if (c) { e.className = c; } if (h !== undefined) { e.innerHTML = h; } return e; }
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 function shareUrl() { return CFG.home + (CFG.home.indexOf('?') > -1 ? '&' : '?') + 'ristikko=' + S.room; }
@@ -26,8 +27,10 @@ function start(msg) {
     + '<input id="nm" maxlength="16" placeholder="Nimimerkkisi" value="' + esc(name) + '">'
     + (msg ? '<div class="err">' + esc(msg) + '</div>' : '');
   var r = el('div', 'row');
-  var b1 = el('button', 'btn', 'Aloita uusi ristikko'); b1.onclick = function () { var n = document.getElementById('nm').value; saveName(n); create(); };
+  var F = CFG.feat;
+  var b1 = el('button', 'btn', F ? '📰 ' + esc(F.title || 'Uusin ristikko') : 'Aloita uusi ristikko'); b1.onclick = function () { saveName(document.getElementById('nm').value); create(F ? F.id : 0); };
   r.appendChild(b1);
+  if (F) { var b0 = el('button', 'btn sec', 'Satunnainen ristikko'); b0.onclick = function () { saveName(document.getElementById('nm').value); create(0); }; r.appendChild(b0); }
   c.appendChild(r);
   var j = el('div', 'row');
   j.innerHTML = '<input id="cd" maxlength="5" placeholder="Huonekoodi" style="width:140px;text-transform:uppercase">';
@@ -37,8 +40,8 @@ function start(msg) {
   app.appendChild(t); app.appendChild(c);
 }
 function saveName(n) { name = (n || '').trim().slice(0, 16); ls('suorni_rk_name', name); }
-function create() {
-  api('new', { name: name }).then(function (j) { S.room = j.room; try { history.replaceState(null, '', shareUrl()); } catch (e) {} join(); })
+function create(pz) {
+  api('new', { name: name, pz: pz || 0 }).then(function (j) { S.room = j.room; try { history.replaceState(null, '', shareUrl()); } catch (e) {} join(); })
     .catch(function (e) { start(e.message); });
 }
 function join() {
@@ -97,7 +100,7 @@ function build() {
       c.dataset.i = i;
       if (S.pic[i] !== undefined) {
         var e = P.ents[S.pic[i]];
-        c.className = 'cell p'; c.innerHTML = '<span>' + e.e + '</span><span class="ar ' + e.d + '">' + (e.d === 'r' ? '▶' : '▼') + '</span>';
+        c.className = 'cell p'; c.innerHTML = pic(e) + '<span class="ar ' + e.d + '">' + (e.d === 'r' ? '▶' : '▼') + '</span>';
         c.onclick = function () { var en = S.pic[i]; selectEnt(en); };
       } else if (S.map[i]) {
         c.className = 'cell l'; c.onclick = function () { tapCell(i); };
@@ -191,7 +194,7 @@ function paint() {
     }
   }
   var h = document.getElementById('hint');
-  if (en >= 0) { var e = P.ents[en]; h.innerHTML = '<span class="e">' + e.e + '</span><span>' + esc(e.h) + ' · ' + e.len + ' kirjainta</span>'; }
+  if (en >= 0) { var e = P.ents[en]; h.innerHTML = '<span class="e">' + pic(e) + '</span><span>' + esc(e.h) + ' · ' + e.len + ' kirjainta</span>'; }
   var pls = document.getElementById('pls'); pls.innerHTML = '';
   S.pl.forEach(function (p, k) {
     var d = el('div', 'pl' + (k === S.me ? ' me' : ''), esc(p.n) + ' <b>' + p.s + '</b>'); d.style.setProperty('--c', COL[k % COL.length]); pls.appendChild(d);
@@ -214,7 +217,7 @@ function showEnd() {
   order.forEach(function (o, n) { h += '<div style="--c:' + COL[o.k % COL.length] + '"><span>' + (n === 0 ? '👑 ' : '') + esc(o.p.n) + '</span><b>' + o.p.s + ' p</b></div>'; });
   c.innerHTML = h + '</div>';
   var r = el('div', 'row');
-  var b1 = el('button', 'btn', 'Uusi ristikko'); b1.onclick = function () { clearTimeout(timer); S.room = ''; document.onkeydown = null; create(); };
+  var b1 = el('button', 'btn', 'Uusi ristikko'); b1.onclick = function () { ov.remove(); clearTimeout(timer); S.room = ''; document.onkeydown = null; create(0); };
   var b2 = el('button', 'btn sec', 'Sulje'); b2.onclick = function () { ov.remove(); };
   r.appendChild(b1); r.appendChild(b2); c.appendChild(r); ov.appendChild(c); document.body.appendChild(ov);
 }

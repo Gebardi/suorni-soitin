@@ -944,6 +944,78 @@
 				}).catch(function (e) { out.innerHTML = '<p style="color:#ff8a8a">' + esc(e.message) + '</p>'; }).then(function () { go.disabled = false; });
 			});
 		})();
+		/* Kuvaristikko uutisesta (tekoälykuvat) */
+		var rkgw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
+		(function () {
+			var V = D.rkg || {}, busy = false, msg = '';
+			function bs(x) { return 'style="' + st + ';' + (x || '') + '"'; }
+			function gridHtml(d) {
+				var R = d.rows, C = d.cols, g = [], i, j, k;
+				for (i = 0; i < R; i++) { g.push([]); for (j = 0; j < C; j++) { g[i].push(null); } }
+				d.ents.forEach(function (e) {
+					var dr = e.d === 'r' ? 0 : 1, dc = e.d === 'r' ? 1 : 0;
+					g[e.r - dr][e.c - dc] = { p: e };
+					for (k = 0; k < e.w.length; k++) { g[e.r + dr * k][e.c + dc * k] = { l: e.w.charAt(k) }; }
+				});
+				return '<table style="border-collapse:separate;border-spacing:2px;margin:8px 0">' + g.map(function (row) {
+					return '<tr>' + row.map(function (c) {
+						if (!c) { return '<td style="width:34px;height:34px;background:#0f1320;border-radius:4px"></td>'; }
+						if (c.p) { return '<td style="width:34px;height:34px;background:#fff;border-radius:4px;text-align:center">' + (c.p.img ? '<img src="' + esc(c.p.img) + '" style="width:30px;height:30px;object-fit:contain;display:block;margin:auto">' : '<span style="color:#999">…</span>') + '</td>'; }
+						return '<td style="width:34px;height:34px;background:#f4f6ff;color:#111;font-weight:800;text-align:center;border-radius:4px">' + esc(c.l) + '</td>';
+					}).join('') + '</tr>';
+				}).join('') + '</table>';
+			}
+			function draw() {
+				var h = '<h3 style="margin:0 0 6px">🧩 Kuvaristikko uutisesta</h3>' +
+					'<p style="font-size:13px;opacity:.8;margin:0 0 6px">Anna uutisen linkki: tekoäly poimii jutun aiheisiin liittyviä kuvattavia sanoja, sivusto rakentaa ristikon ja tekee jokaiselle sanalle kuvan. Tarkista kuvat ennen julkaisua. Arvio: noin 0,05–0,10 $ / ristikko. Tänään: ' + (V.today || 0) + ' / ' + (V.max || 5) + ' ristikkoa, ' + (V.todayi || 0) + ' / ' + (V.maxi || 40) + ' kuvaa. Peli: <a href="' + esc(V.url || '#') + '" target="_blank" style="color:#7db2ff">' + esc(V.url || '') + '</a></p>';
+				if (!V.haskey) {
+					h += '<p style="margin:6px 0"><b>1. Tallenna tekoälyavain</b> (OpenAI-yhteensopiva API-avain, vain sinä syötät sen tähän):</p><input type="password" data-rk="key" autocomplete="off" placeholder="API-avain" ' + bs() + '><button type="button" data-rkdo="savekey" ' + bs('background:#2f6bff;border-color:#2f6bff;font-weight:700') + '>Tallenna avain</button>';
+				} else {
+					h += '<details style="margin:6px 0"><summary style="cursor:pointer">⚙️ Asetukset (avain tallennettu ✅)</summary><label style="font-size:13px">Tekstimalli</label><input data-rk="tm" value="' + esc(V.tm) + '" ' + bs() + '><label style="font-size:13px">Kuvamalli</label><input data-rk="im" value="' + esc(V.im) + '" ' + bs() + '><div style="display:flex;gap:8px"><div style="flex:1"><label style="font-size:13px">Ristikoita / vrk</label><input type="number" min="1" max="30" data-rk="max" value="' + V.max + '" ' + bs() + '></div><div style="flex:1"><label style="font-size:13px">Kuvia / vrk</label><input type="number" min="1" max="200" data-rk="maxi" value="' + V.maxi + '" ' + bs() + '></div></div><input type="password" data-rk="key" autocomplete="off" placeholder="Uusi avain (jätä tyhjäksi, jos ei vaihdeta)" ' + bs() + '><div style="display:flex;gap:8px"><button type="button" data-rkdo="savecfg" ' + bs() + '>Tallenna asetukset</button><button type="button" data-rkdo="clearkey" ' + bs('color:#ff8a8a') + '>Poista avain</button></div></details>';
+				}
+				if (V.haskey && !V.draft) {
+					h += '<p style="margin:10px 0 2px"><b>Uusi ristikko</b></p><input data-rk="url" placeholder="https://… uutisen linkki" ' + bs() + '><textarea data-rk="text" rows="3" placeholder="Tai liitä jutun teksti tähän (jos linkki ei aukea, esim. maksumuuri)" ' + bs('font-size:14px') + '></textarea><button type="button" data-rkdo="gen" ' + bs('background:#2f6bff;border-color:#2f6bff;font-weight:700') + (busy ? ' disabled' : '') + '>Tee ristikko</button>';
+				}
+				if (V.draft) {
+					var d = V.draft, have = d.ents.filter(function (e) { return e.img; }).length;
+					h += '<p style="margin:12px 0 2px"><b>Luonnos</b> · ' + d.ents.length + ' sanaa · kuvia ' + have + ' / ' + d.ents.length + '</p><input data-rk="title" value="' + esc(d.title) + '" ' + bs() + '>' + gridHtml(d);
+					h += '<div>' + d.ents.map(function (e, n) { return '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px solid #2a303b"><span style="width:44px;height:44px;background:#fff;border-radius:6px;flex:none">' + (e.img ? '<img src="' + esc(e.img) + '" style="width:44px;height:44px;object-fit:contain">' : '') + '</span><span style="flex:1"><b>' + esc(e.w) + '</b> <span style="opacity:.7;font-size:13px">· ' + esc(e.h) + '</span></span><button type="button" data-rkdo="img" data-n="' + n + '"' + (busy ? ' disabled' : '') + '>' + (e.img ? '🔄 Uusi' : '🖼️ Tee') + '</button></div>'; }).join('') + '</div>';
+					h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' + (have < d.ents.length ? '<button type="button" data-rkdo="allimg" ' + bs('flex:1;background:#2f6bff;border-color:#2f6bff;font-weight:700') + (busy ? ' disabled' : '') + '>Tee puuttuvat kuvat (' + (d.ents.length - have) + ')</button>' : '<button type="button" data-rkdo="pub" ' + bs('flex:1;background:#1f8f4e;border-color:#1f8f4e;font-weight:700') + '>✅ Julkaise ristikko</button>') + '<button type="button" data-rkdo="discard" ' + bs('flex:0 0 auto;width:auto;color:#ff8a8a') + '>Hylkää</button></div>';
+				}
+				if (msg) { h += '<p style="margin:8px 0;color:' + (/^✅/.test(msg) ? '#7be0a0' : '#ff8a8a') + '">' + esc(msg) + '</p>'; }
+				if (V.list && V.list.length) {
+					h += '<p style="margin:12px 0 2px"><b>Julkaistut uutisristikot</b></p>' + V.list.map(function (p) {
+						return '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid #2a303b;flex-wrap:wrap"><span><b>' + esc(p.title) + '</b> <span style="opacity:.7;font-size:13px">· ' + p.n + ' sanaa</span><br><a href="' + esc(V.url) + '&amp;pz=' + p.id + '" target="_blank" style="color:#7db2ff;font-size:13px">' + esc(V.url) + '&amp;pz=' + p.id + '</a></span><button type="button" data-rkdo="del" data-id="' + p.id + '">🗑️ Poista</button></div>';
+					}).join('');
+				}
+				rkgw.innerHTML = h;
+			}
+			function val(k) { var f = rkgw.querySelector('[data-rk="' + k + '"]'); return f ? f.value : ''; }
+			function done(j) { if (j && j.draft !== undefined) { V = j; D.rkg = j; } }
+			function fail(e) { msg = e.message; }
+			function imgOne(n) { return api('POST', D.urls.rkimg, { n: n }).then(done); }
+			rkgw.addEventListener('click', function (ev) {
+				var b = ev.target.closest('[data-rkdo]'); if (!b || busy) { return; }
+				var a = b.getAttribute('data-rkdo'); msg = '';
+				function run(p) { busy = true; draw(); return p.catch(fail).then(function () { busy = false; draw(); }); }
+				if (a === 'savekey') { run(api('POST', D.urls.rkcfg, { key: val('key') }).then(done)); }
+				else if (a === 'savecfg') { run(api('POST', D.urls.rkcfg, { key: val('key'), tm: val('tm'), im: val('im'), max: val('max'), maxi: val('maxi') }).then(function (j) { done(j); msg = '✅ Tallennettu'; })); }
+				else if (a === 'clearkey') { if (confirm('Poistetaanko tallennettu avain?')) { run(api('POST', D.urls.rkcfg, { clearkey: 1 }).then(done)); } }
+				else if (a === 'gen') { if (!val('url').trim() && val('text').trim().length < 200) { msg = 'Anna linkki tai liitä tekstiä (vähintään 200 merkkiä)'; draw(); return; } run(api('POST', D.urls.rkgen, { url: val('url'), text: val('text') }).then(done)); }
+				else if (a === 'img') { run(imgOne(+b.getAttribute('data-n'))); }
+				else if (a === 'allimg') {
+					run((function () {
+						var p = Promise.resolve();
+						V.draft.ents.forEach(function (e, n) { if (!e.img) { p = p.then(function () { return imgOne(n); }); } });
+						return p;
+					})());
+				}
+				else if (a === 'pub') { run(api('POST', D.urls.rkpub, { title: val('title') }).then(function (j) { done(j); msg = '✅ Ristikko julkaistu'; })); }
+				else if (a === 'discard') { if (confirm('Hylätäänkö luonnos ja sen kuvat?')) { run(api('POST', D.urls.rkdis, {}).then(done)); } }
+				else if (a === 'del') { if (confirm('Poistetaanko julkaistu ristikko ja sen kuvat? Tätä ei voi perua.')) { run(api('POST', D.urls.rkdel, { id: +b.getAttribute('data-id') }).then(done)); } }
+			});
+			draw();
+		})();
 		/* Jukeboksin soittotilasto */
 		var jbw = el('div', { style: 'margin:6px 0 14px;padding:10px;border:1px solid #363d4a;border-radius:12px;background:#151922;color:#e8ecf3' });
 		(function () {
@@ -1324,7 +1396,7 @@
 		}
 		hsDraw();
 
-		var bucket = { tanaan: [tnw], yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw, jbw], juontaja: [hC, ow, aw, fw, bktw], yhteiso: [hD, scw], lista: [upw, tgw, bw, tw], kanavat: [chw, clw], tarve: [nw], levy: [dkw], ihmiset: [hsw], mainokset: [adw], peli: [pgw], sivusto: [sow, bkw] };
+		var bucket = { tanaan: [tnw], yleinen: [wtw, info, sd, mw, psw, hA], ohjelmat: [pw, quick, add], yleiso: [hB, gw, cw, rqw, jbw], juontaja: [hC, ow, aw, fw, bktw], yhteiso: [hD, scw], lista: [upw, tgw, bw, tw], kanavat: [chw, clw], tarve: [nw], levy: [dkw], ihmiset: [hsw], mainokset: [adw], peli: [pgw, rkgw], sivusto: [sow, bkw] };
 		var used = [];
 		Object.keys(bucket).forEach(function (k) { bucket[k].forEach(function (n) { used.push(n); }); });
 		loose.forEach(function (n) { if (used.indexOf(n) < 0 && n !== save && n !== msg) { bucket.yleinen.unshift(n); } });

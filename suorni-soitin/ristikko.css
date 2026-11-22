@@ -46,3 +46,5 @@ a{color:#7cc4ff}
 .rank div{display:flex;justify-content:space-between;padding:8px 12px;border-radius:10px;border-left:6px solid var(--c);background:rgba(255,255,255,.07)}
 .err{color:#ff9d9d;font-size:14px}
 .share{font-size:13px;opacity:.85;word-break:break-all}
+.cell.p img{width:84%;height:84%;object-fit:contain;display:block;pointer-events:none}
+.hint .e img{width:44px;height:44px;object-fit:contain;display:block;border-radius:6px;background:#fff}
