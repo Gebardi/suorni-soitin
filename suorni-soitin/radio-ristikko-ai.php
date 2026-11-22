@@ -200,9 +200,12 @@ function suorni_rkg_gen( $req ) {
 	$c = suorni_rkg_cfg();
 	if ( '' === $c['key'] ) { return new WP_Error( 'suorni_nokey', 'Tallenna ensin tekoälyavain', array( 'status' => 400 ) ); }
 	if ( suorni_rkg_count( 'p' ) >= $c['max'] ) { return new WP_Error( 'suorni_cap', 'Päivän ristikkoraja (' . $c['max'] . ') täyttyi', array( 'status' => 429 ) ); }
-	$url = trim( (string) $req->get_param( 'url' ) ); $text = trim( (string) $req->get_param( 'text' ) ); $title = '';
-	if ( mb_strlen( $text ) < 200 ) {
-		if ( '' === $url ) { return new WP_Error( 'suorni_bad', 'Anna uutisen linkki tai liitä jutun teksti (vähintään 200 merkkiä)', array( 'status' => 400 ) ); }
+	$url = trim( (string) $req->get_param( 'url' ) ); $text = trim( (string) $req->get_param( 'text' ) ); $title = ''; $topic = trim( sanitize_text_field( (string) $req->get_param( 'topic' ) ) );
+	if ( '' !== $topic ) {
+		$title = mb_substr( $topic, 0, 60 ); $url = '';
+		$text = 'Ei uutisjuttua. Tee ristikko aiheesta: ' . mb_substr( $topic, 0, 120 ) . '. Keksi aiheeseen liittyviä konkreettisia, kuvattavia sanoja.';
+	} elseif ( mb_strlen( $text ) < 200 ) {
+		if ( '' === $url ) { return new WP_Error( 'suorni_bad', 'Anna uutisen linkki, liitä jutun teksti (vähintään 200 merkkiä) tai kirjoita aihe', array( 'status' => 400 ) ); }
 		$f = suorni_rkg_fetch( $url ); if ( is_wp_error( $f ) ) { return $f; }
 		$title = $f['title']; $text = $f['text'];
 		if ( mb_strlen( $text ) < 200 ) { return new WP_Error( 'suorni_fetch', 'Sivulta ei saatu tekstiä (maksumuuri?). Liitä jutun teksti käsin.', array( 'status' => 502 ) ); }

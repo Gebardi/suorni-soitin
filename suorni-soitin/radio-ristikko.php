@@ -6,6 +6,7 @@
    POST ristikko/new   {pid,name,pz?}          luo huoneen, palauttaa {room}
    POST ristikko/state {room,pid,name,v}       huoneen tila (v = viimeksi nähty versio; sama versio -> {same:1}); liittää pelaajan
    POST ristikko/start {room,pid}              käynnistää lähtölaskennan (go = nyt + 6 s); arvaukset hyväksytään vasta go:n jälkeen
+   POST ristikko/hint  {room,pid,e,kind}       vihje: kuvan lisäksi teksti (w, -10 p) tai yksi kirjain (l, -25 p)
    POST ristikko/next  {room,pid}              valmiista huoneesta seuraavaan (sama huone kaikille)
    POST ristikko/lb    {pid}                   pistepörssi (viikko / kaikki ajat; nimi näkyy vasta hyväksynnän jälkeen)
    POST ristikko/put   {room,pid,i,ch}         arvaus ruutuun i (rivi*sarakkeet+sarake); palauttaa tilan + {right:bool}
@@ -37,6 +38,7 @@ function suorni_rk_load( $code ) {
 	if ( time() - (int) $d['t0'] > 2 * DAY_IN_SECONDS ) { return null; }
 	if ( ! isset( $d['go'] ) ) { $d['go'] = (int) $d['t0']; }
 	if ( ! isset( $d['next'] ) ) { $d['next'] = ''; }
+	if ( ! isset( $d['hh'] ) ) { $d['hh'] = array(); }
 	return $d;
 }
 function suorni_rk_save( $code, $d ) { update_option( suorni_rk_opt( $code ), $d, false ); }
@@ -60,13 +62,20 @@ function suorni_rk_solution( $p ) {
 function suorni_rk_layout( $p ) {
 	$ents = array();
 	$u = function_exists( 'suorni_rkg_dir' ) ? suorni_rkg_dir() : array( 'url' => '' );
-	foreach ( $p['ents'] as $k => $e ) { $ents[] = array( 'id' => $k, 'e' => $e['e'], 'img' => ! empty( $e['f'] ) ? $u['url'] . $e['f'] : '', 'h' => $e['h'], 'r' => $e['r'], 'c' => $e['c'], 'd' => $e['d'], 'len' => mb_strlen( $e['w'], 'UTF-8' ) ); }
+	foreach ( $p['ents'] as $k => $e ) { $ents[] = array( 'id' => $k, 'e' => $e['e'], 'img' => ! empty( $e['f'] ) ? $u['url'] . $e['f'] : '', 'r' => $e['r'], 'c' => $e['c'], 'd' => $e['d'], 'len' => mb_strlen( $e['w'], 'UTF-8' ) ); }
 	return array( 'id' => (int) $p['id'], 'title' => isset( $p['title'] ) ? $p['title'] : '', 'r' => (int) $p['r'], 'c' => (int) $p['c'], 'ents' => $ents );
+}
+/* paljastetut vihjetekstit: sanan indeksi => teksti */
+function suorni_rk_hh( $d ) {
+	$o = array(); if ( empty( $d['hh'] ) ) { return $o; }
+	$p = suorni_rk_puzzle( $d['pz'] ); if ( ! $p ) { return $o; }
+	foreach ( $d['hh'] as $k => $v ) { if ( isset( $p['ents'][ $k ] ) ) { $o[ $k ] = (string) $p['ents'][ $k ]['h']; } }
+	return $o;
 }
 function suorni_rk_view( $d, $pid, $full ) {
 	$h = md5( $pid ); $me = -1; $pl = array();
-	foreach ( $d['pl'] as $i => $x ) { if ( $x['h'] === $h ) { $me = $i; } $pl[] = array( 'n' => $x['n'], 's' => (int) $x['s'], 'ok' => (int) $x['ok'], 'bad' => (int) $x['bad'] ); }
-	$v = array( 'v' => (int) $d['v'], 'cells' => (object) $d['cells'], 'pl' => $pl, 'me' => $me, 'done' => (int) $d['done'], 't0' => (int) $d['t0'], 'go' => (int) $d['go'], 'next' => (string) $d['next'], 'now' => time(), 'wd' => (object) $d['wd'] );
+	foreach ( $d['pl'] as $i => $x ) { if ( $x['h'] === $h ) { $me = $i; } $pl[] = array( 'n' => $x['n'], 's' => (int) $x['s'], 'ok' => (int) $x['ok'], 'bad' => (int) $x['bad'], 'hn' => isset( $x['hn'] ) ? (int) $x['hn'] : 0 ); }
+	$v = array( 'v' => (int) $d['v'], 'cells' => (object) $d['cells'], 'pl' => $pl, 'me' => $me, 'done' => (int) $d['done'], 't0' => (int) $d['t0'], 'go' => (int) $d['go'], 'next' => (string) $d['next'], 'now' => time(), 'wd' => (object) $d['wd'], 'hh' => (object) suorni_rk_hh( $d ) );
 	if ( $full ) { $p = suorni_rk_puzzle( $d['pz'] ); if ( $p ) { $v['pz'] = suorni_rk_layout( $p ); } }
 	return $v;
 }
@@ -96,7 +105,7 @@ function suorni_rk_make( $pid, $name, $want, $avoid = 0 ) {
 		$code = ''; for ( $i = 0; $i < 5; $i++ ) { $code .= $al[ wp_rand( 0, strlen( $al ) - 1 ) ]; }
 		if ( ! isset( $idx[ $code ] ) ) { break; }
 	}
-	$d = array( 'pz' => (int) $p['id'], 't0' => time(), 'go' => 0, 'next' => '', 'lb' => 0, 'v' => 1, 'cells' => array(), 'pl' => array(), 'done' => 0, 'wd' => array() );
+	$d = array( 'pz' => (int) $p['id'], 't0' => time(), 'go' => 0, 'next' => '', 'lb' => 0, 'hh' => array(), 'v' => 1, 'cells' => array(), 'pl' => array(), 'done' => 0, 'wd' => array() );
 	suorni_rk_join( $d, $pid, $name );
 	suorni_rk_save( $code, $d );
 	$idx[ $code ] = time(); update_option( 'suorni_rk_idx', $idx, false );
@@ -116,6 +125,43 @@ function suorni_rk_new( $req ) {
 	$code = suorni_rk_make( $pid, suorni_peli_name( $req->get_param( 'name' ) ), (int) $req->get_param( 'pz' ) );
 	if ( is_wp_error( $code ) ) { return $code; }
 	return suorni_json( array( 'room' => $code ) );
+}
+/* Vihje: kuvan lisäksi sanan vihjeteksti (-10 p) tai yksi kirjain (-25 p). Pisteet voivat mennä miinukselle huoneessa; pörssiin lasketaan vain positiiviset. */
+function suorni_rk_hint( $req ) {
+	if ( ! suorni_rk_ip_ok() ) { return new WP_Error( 'suorni_limit', 'Liikaa kutsuja', array( 'status' => 429 ) ); }
+	$code = suorni_rk_code( $req->get_param( 'room' ) ); $pid = suorni_kisa_pid( $req->get_param( 'pid' ) );
+	$en = (int) $req->get_param( 'e' ); $kind = 'l' === $req->get_param( 'kind' ) ? 'l' : 'w';
+	if ( strlen( $code ) < 5 || strlen( $pid ) < 8 ) { return new WP_Error( 'suorni_bad', 'Virheellinen', array( 'status' => 400 ) ); }
+	$k = 'suorni_rkh_' . md5( $pid ); $c = (int) get_transient( $k );
+	if ( $c >= 20 ) { return new WP_Error( 'suorni_limit', 'Hidasta vähän', array( 'status' => 429 ) ); }
+	set_transient( $k, $c + 1, 10 );
+	if ( ! suorni_rk_lock( $code ) ) { return new WP_Error( 'suorni_busy', 'Kokeile uudelleen', array( 'status' => 503 ) ); }
+	$d = suorni_rk_load( $code );
+	if ( ! $d ) { suorni_rk_unlock( $code ); return new WP_Error( 'suorni_gone', 'Huonetta ei löydy', array( 'status' => 404 ) ); }
+	$p = suorni_rk_puzzle( $d['pz'] ); $h = md5( $pid ); $me = -1;
+	foreach ( $d['pl'] as $n => $x ) { if ( $x['h'] === $h ) { $me = $n; } }
+	if ( $me >= 0 && $p && isset( $p['ents'][ $en ] ) && ! $d['done'] && $d['go'] && time() >= (int) $d['go'] ) {
+		$e = $p['ents'][ $en ]; $sol = suorni_rk_solution( $p ); $changed = false;
+		if ( 'w' === $kind ) {
+			if ( empty( $d['hh'][ $en ] ) ) { $d['hh'][ $en ] = 1; $changed = true; $cost = 10; }
+		} else {
+			foreach ( suorni_rk_cells_of( $e, $p['c'] ) as $ci ) {
+				if ( ! isset( $d['cells'][ $ci ] ) ) { $d['cells'][ $ci ] = array( $sol[ $ci ], -1 ); $changed = true; $cost = 25; break; }
+			}
+		}
+		if ( $changed ) {
+			$d['pl'][ $me ]['s'] -= $cost; $d['pl'][ $me ]['hn'] = ( isset( $d['pl'][ $me ]['hn'] ) ? (int) $d['pl'][ $me ]['hn'] : 0 ) + 1;
+			foreach ( $p['ents'] as $k2 => $e2 ) {
+				if ( isset( $d['wd'][ $k2 ] ) ) { continue; }
+				$all = true; foreach ( suorni_rk_cells_of( $e2, $p['c'] ) as $ci ) { if ( ! isset( $d['cells'][ $ci ] ) ) { $all = false; break; } }
+				if ( $all ) { $d['wd'][ $k2 ] = -1; }
+			}
+			if ( count( $d['cells'] ) >= count( $sol ) ) { $d['done'] = time(); if ( empty( $d['lb'] ) ) { $d['lb'] = 1; suorni_rk_lb_add( $d ); } }
+			$d['v']++; suorni_rk_save( $code, $d );
+		}
+	}
+	suorni_rk_unlock( $code );
+	return suorni_json( suorni_rk_view( $d, $pid, false ) );
 }
 /* Aloitus: kuka tahansa huoneen pelaaja käynnistää lähtölaskennan kaikille (go = aika, jolloin peli alkaa) */
 function suorni_rk_start( $req ) {
@@ -244,7 +290,7 @@ function suorni_rk_put( $req ) {
 	return suorni_json( array_merge( suorni_rk_view( $d, $pid, false ), array( 'right' => $right ) ) );
 }
 add_action( 'rest_api_init', function () {
-	foreach ( array( 'new' => 'suorni_rk_new', 'state' => 'suorni_rk_state', 'put' => 'suorni_rk_put', 'start' => 'suorni_rk_start', 'next' => 'suorni_rk_next', 'lb' => 'suorni_rk_lb' ) as $r => $cb ) {
+	foreach ( array( 'new' => 'suorni_rk_new', 'state' => 'suorni_rk_state', 'put' => 'suorni_rk_put', 'start' => 'suorni_rk_start', 'hint' => 'suorni_rk_hint', 'next' => 'suorni_rk_next', 'lb' => 'suorni_rk_lb' ) as $r => $cb ) {
 		register_rest_route( 'suorni/v1', '/ristikko/' . $r, array( 'methods' => 'POST', 'callback' => $cb, 'permission_callback' => '__return_true' ) );
 	}
 } );

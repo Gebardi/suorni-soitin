@@ -6,7 +6,7 @@ function ls(k, v) { try { if (v === undefined) { return localStorage.getItem(k);
 var pid = ls('suorni_rk_pid');
 if (!pid || pid.length < 10) { pid = ''; var a = 'abcdefghijklmnopqrstuvwxyz0123456789'; for (var i = 0; i < 20; i++) { pid += a[Math.floor(Math.random() * a.length)]; } ls('suorni_rk_pid', pid); }
 var name = ls('suorni_rk_name') || '';
-var S = { go: 0, next: '', built: false, room: CFG.room, v: 0, pz: null, cells: {}, pl: [], me: -1, done: 0, t0: 0, wd: {}, sel: -1, dir: 'r', err: '', skew: 0, busy: false, bad: -1 };
+var S = { hh: {}, go: 0, next: '', built: false, room: CFG.room, v: 0, pz: null, cells: {}, pl: [], me: -1, done: 0, t0: 0, wd: {}, sel: -1, dir: 'r', err: '', skew: 0, busy: false, bad: -1 };
 var timer = null;
 function api(path, data) {
   var b = CFG.api + path; data = data || {}; data.pid = pid;
@@ -61,7 +61,7 @@ function nowS() { return Date.now() / 1000 + S.skew; }
 function applyState(j) {
   if (j.now) { S.skew = j.now - Date.now() / 1000; }
   if (j.same) { return; }
-  S.v = j.v; S.cells = j.cells || {}; S.pl = j.pl || []; S.me = j.me; S.done = j.done; S.t0 = j.t0; S.wd = j.wd || {}; S.go = j.go || 0; S.next = j.next || '';
+  S.v = j.v; S.cells = j.cells || {}; S.pl = j.pl || []; S.me = j.me; S.done = j.done; S.t0 = j.t0; S.wd = j.wd || {}; S.go = j.go || 0; S.next = j.next || ''; S.hh = j.hh || {};
   if (j.pz) { S.pz = j.pz; }
   if (!S.pz || !S.room) { return; }
   try { history.replaceState(null, '', shareUrl()); } catch (e) {}
@@ -98,7 +98,7 @@ function startCd() {
   function tick() {
     var left = S.go - nowS(), n = document.getElementById('cdn'), t = document.getElementById('cdt'); if (!n) { return; }
     if (left > 0) { n.textContent = Math.min(5, Math.ceil(left)); }
-    else if (left > -1.0) { n.textContent = 'ALOITA!'; n.style.fontSize = '64px'; t.textContent = ''; }
+    else if (left > -1.0) { if (n.textContent !== 'ALOITA!') { paint(); } n.textContent = 'ALOITA!'; n.style.fontSize = '64px'; t.textContent = ''; }
     else { stopCd(); }
   }
   tick(); cdT = setInterval(tick, 80);
@@ -127,6 +127,14 @@ function build() {
   var meta = el('div', 'meta'); meta.id = 'meta';
   var bd = el('div', 'board'); bd.id = 'board'; bd.style.gridTemplateColumns = 'repeat(' + P.c + ',1fr)';
   var hint = el('div', 'hint'); hint.id = 'hint';
+  hint.onclick = function (ev) {
+    var b = ev.target.closest('[data-h]'); if (!b || b.disabled || S.busy) { return; }
+    var en = curEnt(); if (en < 0) { return; }
+    S.busy = true;
+    api('hint', { room: S.room, e: en, kind: b.getAttribute('data-h') }).then(function (j) {
+      S.busy = false; S.v = j.v; S.cells = j.cells; S.pl = j.pl; S.me = j.me; S.done = j.done; S.wd = j.wd || {}; S.hh = j.hh || {}; paint(); if (S.done) { showEnd(); }
+    }).catch(function () { S.busy = false; });
+  };
   var kb = el('div', 'kb'); kb.id = 'kb';
   app.appendChild(top); app.appendChild(pls); app.appendChild(meta); app.appendChild(bd); app.appendChild(hint); app.appendChild(kb);
   var n = P.r * P.c;
@@ -202,7 +210,7 @@ function typeCh(ch) {
   api('put', { room: S.room, i: at, ch: ch }).then(function (j) {
     S.busy = false;
     var wasOk = j.right === true, wasBad = j.right === false;
-    S.v = j.v; S.cells = j.cells; S.pl = j.pl; S.me = j.me; S.done = j.done; S.wd = j.wd || {};
+    S.v = j.v; S.cells = j.cells; S.pl = j.pl; S.me = j.me; S.done = j.done; S.wd = j.wd || {}; S.hh = j.hh || {};
     if (wasOk) { advance(); }
     if (wasBad) { S.bad = at; }
     paint();
@@ -219,7 +227,7 @@ function paint() {
     var c = cs[i];
     if (c.classList.contains('l')) {
       var f = S.cells[i], cls = 'cell l';
-      if (f) { cls += ' f'; c.style.setProperty('--c', COL[f[1] % COL.length]); c.textContent = f[0]; }
+      if (f) { cls += ' f'; c.style.setProperty('--c', f[1] < 0 ? '#cfd6ee' : COL[f[1] % COL.length]); c.textContent = f[0]; }
       else { c.textContent = ''; c.style.removeProperty('--c'); }
       if (hl[i]) { cls += ' w'; }
       if (i === S.sel) { cls += ' sel'; }
@@ -230,7 +238,10 @@ function paint() {
     }
   }
   var h = document.getElementById('hint');
-  if (en >= 0) { var e = P.ents[en]; h.innerHTML = '<span class="e">' + pic(e) + '</span><span>' + esc(e.h) + ' · ' + e.len + ' kirjainta</span>'; }
+  if (en >= 0) {
+    var e = P.ents[en], shown = S.hh[en] !== undefined, empty = e.cells.some(function (k) { return !S.cells[k]; }), can = live() && !S.done;
+    h.innerHTML = '<span class="e">' + pic(e) + '</span><span class="ht">' + (shown ? '<b>' + esc(S.hh[en]) + '</b> · ' : '') + e.len + ' kirjainta</span><span class="hbs"><button class="btn sm sec" data-h="w"' + (shown || !can ? ' disabled' : '') + '>💡 Vihje −10 p</button><button class="btn sm sec" data-h="l"' + (!empty || !can ? ' disabled' : '') + '>🔤 Kirjain −25 p</button></span>';
+  }
   var pls = document.getElementById('pls'); pls.innerHTML = '';
   S.pl.forEach(function (p, k) {
     var d = el('div', 'pl' + (k === S.me ? ' me' : ''), esc(p.n) + ' <b>' + p.s + '</b>'); d.style.setProperty('--c', COL[k % COL.length]); pls.appendChild(d);
@@ -244,6 +255,24 @@ function share() {
   try { navigator.clipboard.writeText(u).then(function () { alert('Linkki kopioitu: ' + u); }); } catch (e) { prompt('Kopioi linkki', u); }
 }
 function fmt(s) { var m = Math.floor(s / 60), r = s % 60; return m + ':' + (r < 10 ? '0' : '') + r; }
+/* Taajuus-pelin bonus: kirjataan selaimen tallennukseen, peli (silta.js) ottaa sen vastaan seuraavalla avauksella */
+function grantBonus(box) {
+  var me = S.pl[S.me]; if (!me || me.ok < 1) { return; }
+  var today = ''; try { today = new Date().toLocaleDateString('sv-SE'); } catch (e) { today = String(new Date().getDate()); }
+  var cl; try { cl = JSON.parse(ls('suorni_rk_claimed') || '{}'); } catch (e) { cl = {}; }
+  if (!cl || cl.d !== today) { cl = { d: today, n: 0, ids: [] }; }
+  var game = '<a href="' + esc(CFG.home) + (CFG.home.indexOf('?') > -1 ? '&' : '?') + 'peli=1&src=ristikko">Avaa Taajuus</a>';
+  var has = !!ls('taajuus_v1');
+  if (cl.ids.indexOf(S.room) > -1) { box.innerHTML = '🎁 Tämän ristikon bonus on jo kirjattu peliin. ' + game; return; }
+  if (cl.n >= 6) { box.innerHTML = '🎁 Päivän bonusraja (6 ristikkoa) on täynnä, pisteet kertyvät silti pörssiin.'; return; }
+  var mins = 3 + Math.min(5, Math.floor(Math.max(0, me.s) / 60)), coin = me.hn ? 1.25 : 1.5;
+  var L; try { L = JSON.parse(ls('suorni_rk_ledger') || '[]'); } catch (e) { L = []; }
+  if (!Array.isArray(L)) { L = []; }
+  L.push({ id: 'rk-' + S.room + '-' + pid.slice(0, 6), t: Date.now(), mins: mins, coin: coin, left: 600, pts: me.s });
+  ls('suorni_rk_ledger', JSON.stringify(L.slice(-10)));
+  cl.n++; cl.ids.push(S.room); ls('suorni_rk_claimed', JSON.stringify(cl));
+  box.innerHTML = '🎁 <b>Taajuus-bonus:</b> +' + mins + ' min tuotto ja tuotto ×' + coin + ' 10 min' + (me.hn ? '' : ' (ei vihjeitä: parempi bonus!)') + '. ' + (has ? 'Saat sen, kun avaat pelin. ' : 'Aloita Taajuus, niin bonus odottaa siellä 3 vrk. ') + game;
+}
 function lbBox(host) {
   var box = el('div', 'rank'); box.innerHTML = '<div style="--c:#888"><span>Ladataan pörssiä…</span></div>'; host.appendChild(box);
   api('lb', {}).then(function (L) {
@@ -263,8 +292,9 @@ function showEnd() {
   var c = el('div', 'card'); c.style.maxHeight = '92vh'; c.style.overflow = 'auto';
   var order = S.pl.map(function (p, k) { return { p: p, k: k }; }).sort(function (a, b) { return b.p.s - a.p.s; });
   var h = '<h2 style="margin:0">🎉 Ristikko valmis!</h2><p>Aika ' + fmt(Math.max(0, S.done - (S.go || S.t0))) + '. Tämän pelin pisteet:</p><div class="rank">';
-  order.forEach(function (o, n) { h += '<div style="--c:' + COL[o.k % COL.length] + '"><span>' + (n === 0 ? '👑 ' : '') + esc(o.p.n) + '</span><b>' + o.p.s + ' p</b></div>'; });
-  c.innerHTML = h + '</div><h3 style="margin:6px 0 0">🏆 Pistepörssi</h3>';
+  order.forEach(function (o, n) { h += '<div style="--c:' + COL[o.k % COL.length] + '"><span>' + (n === 0 ? '👑 ' : '') + esc(o.p.n) + (o.p.hn ? ' <small>💡' + o.p.hn + '</small>' : '') + '</span><b>' + o.p.s + ' p</b></div>'; });
+  c.innerHTML = h + '</div><div id="bonus" class="bonus"></div><h3 style="margin:6px 0 0">🏆 Pistepörssi</h3>';
+  grantBonus(c.querySelector('#bonus'));
   lbBox(c);
   var r = el('div', 'row');
   var b1 = el('button', 'btn', 'Seuraava ristikko'); b1.id = 'nxt';

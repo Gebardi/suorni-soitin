@@ -974,7 +974,7 @@
 					h += '<details style="margin:6px 0"><summary style="cursor:pointer">⚙️ Asetukset (avain tallennettu ✅)</summary><label style="font-size:13px">Tekstimalli</label><input data-rk="tm" value="' + esc(V.tm) + '" ' + bs() + '><label style="font-size:13px">Kuvamalli</label><input data-rk="im" value="' + esc(V.im) + '" ' + bs() + '><div style="display:flex;gap:8px"><div style="flex:1"><label style="font-size:13px">Ristikoita / vrk</label><input type="number" min="1" max="30" data-rk="max" value="' + V.max + '" ' + bs() + '></div><div style="flex:1"><label style="font-size:13px">Kuvia / vrk</label><input type="number" min="1" max="200" data-rk="maxi" value="' + V.maxi + '" ' + bs() + '></div></div><input type="password" data-rk="key" autocomplete="off" placeholder="Uusi avain (jätä tyhjäksi, jos ei vaihdeta)" ' + bs() + '><div style="display:flex;gap:8px"><button type="button" data-rkdo="savecfg" ' + bs() + '>Tallenna asetukset</button><button type="button" data-rkdo="clearkey" ' + bs('color:#ff8a8a') + '>Poista avain</button></div></details>';
 				}
 				if (V.haskey && !V.draft) {
-					h += '<p style="margin:10px 0 2px"><b>Uusi ristikko</b></p><input data-rk="url" placeholder="https://… uutisen linkki" ' + bs() + '><textarea data-rk="text" rows="3" placeholder="Tai liitä jutun teksti tähän (jos linkki ei aukea, esim. maksumuuri)" ' + bs('font-size:14px') + '></textarea><button type="button" data-rkdo="gen" ' + bs('background:#2f6bff;border-color:#2f6bff;font-weight:700') + (busy ? ' disabled' : '') + '>Tee ristikko</button>';
+					h += '<p style="margin:10px 0 2px"><b>Uusi ristikko</b></p><input data-rk="url" placeholder="https://… uutisen linkki" ' + bs() + '><textarea data-rk="text" rows="3" placeholder="Tai liitä jutun teksti tähän (jos linkki ei aukea, esim. maksumuuri)" ' + bs('font-size:14px') + '></textarea><input data-rk="topic" placeholder="Tai kirjoita vain aihe, esim. radio ja musiikki, sauna, kesämökki" ' + bs() + '><button type="button" data-rkdo="gen" ' + bs('background:#2f6bff;border-color:#2f6bff;font-weight:700') + (busy ? ' disabled' : '') + '>Tee ristikko</button>';
 				}
 				if (V.draft) {
 					var d = V.draft, have = d.ents.filter(function (e) { return e.img; }).length;
@@ -1007,7 +1007,7 @@
 				if (a === 'savekey') { run(api('POST', D.urls.rkcfg, { key: val('key') }).then(done)); }
 				else if (a === 'savecfg') { run(api('POST', D.urls.rkcfg, { key: val('key'), tm: val('tm'), im: val('im'), max: val('max'), maxi: val('maxi') }).then(function (j) { done(j); msg = '✅ Tallennettu'; })); }
 				else if (a === 'clearkey') { if (confirm('Poistetaanko tallennettu avain?')) { run(api('POST', D.urls.rkcfg, { clearkey: 1 }).then(done)); } }
-				else if (a === 'gen') { if (!val('url').trim() && val('text').trim().length < 200) { msg = 'Anna linkki tai liitä tekstiä (vähintään 200 merkkiä)'; draw(); return; } run(api('POST', D.urls.rkgen, { url: val('url'), text: val('text') }).then(done)); }
+				else if (a === 'gen') { if (!val('url').trim() && !val('topic').trim() && val('text').trim().length < 200) { msg = 'Anna linkki, aihe tai tekstiä (vähintään 200 merkkiä)'; draw(); return; } run(api('POST', D.urls.rkgen, { url: val('url'), text: val('text'), topic: val('topic') }).then(done)); }
 				else if (a === 'img') { run(imgOne(+b.getAttribute('data-n'))); }
 				else if (a === 'allimg') {
 					run((function () {
