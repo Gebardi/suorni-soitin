@@ -6,7 +6,7 @@ function ls(k, v) { try { if (v === undefined) { return localStorage.getItem(k);
 var pid = ls('suorni_rk_pid');
 if (!pid || pid.length < 10) { pid = ''; var a = 'abcdefghijklmnopqrstuvwxyz0123456789'; for (var i = 0; i < 20; i++) { pid += a[Math.floor(Math.random() * a.length)]; } ls('suorni_rk_pid', pid); }
 var name = ls('suorni_rk_name') || '';
-var S = { room: CFG.room, v: 0, pz: null, cells: {}, pl: [], me: -1, done: 0, t0: 0, wd: {}, sel: -1, dir: 'r', err: '', skew: 0, busy: false, bad: -1 };
+var S = { go: 0, next: '', built: false, room: CFG.room, v: 0, pz: null, cells: {}, pl: [], me: -1, done: 0, t0: 0, wd: {}, sel: -1, dir: 'r', err: '', skew: 0, busy: false, bad: -1 };
 var timer = null;
 function api(path, data) {
   var b = CFG.api + path; data = data || {}; data.pid = pid;
@@ -38,6 +38,7 @@ function start(msg) {
   b2.onclick = function () { var cd = (document.getElementById('cd').value || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (cd.length < 5) { return; } saveName(document.getElementById('nm').value); S.room = cd; join(); };
   j.appendChild(b2); c.appendChild(j);
   app.appendChild(t); app.appendChild(c);
+  var lc = el('div', 'card'); lc.innerHTML = '<b>🏆 Pistepörssi</b>'; lbBox(lc); app.appendChild(lc);
 }
 function saveName(n) { name = (n || '').trim().slice(0, 16); ls('suorni_rk_name', name); }
 function create(pz) {
@@ -45,7 +46,7 @@ function create(pz) {
     .catch(function (e) { start(e.message); });
 }
 function join() {
-  S.v = 0; S.pz = null; S.cells = {}; S.done = 0; S.sel = -1;
+  S.v = 0; S.pz = null; S.cells = {}; S.done = 0; S.sel = -1; S.go = 0; S.next = ''; S.built = false; stopCd(); var oe = document.getElementById('end'); if (oe) { oe.remove(); }
   poll(true);
 }
 
@@ -54,20 +55,55 @@ function poll(first) {
   clearTimeout(timer);
   api('state', { room: S.room, name: first ? name : '', v: S.v }).then(function (j) { applyState(j); })
     .catch(function (e) { if (e.status === 404) { S.room = ''; start('Huonetta ei löytynyt tai se on vanhentunut.'); return; } })
-    .then(function () { if (S.room) { timer = setTimeout(function () { poll(false); }, document.hidden ? 8000 : 2000); } });
+    .then(function () { if (S.room) { timer = setTimeout(function () { poll(false); }, document.hidden ? 8000 : (!S.go || nowS() < S.go + 1 ? 1000 : 2000)); } });
 }
+function nowS() { return Date.now() / 1000 + S.skew; }
 function applyState(j) {
-  if (j.now) { S.skew = j.now - Math.floor(Date.now() / 1000); }
+  if (j.now) { S.skew = j.now - Date.now() / 1000; }
   if (j.same) { return; }
-  var full = !S.pz;
-  S.v = j.v; S.cells = j.cells || {}; S.pl = j.pl || []; S.me = j.me; S.done = j.done; S.t0 = j.t0; S.wd = j.wd || {};
+  S.v = j.v; S.cells = j.cells || {}; S.pl = j.pl || []; S.me = j.me; S.done = j.done; S.t0 = j.t0; S.wd = j.wd || {}; S.go = j.go || 0; S.next = j.next || '';
   if (j.pz) { S.pz = j.pz; }
-  if (!S.pz) { return; }
-  if (!S.room) { return; }
+  if (!S.pz || !S.room) { return; }
   try { history.replaceState(null, '', shareUrl()); } catch (e) {}
-  if (full || !document.getElementById('board')) { build(); } else { paint(); }
-  if (S.done) { showEnd(); }
+  render();
 }
+function render() {
+  if (!S.go) { S.built = false; lobby(); return; }
+  if (!S.built || !document.getElementById('board')) { build(); S.built = true; } else { paint(); }
+  startCd();
+  if (S.done) { showEnd(); updateNext(); }
+}
+function lobby() {
+  document.onkeydown = null; stopCd();
+  app.innerHTML = '';
+  var top = el('div', 'top', '<h1>🧩 ' + esc(S.pz.title || 'Kuvaristikko') + '</h1>');
+  var c = el('div', 'card');
+  c.innerHTML = '<p>Huone <b style="font-size:22px;letter-spacing:2px">' + esc(S.room) + '</b></p><p>Odotetaan pelaajia. Kun kaikki ovat mukana, joku painaa Aloita, ja kaikille tulee lähtölaskenta samaan aikaan.</p>';
+  var pls = el('div', 'pls');
+  S.pl.forEach(function (p, k) { var d = el('div', 'pl' + (k === S.me ? ' me' : ''), esc(p.n)); d.style.setProperty('--c', COL[k % COL.length]); pls.appendChild(d); });
+  c.appendChild(pls);
+  var r = el('div', 'row');
+  var sh = el('button', 'btn sec', '👥 Kutsu kavereita'); sh.onclick = share;
+  var go = el('button', 'btn', '▶ Aloita peli'); go.onclick = function () { go.disabled = true; api('start', { room: S.room }).then(applyState).catch(function () { go.disabled = false; }); };
+  r.appendChild(go); r.appendChild(sh); c.appendChild(r);
+  app.appendChild(top); app.appendChild(c);
+}
+var cdT = null;
+function stopCd() { clearInterval(cdT); cdT = null; var o = document.getElementById('cd'); if (o) { o.remove(); } }
+function startCd() {
+  if (cdT || !S.go || nowS() - S.go > 1.2) { return; }
+  var o = el('div', 'ov'); o.id = 'cd'; o.style.background = '#0b1020'; o.style.zIndex = 20;
+  o.innerHTML = '<div style="text-align:center"><div id="cdn" style="font-size:120px;font-weight:900;color:#ffd23f;line-height:1">5</div><div id="cdt" style="font-size:18px;opacity:.8;margin-top:8px">Valmistaudu!</div></div>';
+  document.body.appendChild(o);
+  function tick() {
+    var left = S.go - nowS(), n = document.getElementById('cdn'), t = document.getElementById('cdt'); if (!n) { return; }
+    if (left > 0) { n.textContent = Math.min(5, Math.ceil(left)); }
+    else if (left > -1.0) { n.textContent = 'ALOITA!'; n.style.fontSize = '64px'; t.textContent = ''; }
+    else { stopCd(); }
+  }
+  tick(); cdT = setInterval(tick, 80);
+}
+function live() { return S.go && nowS() >= S.go; }
 
 /* ---------- ruudukko ---------- */
 function layoutMaps() {
@@ -160,7 +196,7 @@ function advance() {
 }
 function moveBack() { step(-1); }
 function typeCh(ch) {
-  if (S.done || S.me < 0 || S.sel < 0 || S.busy) { return; }
+  if (S.done || S.me < 0 || S.sel < 0 || S.busy || !live()) { return; }
   if (S.cells[S.sel]) { advance(); paint(); if (S.cells[S.sel]) { return; } }
   var at = S.sel; S.busy = true;
   api('put', { room: S.room, i: at, ch: ch }).then(function (j) {
@@ -208,19 +244,40 @@ function share() {
   try { navigator.clipboard.writeText(u).then(function () { alert('Linkki kopioitu: ' + u); }); } catch (e) { prompt('Kopioi linkki', u); }
 }
 function fmt(s) { var m = Math.floor(s / 60), r = s % 60; return m + ':' + (r < 10 ? '0' : '') + r; }
+function lbBox(host) {
+  var box = el('div', 'rank'); box.innerHTML = '<div style="--c:#888"><span>Ladataan pörssiä…</span></div>'; host.appendChild(box);
+  api('lb', {}).then(function (L) {
+    var tab = 'w';
+    function draw() {
+      var rows = L[tab] || [];
+      box.innerHTML = '<div class="tabs"><button class="btn sm ' + (tab === 'w' ? '' : 'sec') + '" data-t="w">Viikko ' + esc(L.wk.slice(-3)) + '</button><button class="btn sm ' + (tab === 'a' ? '' : 'sec') + '" data-t="a">Kaikki ajat</button></div>' +
+        (rows.length ? rows.map(function (r, n) { return '<div style="--c:' + (r.me ? '#ffd23f' : '#5ee1c9') + '"><span>' + (n + 1) + '. ' + (n === 0 ? '👑 ' : '') + esc(r.n) + '</span><b>' + r.s + ' p</b></div>'; }).join('') : '<div style="--c:#888"><span>Ei vielä pisteitä. Ratkaise ristikko loppuun, niin pääset listalle!</span></div>');
+      [].forEach.call(box.querySelectorAll('[data-t]'), function (b) { b.onclick = function () { tab = b.getAttribute('data-t'); draw(); }; });
+    }
+    draw();
+  }).catch(function () { box.innerHTML = ''; });
+}
 function showEnd() {
   if (document.getElementById('end')) { return; }
   var ov = el('div', 'ov'); ov.id = 'end';
-  var c = el('div', 'card');
+  var c = el('div', 'card'); c.style.maxHeight = '92vh'; c.style.overflow = 'auto';
   var order = S.pl.map(function (p, k) { return { p: p, k: k }; }).sort(function (a, b) { return b.p.s - a.p.s; });
-  var h = '<h2 style="margin:0">🎉 Ristikko valmis!</h2><p>Aika ' + fmt(Math.max(0, S.done - S.t0)) + '. Yhdessä selvittiin, ja pisteet ratkaisevat parhaan.</p><div class="rank">';
+  var h = '<h2 style="margin:0">🎉 Ristikko valmis!</h2><p>Aika ' + fmt(Math.max(0, S.done - (S.go || S.t0))) + '. Tämän pelin pisteet:</p><div class="rank">';
   order.forEach(function (o, n) { h += '<div style="--c:' + COL[o.k % COL.length] + '"><span>' + (n === 0 ? '👑 ' : '') + esc(o.p.n) + '</span><b>' + o.p.s + ' p</b></div>'; });
-  c.innerHTML = h + '</div>';
+  c.innerHTML = h + '</div><h3 style="margin:6px 0 0">🏆 Pistepörssi</h3>';
+  lbBox(c);
   var r = el('div', 'row');
-  var b1 = el('button', 'btn', 'Uusi ristikko'); b1.onclick = function () { ov.remove(); clearTimeout(timer); S.room = ''; document.onkeydown = null; create(0); };
+  var b1 = el('button', 'btn', 'Seuraava ristikko'); b1.id = 'nxt';
+  b1.onclick = function () {
+    b1.disabled = true;
+    api('next', { room: S.room }).then(function (j) { clearTimeout(timer); document.onkeydown = null; S.room = j.room; try { history.replaceState(null, '', shareUrl()); } catch (e) {} join(); })
+      .catch(function () { b1.disabled = false; });
+  };
   var b2 = el('button', 'btn sec', 'Sulje'); b2.onclick = function () { ov.remove(); };
   r.appendChild(b1); r.appendChild(b2); c.appendChild(r); ov.appendChild(c); document.body.appendChild(ov);
+  updateNext();
 }
+function updateNext() { var b = document.getElementById('nxt'); if (b) { b.textContent = S.next ? '▶ Liity seuraavaan ristikkoon' : 'Seuraava ristikko'; } }
 
 if (S.room) { join(); } else { start(); }
 })();

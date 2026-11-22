@@ -185,7 +185,7 @@ function suorni_rkg_admin() {
 	$c = suorni_rkg_cfg(); $list = array();
 	foreach ( (array) get_option( 'suorni_rk_custom', array() ) as $p ) { $list[] = array( 'id' => (int) $p['id'], 'title' => $p['title'], 'n' => count( $p['ents'] ) ); }
 	return array( 'haskey' => '' !== $c['key'], 'tm' => $c['tm'], 'im' => $c['im'], 'max' => $c['max'], 'maxi' => $c['maxi'], 'today' => suorni_rkg_count( 'p' ), 'todayi' => suorni_rkg_count( 'i' ),
-		'draft' => suorni_rkg_draft_view( get_option( 'suorni_rkg_draft', null ) ), 'list' => $list, 'url' => add_query_arg( 'ristikko', '1', home_url( '/' ) ) );
+		'draft' => suorni_rkg_draft_view( get_option( 'suorni_rkg_draft', null ) ), 'list' => $list, 'lb' => suorni_rkg_lb_admin(), 'url' => add_query_arg( 'ristikko', '1', home_url( '/' ) ) );
 }
 function suorni_rkg_cfg_post( $req ) {
 	$c = suorni_rkg_cfg(); $key = trim( (string) $req->get_param( 'key' ) );
@@ -257,4 +257,22 @@ add_action( 'rest_api_init', function () {
 	foreach ( array( 'rkcfg' => 'suorni_rkg_cfg_post', 'gen' => 'suorni_rkg_gen', 'img' => 'suorni_rkg_img', 'pub' => 'suorni_rkg_pub', 'discard' => 'suorni_rkg_discard', 'pzdel' => 'suorni_rkg_pzdel' ) as $r => $cb ) {
 		register_rest_route( 'suorni/v1', '/ristikko/' . $r, array( 'methods' => 'POST', 'callback' => $cb, 'permission_callback' => 'suorni_can' ) );
 	}
+} );
+
+/* pistepörssin nimien hyväksyntä (ohjaamo) */
+function suorni_rkg_lb_admin() {
+	$l = get_option( 'suorni_rk_lb', array() ); if ( ! is_array( $l ) ) { return array(); }
+	uasort( $l, function ( $a, $b ) { return ( (int) $a['ok'] === 0 ? 0 : 1 ) <=> ( (int) $b['ok'] === 0 ? 0 : 1 ) ?: $b['a'] <=> $a['a']; } );
+	$o = array(); foreach ( array_slice( $l, 0, 40, true ) as $h => $x ) { $o[] = array( 'h' => $h, 'n' => $x['n'], 'ok' => (int) $x['ok'], 'a' => (int) $x['a'], 'g' => (int) $x['g'] ); }
+	return $o;
+}
+function suorni_rkg_lbact( $req ) {
+	$h = preg_replace( '/[^a-f0-9]/', '', (string) $req->get_param( 'h' ) ); $do = (string) $req->get_param( 'do' );
+	$l = get_option( 'suorni_rk_lb', array() ); if ( ! is_array( $l ) || ! isset( $l[ $h ] ) ) { return new WP_Error( 'suorni_bad', 'Pelaajaa ei löydy', array( 'status' => 404 ) ); }
+	if ( 'ok' === $do ) { $l[ $h ]['ok'] = 1; } elseif ( 'no' === $do ) { $l[ $h ]['ok'] = 2; } elseif ( 'del' === $do ) { unset( $l[ $h ] ); }
+	update_option( 'suorni_rk_lb', $l, false );
+	return suorni_json( suorni_rkg_admin() );
+}
+add_action( 'rest_api_init', function () {
+	register_rest_route( 'suorni/v1', '/ristikko/lbact', array( 'methods' => 'POST', 'callback' => 'suorni_rkg_lbact', 'permission_callback' => 'suorni_can' ) );
 } );

@@ -988,6 +988,12 @@
 						return '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid #2a303b;flex-wrap:wrap"><span><b>' + esc(p.title) + '</b> <span style="opacity:.7;font-size:13px">· ' + p.n + ' sanaa</span><br><a href="' + esc(V.url) + '&amp;pz=' + p.id + '" target="_blank" style="color:#7db2ff;font-size:13px">' + esc(V.url) + '&amp;pz=' + p.id + '</a></span><button type="button" data-rkdo="del" data-id="' + p.id + '">🗑️ Poista</button></div>';
 					}).join('');
 				}
+				if (V.lb && V.lb.length) {
+					var stt = { 0: 'odottaa', 1: 'hyväksytty', 2: 'hylätty' };
+					h += '<p style="margin:12px 0 2px"><b>🏆 Ristikon pistepörssin nimimerkit</b></p><p style="font-size:13px;opacity:.8;margin:0 0 4px">Nimi näkyy julkisella listalla vasta hyväksynnän jälkeen. Muut näkevät hylätyn tai odottavan nimen tilalla "Nimetön pelaaja".</p>' + V.lb.map(function (x) {
+						return '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:6px 0;border-top:1px solid #2a303b"><span><b>' + esc(x.n) + '</b> <span style="opacity:.7;font-size:13px">· ' + x.a + ' p · ' + x.g + ' peliä · ' + stt[x.ok] + '</span></span><span>' + (x.ok !== 1 ? '<button type="button" data-rkdo="lb" data-h="' + esc(x.h) + '" data-w="ok">✅ Hyväksy</button> ' : '') + (x.ok !== 2 ? '<button type="button" data-rkdo="lb" data-h="' + esc(x.h) + '" data-w="no">🚫 Hylkää</button> ' : '') + '<button type="button" data-rkdo="lb" data-h="' + esc(x.h) + '" data-w="del">🗑️</button></span></div>';
+					}).join('');
+				}
 				rkgw.innerHTML = h;
 			}
 			function val(k) { var f = rkgw.querySelector('[data-rk="' + k + '"]'); return f ? f.value : ''; }
@@ -1012,6 +1018,7 @@
 				}
 				else if (a === 'pub') { run(api('POST', D.urls.rkpub, { title: val('title') }).then(function (j) { done(j); msg = '✅ Ristikko julkaistu'; })); }
 				else if (a === 'discard') { if (confirm('Hylätäänkö luonnos ja sen kuvat?')) { run(api('POST', D.urls.rkdis, {}).then(done)); } }
+				else if (a === 'lb') { var w = b.getAttribute('data-w'); if (w !== 'del' || confirm('Poistetaanko pelaaja pörssistä pisteineen? Tätä ei voi perua.')) { run(api('POST', D.urls.rklb, { h: b.getAttribute('data-h'), 'do': w }).then(done)); } }
 				else if (a === 'del') { if (confirm('Poistetaanko julkaistu ristikko ja sen kuvat? Tätä ei voi perua.')) { run(api('POST', D.urls.rkdel, { id: +b.getAttribute('data-id') }).then(done)); } }
 			});
 			draw();
