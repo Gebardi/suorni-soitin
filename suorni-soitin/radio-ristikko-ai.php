@@ -127,14 +127,39 @@ function suorni_rkg_fetch( $url ) {
 	$t = trim( preg_replace( '/\s+/u', ' ', html_entity_decode( wp_strip_all_tags( $h ), ENT_QUOTES, 'UTF-8' ) ) );
 	return array( 'title' => $title, 'text' => mb_substr( $t, 0, 9000 ) );
 }
+/* Sanalista (Kotus): jokaisen tekoälyn ehdottaman sanan on löydyttävä sanakirjasta, jotta keksittyjä muotoja ei tule ristikkoon */
+function suorni_rkg_dict() {
+	static $d = null;
+	if ( null === $d ) {
+		$d = array();
+		$f = dirname( __FILE__ ) . '/ristikko-sanat.txt';
+		if ( is_readable( $f ) ) { foreach ( file( $f, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES ) as $l ) { if ( '#' !== $l[0] ) { $d[ $l ] = 1; } } }
+	}
+	return $d;
+}
 function suorni_rkg_words( $title, $text ) {
+	$dict = suorni_rkg_dict(); $good = array(); $bad = array(); $ttl = '';
+	for ( $round = 0; $round < 2; $round++ ) {
+		$r = suorni_rkg_ask( $title, $text, $bad );
+		if ( is_wp_error( $r ) ) { if ( $good ) { break; } return $r; }
+		if ( '' === $ttl ) { $ttl = $r['title']; }
+		foreach ( $r['words'] as $x ) {
+			if ( $dict && ! isset( $dict[ $x['w'] ] ) ) { $bad[ $x['w'] ] = 1; continue; }
+			$good[ $x['w'] ] = $x;
+		}
+		if ( count( $good ) >= 14 ) { break; }
+	}
+	if ( count( $good ) < 6 ) { return new WP_Error( 'suorni_ai', 'Tekoäly ehdotti liian vähän oikeita suomen sanoja (' . count( $good ) . '). Kokeile toista juttua tai aihetta.', array( 'status' => 422 ) ); }
+	return array( 'title' => $ttl, 'words' => array_values( $good ) );
+}
+function suorni_rkg_ask( $title, $text, $avoid ) {
 	$c = suorni_rkg_cfg();
 	$sys = 'Teet suomenkielistä kuvaristikkoa uutisjutun aiheista. Palauta pelkkä JSON: {"title":"lyhyt ristikon nimi suomeksi (max 40 merkkiä)","words":[{"w":"SANA","h":"vihje suomeksi, max 3 sanaa, ei sisällä vastausta","ip":"short English description of a simple picture of the word"}]}. '
-		. 'Anna 22 sanaa. Säännöt: sanan on oltava KONKREETTINEN, helposti piirrettävä substantiivi (esine, eläin, ruoka, paikka, kasvi, ammatti, ajoneuvo), joka liittyy jutun aiheeseen tai sen ympäristöön. '
+		. 'Anna 30 sanaa. Käytä vain tavallisia, tuttuja sanakirjasanoja: älä muodosta, johda tai taivuta sanoja itse. Säännöt: sanan on oltava KONKREETTINEN, helposti piirrettävä substantiivi (esine, eläin, ruoka, paikka, kasvi, ammatti, ajoneuvo), joka liittyy jutun aiheeseen tai sen ympäristöön. '
 		. 'Perusmuoto (nominatiivi yksikkö), isot kirjaimet, vain kirjaimet A-Z Å Ä Ö, 3-7 kirjainta, ei yhdyssanoja jotka eivät ole yleisiä. '
 		. 'EI erisnimiä, EI oikeita henkilöitä, EI tuotemerkkejä, EI abstrakteja sanoja, EI väkivaltaa, kuolemaa, aseita, huumeita tai muuta synkkää, vaikka juttu käsittelisi sitä: valitse silloin neutraaleja ympäristön esineitä. '
 		. 'Kuvakuvaus (ip) on neutraali, ilman tekstiä, ihmisiä tai logoja.';
-	$j = suorni_rkg_post( 'chat/completions', array( 'model' => $c['tm'], 'response_format' => array( 'type' => 'json_object' ), 'messages' => array( array( 'role' => 'system', 'content' => $sys ), array( 'role' => 'user', 'content' => "Otsikko: $title\n\nJuttu:\n" . $text ) ) ), 60 );
+	$j = suorni_rkg_post( 'chat/completions', array( 'model' => $c['tm'], 'response_format' => array( 'type' => 'json_object' ), 'messages' => array( array( 'role' => 'system', 'content' => $sys ), array( 'role' => 'user', 'content' => "Otsikko: $title\n\nJuttu:\n" . $text . ( $avoid ? "\n\nÄlä ehdota näitä, ne eivät ole sanakirjasanoja: " . implode( ', ', array_keys( $avoid ) ) : '' ) ) ) ), 60 );
 	if ( is_wp_error( $j ) ) { return $j; }
 	$o = json_decode( isset( $j['choices'][0]['message']['content'] ) ? $j['choices'][0]['message']['content'] : '', true );
 	if ( ! is_array( $o ) || empty( $o['words'] ) || ! is_array( $o['words'] ) ) { return new WP_Error( 'suorni_ai', 'Tekoäly ei palauttanut sanoja, yritä uudelleen', array( 'status' => 502 ) ); }
