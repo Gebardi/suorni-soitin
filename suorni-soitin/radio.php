@@ -23,6 +23,7 @@ require_once plugin_dir_path( __FILE__ ) . 'radio-hosts.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-peli.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-jukebox.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-book.php';
+require_once plugin_dir_path( __FILE__ ) . 'radio-ristikko.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-peli-kisa.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-peli-yhteinen.php';
 require_once plugin_dir_path( __FILE__ ) . 'radio-backup.php';
