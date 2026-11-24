@@ -349,7 +349,9 @@ details.fl li b{color:var(--tx);font-weight:500}
       <div class="card">
         <h2>Peli</h2>
         <p class="mu">Peli tallentuu automaattisesti tämän laitteen selaimeen. Kun olet poissa, lähetys jatkuu ja kolikot kertyvät (enintään 8 tuntia).</p>
+        <button class="btn ghost" id="copySave" style="width:100%;margin-bottom:8px">Kopioi tallennus vianetsintää varten</button>
         <button class="btn ghost" id="reset" style="width:100%">Aloita alusta</button>
+        <p class="hint">Jos peli ei reagoi: avaa suorni.fi/?peli=1&amp;safe=1 (turvatila, ei koske tallennukseen).</p>
       </div>
     </section>
   </main>
@@ -548,6 +550,7 @@ function fresh(){
     last:Date.now(), started:Date.now()
   };
 }
+var SAFE = /[?&]safe=1/.test(location.search);
 var ERRN = 0;
 function errShow(e){
   try{
@@ -564,6 +567,7 @@ window.addEventListener('error', function(ev){ var e = ev.error || new Error(ev.
 var S = load() || fresh();
 
 function load(){
+  if(SAFE) return null;
   try{
     var r = localStorage.getItem(KEY);
     if(!r) return null;
@@ -575,6 +579,7 @@ function load(){
   }catch(e){ return null; }
 }
 function save(){
+  if(SAFE) return;
   S.last = Date.now();
   try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
 }
@@ -2860,6 +2865,7 @@ function updApply(){
   try{ sessionStorage.setItem('taajuus_upd', String(Date.now())); }catch(e){}
   save(); location.reload();
 }
+$('copySave').addEventListener('click', function(){ var r = ''; try{ r = localStorage.getItem(KEY) || ''; }catch(e){} var done = function(){ toast('Tallennus kopioitu leikepöydälle (' + r.length + ' merkkiä). Liitä se viestiin.'); }; try{ navigator.clipboard.writeText(r).then(done, function(){ prompt('Kopioi tämä teksti:', r); }); }catch(e){ prompt('Kopioi tämä teksti:', r); } });
 $('updBar').addEventListener('click', function(){ UPD.busy = false; try{ sessionStorage.removeItem('taajuus_upd'); }catch(e){} UPD.pending = true; save(); location.reload(); });
 setTimeout(updCheck, 4000);
 setInterval(function(){ updCheck(); }, 300000);
