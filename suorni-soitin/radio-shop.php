@@ -25,7 +25,12 @@ function suorni_shop_get( $req ) {
 	if ( '' === $tid ) { $tt = suorni_targets(); $tid = $tt[0]['id']; }
 	$ads = suorni_ads();
 	$list = array();
-	foreach ( suorni_ads_for( 's' ) as $t ) { $list[] = array( 'id' => $t['id'], 'url' => $t['url'], 'title' => $t['title'], 'artist' => $t['artist'], 'dur' => (int) $t['dur'] ); }
+	/* Jos radion mainokset ovat käytössä, 'molemmat'-mainokset tulevat jo lähetyksen jonosta: ei soiteta niitä toista kertaa myymälän omalla säännöllä */
+	$radads = ! empty( suorni_radio_cfg()['radads'] );
+	foreach ( suorni_ads_for( 's' ) as $t ) {
+		if ( $radads && isset( $ads['tg'][ (int) $t['id'] ] ) && 'b' === $ads['tg'][ (int) $t['id'] ] ) { continue; }
+		$list[] = array( 'id' => $t['id'], 'url' => $t['url'], 'title' => $t['title'], 'artist' => $t['artist'], 'dur' => (int) $t['dur'] );
+	}
 	$by = array();
 	foreach ( suorni_tracks() as $t ) { $by[ $t['id'] ] = $t; }
 	$an = array();
