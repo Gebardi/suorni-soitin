@@ -1476,6 +1476,7 @@ add_shortcode( 'suorni_radio', function ( $atts = array() ) {
 .sr .rsh{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0 0}.sr .rsh button.rg{margin:0;padding:8px 12px;font-size:13px}.sr .rsh span{font-size:13px;opacity:.85}
 .sr .rsoc{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 0;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)}.sr .rsoc .rsl{font-size:13px;opacity:.75}.sr .rsoc a.rg{display:inline-block;margin:0;padding:8px 12px;font-size:13px;text-decoration:none}.sr .rsoc a.rpro{flex-basis:100%;display:block;margin-top:4px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:700;text-align:center;text-decoration:none;color:#14161a;background:linear-gradient(180deg,var(--a),var(--b))}
 .sr .rnav{display:flex;gap:6px;overflow-x:auto;margin:14px 0 4px;padding:0 0 6px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}.sr .rnav a{flex:none;padding:7px 12px;border-radius:999px;border:1px solid rgba(var(--ar),.35);background:rgba(var(--ar),.08);color:#efe8d8;text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap}.sr .rnav a:hover,.sr .rnav a:focus-visible{background:rgba(var(--ar),.22);outline:none}
+.sr .rsp{margin:26px auto 0;max-width:340px;text-align:center}.sr .rsp-l{display:block;font:11px/1.4 ui-monospace,Menlo,Consolas,monospace;color:#8b93a1;margin:0 0 6px;text-align:center}.sr .rsp-a{display:block;border:2px solid transparent;border-radius:14px;overflow:hidden;line-height:0;transition:transform .15s,border-color .15s}.sr .rsp-a:hover,.sr .rsp-a:focus-visible{transform:translateY(-2px);border-color:#ffc933;outline:none}.sr .rsp-a img{display:block;width:100%;height:auto}@media(min-width:720px){.sr .rsp{max-width:none}.sr .rsp-a img{aspect-ratio:16/5}}@media(prefers-reduced-motion:reduce){.sr .rsp-a{transition:none}.sr .rsp-a:hover,.sr .rsp-a:focus-visible{transform:none}}
 .sr .rsec{margin:26px 0 0;scroll-margin-top:14px}.sr .rsec h3,.sr .rft h3{margin:0 0 10px;font-size:18px;letter-spacing:1px;color:#e9e1cf}
 .sr .rgd{list-style:none;margin:0;padding:0;display:grid;gap:8px}.sr .gp{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}.sr .gp.on{background:rgba(var(--ar),.14);border-color:rgba(var(--ar),.6)}
 .sr .gt{flex:none;min-width:104px;font:600 14px ui-monospace,Menlo,Consolas,monospace;color:var(--a)}.sr .gn{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline}.sr .gn b{font-size:15px}.sr .gwho{opacity:.85}.sr .gn small{flex-basis:100%;opacity:.65;font-size:12px}
@@ -1697,7 +1698,7 @@ html.sch-on body.home .hero h1{text-shadow:0 0 18px rgba(var(--sch-ar),.35)}
 	</aside>
 	</div>
 	<p class="rs" data-count></p>
-	<?php if ( ! $shop ) { echo suorni_station_guide(); echo suorni_station_hosts(); } ?>
+	<?php if ( ! $shop ) { echo suorni_kuha_banner(); echo suorni_station_guide(); echo suorni_station_hosts(); } ?>
 	<div class="rhid" hidden>
 	<?php if ( $cfg['comm'] ) : ?>
 	<details>

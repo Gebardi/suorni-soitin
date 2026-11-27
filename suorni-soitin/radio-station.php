@@ -114,3 +114,16 @@ function suorni_station_footer( $cfg ) {
 	$h .= '</ul></div><div class="rfc">' . suorni_flag() . ' ' . esc_html( $cfg['name'] ) . ' – musiikkia Suomesta, Suomen yössä<br><small>© ' . esc_html( wp_date( 'Y' ) ) . ' ' . esc_html( $cfg['name'] ) . '</small></div></footer>';
 	return $h;
 }
+
+/* Kuha-kirjan mainosbanneri (11.1): soittimen alla, ohjelmaoppaan yläpuolella */
+function suorni_kuha_banner() {
+	$u  = plugins_url( 'pwa/', __FILE__ );
+	$w  = esc_url( $u . 'kuha-banneri-1600x500.webp' );
+	$sq = esc_url( $u . 'kuha-banneri-800x800.webp' );
+	$fb = esc_url( $u . 'kuha-banneri-800x800.png' );
+	$h  = '<aside class="rsp" aria-label="Mainos"><span class="rsp-l">Mainos</span>';
+	$h .= '<a class="rsp-a" href="https://www.suomalainen.com/collections/kirjat/products/kuha" target="_blank" rel="sponsored noopener noreferrer">';
+	$h .= '<picture><source media="(min-width:720px)" srcset="' . $w . '" type="image/webp"><source srcset="' . $sq . '" type="image/webp">';
+	$h .= '<img src="' . $fb . '" width="800" height="800" loading="lazy" decoding="async" alt="Kuha, Markus Reinikka: Kukkumäki-sarjan osa 1. Tilaa kirja nyt."></picture></a></aside>';
+	return $h;
+}
