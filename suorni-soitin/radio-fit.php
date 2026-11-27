@@ -142,6 +142,11 @@ function suorni_radio_ad_item( $cfg, &$st, $items, $end, $anc, $pool = null ) {
 	if ( ! $last || 'track' !== $last['type'] ) { return null; }
 	$list = suorni_ads_for( 'r' );
 	if ( ! $list ) { return null; }
+	/* Suoja: ei mainosta, jos jonon viimeisten kohteiden tai viimeisen 3 minuutin joukossa on jo mainos */
+	for ( $q = count( $items ) - 1, $z = 0; $q >= 0 && $z < 3; $q--, $z++ ) {
+		if ( 'ad' === $items[ $q ]['type'] ) { return null; }
+		if ( $end - ( $items[ $q ]['start'] + $items[ $q ]['dur'] ) > 180 ) { break; }
+	}
 	if ( empty( $st['adat'] ) ) { $st['adat'] = wp_rand( $ads['rmin'], max( $ads['rmin'], $ads['rmax'] ) ); }
 	if ( (int) $st['adn'] < (int) $st['adat'] ) { return null; }
 	$t = $list[ (int) $st['adi'] % count( $list ) ];

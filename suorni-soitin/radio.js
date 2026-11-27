@@ -776,7 +776,7 @@
 	}
 
 	/* Myymälätila: aukioloajat, kuulutukset ja mainokset */
-	var shopOpen = null, shopData = null, userStop = false, autoStop = false, auxBusy = false, songN = 0, nextAt = 0, adIdx = 0, doneAnn = {};
+	var lastShopAd = 0, shopOpen = null, shopData = null, userStop = false, autoStop = false, auxBusy = false, songN = 0, nextAt = 0, adIdx = 0, doneAnn = {};
 	try { doneAnn = JSON.parse(localStorage.getItem('suorni_shop_ann') || '{}') || {}; } catch (e) {}
 	function auxPlay(url, label) {
 		if (auxBusy) { return; }
@@ -810,6 +810,8 @@
 		if (it.type !== 'track' || shopSeen === key) { return false; }
 		shopSeen = key;
 		if (!shopData || !shopData.ads || !shopData.ads.on || !shopData.ads.list.length || auxBusy || !playing) { return false; }
+		/* Suoja: kahden myymälän mainoksen väliin jää aina vähintään 3 min musiikkia */
+		if (Date.now() - lastShopAd < 180000) { return false; }
 		if (!nextAt) { rollAd(); }
 		songN++;
 		if (songN < nextAt) { return false; }
@@ -821,7 +823,7 @@
 		/* viive ei saa kasvaa liikaa, eikä seuraavan juonnon edellä oleva kappale saa jäädä liian lyhyeksi */
 		var nx = idx >= 0 ? items[idx + 1] : null;
 		if (lag + ad_d > 240 || (nx && nx.type === 'dj' && it.dur < lag + ad_d + 30)) { songN = nextAt; return false; }
-		adIdx++; rollAd();
+		adIdx++; rollAd(); lastShopAd = Date.now();
 		shopAdHold = true;
 		adPlay(ad.url, 'Mainos: ' + ad.title, function (el) { lag += el; shopAdHold = false; if (playing) { sync(); } });
 		return true;
